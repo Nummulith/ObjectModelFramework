@@ -90,10 +90,7 @@ class MyWidget(QWidget):
                 Class = cInternetGateway,
                 GetObjects = lambda lst=None: boto3.client('ec2').describe_internet_gateways()['InternetGateways'],
                 Fields = {
-                    "InstanceId" : cEC2,
-                    "InstanceType" : str,
-                    "PublicIpAddress" : str,
-                    "PrivateIpAddress": 0
+                    "InternetGatewayId" : cInternetGateway,
                 },
                 Icon = general.InternetGateway
             ),
@@ -155,10 +152,11 @@ class MyWidget(QWidget):
 
     def Draw(self):
         
-        self.MD[cReservation].LoadObjects(self.MD)
-        self.MD[cSubnet     ].LoadObjects(self.MD)
-        self.MD[cNetworkAcl ].LoadObjects(self.MD)
-        self.MD[cRouteTable ].LoadObjects(self.MD)
+        self.MD[cReservation    ].LoadObjects(self.MD)
+        self.MD[cSubnet         ].LoadObjects(self.MD)
+        self.MD[cNetworkAcl     ].LoadObjects(self.MD)
+        self.MD[cRouteTable     ].LoadObjects(self.MD)
+        self.MD[cInternetGateway].LoadObjects(self.MD)
 
         with Diagram("graph", show=False):
             with Cluster("EC2"):
@@ -177,7 +175,11 @@ class MyWidget(QWidget):
                 for item in self.MD[cRouteTable].Objects:
                     D = self.MD[cRouteTable].Icon(f"{item.RouteTableId}")
 
-            A >> B >> C >> D
+            with Cluster("Internet Gateways"):
+                for item in self.MD[cInternetGateway].Objects:
+                    E = self.MD[cInternetGateway].Icon(f"{item.InternetGatewayId}")
+
+            A >> B >> C >> D >> E
 
 
         Diagram("Web Services", show=False).render()
