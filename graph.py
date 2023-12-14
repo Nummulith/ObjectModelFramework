@@ -50,6 +50,7 @@ class cInternetGatewayAttachment(AWSObject): pass
 class cSecurityGroup(AWSObject): pass
 class cSubnet(AWSObject): pass
 class cNetworkAcl(AWSObject): pass
+class cRouteTable(AWSObject): pass
 
 class MyWidget(QWidget):
     def __init__(self):
@@ -138,6 +139,15 @@ class MyWidget(QWidget):
                 },
                 Icon = network.Nacl
             ),
+
+            cRouteTable: md(
+                Class = cRouteTable,
+                GetObjects = lambda lst=None: boto3.client('ec2').describe_route_tables()['RouteTables'],
+                Fields = {
+                    "RouteTableId" : cRouteTable,
+                },
+                Icon = network.RouteTable
+            ),
         }
 
         self.Draw()
@@ -146,8 +156,9 @@ class MyWidget(QWidget):
     def Draw(self):
         
         self.MD[cReservation].LoadObjects(self.MD)
-        self.MD[cSubnet].LoadObjects(self.MD)
-        self.MD[cNetworkAcl].LoadObjects(self.MD)
+        self.MD[cSubnet     ].LoadObjects(self.MD)
+        self.MD[cNetworkAcl ].LoadObjects(self.MD)
+        self.MD[cRouteTable ].LoadObjects(self.MD)
 
         with Diagram("graph", show=False):
             with Cluster("EC2"):
@@ -162,7 +173,11 @@ class MyWidget(QWidget):
                 for item in self.MD[cNetworkAcl].Objects:
                     C = self.MD[cNetworkAcl].Icon(f"{item.NetworkAclId}")
 
-            A >> B >> C
+            with Cluster("Route Tables"):
+                for item in self.MD[cRouteTable].Objects:
+                    D = self.MD[cRouteTable].Icon(f"{item.RouteTableId}")
+
+            A >> B >> C >> D
 
 
         Diagram("Web Services", show=False).render()
