@@ -4,6 +4,7 @@ from PyQt5.QtGui import QPixmap
 
 import boto3
 
+# https://diagrams.mingrammer.com/
 from diagrams import Diagram, Cluster
 from diagrams.aws import general, compute, database, network, storage, security
 
@@ -16,10 +17,11 @@ class md():
 
     def LoadObjects(self, MD, parent = None):
 #        self.Objects = [self.Class(obj) for obj in self.GetObjects(parent)]
-        self.Objects = []
+        self.Objects = {}
         lst = self.GetObjects(parent)
         for obj in lst:
-            self.Objects.append(self.Class(MD, obj))
+            firstfield = next(iter(MD[self.Class].Fields))
+            self.Objects[obj[firstfield]] = self.Class(MD, obj)
 
         return
 
@@ -51,6 +53,7 @@ class cSecurityGroup(AWSObject): pass
 class cSubnet(AWSObject): pass
 class cNetworkAcl(AWSObject): pass
 class cRouteTable(AWSObject): pass
+class cVpc(AWSObject): pass
 
 class MyWidget(QWidget):
     def __init__(self):
@@ -81,7 +84,8 @@ class MyWidget(QWidget):
                     "InstanceId" : cEC2,
                     "InstanceType" : str,
                     "PublicIpAddress" : str,
-                    "PrivateIpAddress": str
+                    "PrivateIpAddress": str,
+                    "SubnetId": cSubnet,
                 },
                 Icon = compute.EC2
             ),
@@ -99,7 +103,7 @@ class MyWidget(QWidget):
                 Class = cInternetGatewayAttachment,
                 GetObjects = lambda lst=None: lst,
                 Fields = {
-                    "VpcId" : str, # !!!
+                    "VpcId" : cVpc,
                 },
                 Icon = general.InternetGateway
             ),
@@ -110,7 +114,7 @@ class MyWidget(QWidget):
                 Fields = {
                     "GroupName" : str,
                     "GroupId" : str,
-                    "VpcId" : str, ##!!!!!!!!!!!!!!!
+                    "VpcId" : cVpc,
                 },
                 Icon = security.SecurityHub
             ),
@@ -121,7 +125,7 @@ class MyWidget(QWidget):
                 Fields = {
                     "SubnetId" : cSubnet,
                     "CidrBlock" : str,
-                    "VpcId" : str, ##!!!!!!!!!!!!!!!
+                    "VpcId" : cVpc,
                     "AvailabilityZone" : str, ##!!!!!!!!!!!!!!!
                 },
                 Icon = network.PrivateSubnet
@@ -145,6 +149,16 @@ class MyWidget(QWidget):
                 },
                 Icon = network.RouteTable
             ),
+
+            cVpc: md(
+                Class = cVpc,
+                GetObjects = lambda lst=None: boto3.client('ec2').describe_vpcs()['Vpcs'],
+                Fields = {
+                    "VpcId" : cVpc,
+                },
+                Icon = network.VPCCustomerGateway
+            ),
+
         }
 
         self.Draw()
@@ -152,6 +166,7 @@ class MyWidget(QWidget):
 
     def Draw(self):
         
+        self.MD[cVpc            ].LoadObjects(self.MD)
         self.MD[cReservation    ].LoadObjects(self.MD)
         self.MD[cSubnet         ].LoadObjects(self.MD)
         self.MD[cNetworkAcl     ].LoadObjects(self.MD)
@@ -159,27 +174,43 @@ class MyWidget(QWidget):
         self.MD[cInternetGateway].LoadObjects(self.MD)
 
         with Diagram("graph", show=False):
+
             with Cluster("EC2"):
-                for item in self.MD[cEC2].Objects:
-                    A = self.MD[cReservation].Icon(f"{item.InstanceId}")
+                for id, item in self.MD[cEC2].Objects.items():
+                    icon = self.MD[cReservation].Icon(id)
+                    setattr(item, "Icon", icon)
 
             with Cluster("Subnets"):
-                for item in self.MD[cSubnet].Objects:
-                    B = self.MD[cSubnet].Icon(f"{item.SubnetId}")
+                for id, item in self.MD[cSubnet].Objects.items():
+                    icon = self.MD[cSubnet].Icon(id)
+                    setattr(item, "Icon", icon)
 
-            with Cluster("Network ACLs"):
-                for item in self.MD[cNetworkAcl].Objects:
-                    C = self.MD[cNetworkAcl].Icon(f"{item.NetworkAclId}")
+#            with Cluster("Network ACLs"):
+#                for id, item in self.MD[cNetworkAcl].Objects.items():
+#                    icon = self.MD[cNetworkAcl].Icon(id)
+#                    setattr(item, "Icon", icon)
 
-            with Cluster("Route Tables"):
-                for item in self.MD[cRouteTable].Objects:
-                    D = self.MD[cRouteTable].Icon(f"{item.RouteTableId}")
+#            with Cluster("Route Tables"):
+#                for id, item in self.MD[cRouteTable].Objects.items():
+#                    icon = self.MD[cRouteTable].Icon(id)
+#                    setattr(item, "Icon", icon)
 
-            with Cluster("Internet Gateways"):
-                for item in self.MD[cInternetGateway].Objects:
-                    E = self.MD[cInternetGateway].Icon(f"{item.InternetGatewayId}")
+#            with Cluster("Internet Gateways"):
+#                for id, item in self.MD[cInternetGateway].Objects.items():
+#                    icon = self.MD[cInternetGateway].Icon(id)
+#                    setattr(item, "Icon", icon)
 
-            A >> B >> C >> D >> E
+            with Cluster("VPCs"):
+                for id, item in self.MD[cVpc].Objects.items():
+                    icon = self.MD[cVpc].Icon(id)
+                    setattr(item, "Icon", icon)
+
+
+            for id, item in self.MD[cEC2].Objects.items():
+                item.Icon >> self.MD[cSubnet].Objects[item.SubnetId].Icon
+            
+            for id, item in self.MD[cSubnet].Objects.items():
+                item.Icon >> self.MD[cVpc].Objects[item.VpcId].Icon
 
 
         Diagram("Web Services", show=False).render()
