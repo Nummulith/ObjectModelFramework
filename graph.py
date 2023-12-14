@@ -163,11 +163,11 @@ class MyWidget(QWidget):
         with Diagram("graph", show=False):
             with Cluster("EC2"):
                 for item in self.MD[cEC2].Objects:
-                    A = self.MD[cReservation].Icon(item.InstanceId)
+                    A = self.MD[cReservation].Icon(f"{item.InstanceId}")
 
             with Cluster("Subnets"):
                 for item in self.MD[cSubnet].Objects:
-                    B = self.MD[cSubnet].Icon(f"{item.SubnetId} : {item.CidrBlock}")
+                    B = self.MD[cSubnet].Icon(f"{item.SubnetId}")
 
             with Cluster("Network ACLs"):
                 for item in self.MD[cNetworkAcl].Objects:
