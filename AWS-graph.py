@@ -17,7 +17,8 @@ class md():
 
     def LoadObjects(self, MD, parent = None):
 #        self.Objects = [self.Class(obj) for obj in self.GetObjects(parent)]
-        self.Objects = {}
+        if not hasattr(self, "Objects"):
+            self.Objects = {}
         lst = self.GetObjects(parent)
         for obj in lst:
             firstfield = next(iter(MD[self.Class].Fields))
@@ -49,11 +50,16 @@ class cReservation(AWSObject): pass
 class cEC2(AWSObject): pass
 class cInternetGateway(AWSObject): pass
 class cInternetGatewayAttachment(AWSObject): pass
+class cNATGateway(AWSObject): pass
 class cSecurityGroup(AWSObject): pass
 class cSubnet(AWSObject): pass
 class cNetworkAcl(AWSObject): pass
 class cRouteTable(AWSObject): pass
+class cRoute(AWSObject): pass
 class cVpc(AWSObject): pass
+class cVpcEntry(AWSObject): pass
+class cNetworkInterface(AWSObject): pass
+class cS3(AWSObject): pass
 
 class MyWidget(QWidget):
     def __init__(self):
@@ -108,6 +114,17 @@ class MyWidget(QWidget):
                 Icon = general.InternetGateway
             ),
 
+            cNATGateway: md(
+                Class = cNATGateway,
+                GetObjects = lambda lst=None: boto3.client('ec2').describe_nat_gateways()['NatGateways'],
+                Fields = {
+                    "NatGatewayId" : cNATGateway,
+                    "SubnetId" : cSubnet,
+                    "State" : str,
+                },
+                Icon = network.NATGateway
+            ),
+
             cSecurityGroup: md(
                 Class = cSecurityGroup,
                 GetObjects = lambda lst=None: boto3.client('ec2').describe_security_groups()['SecurityGroups'],
@@ -115,6 +132,14 @@ class MyWidget(QWidget):
                     "GroupName" : str,
                     "GroupId" : str,
                     "VpcId" : cVpc,
+#                    IpPermissions\IpRanges\
+                        # for permission in group['IpPermissions']:
+                        #     print(f"- From Port: {permission.get('FromPort', 'N/A')}")
+                        #     print(f"  To Port: {permission.get('ToPort', 'N/A')}")
+                        #     print(f"  Protocol: {permission.get('IpProtocol', 'N/A')}")
+                        #     print("  IP Ranges:")
+                        #     for ip_range in permission.get('IpRanges', []):
+                        #         print(f"  - {ip_range.get('CidrIp', 'N/A')}")
                 },
                 Icon = security.SecurityHub
             ),
@@ -146,8 +171,38 @@ class MyWidget(QWidget):
                 GetObjects = lambda lst=None: boto3.client('ec2').describe_route_tables()['RouteTables'],
                 Fields = {
                     "RouteTableId" : cRouteTable,
+                    "VpcId" : cVpc,
+                    "Routes" : [cRoute],
                 },
                 Icon = network.RouteTable
+            ),
+
+            cRoute: md(
+                Class = cRoute,
+                GetObjects = lambda lst=None: lst,
+                Fields = {
+                    #"_Parent" : cRouteTable,
+                    "DestinationCidrBlock" : str,
+                    "GatewayId" : cInternetGateway,
+                    "InstanceId" : cEC2,
+                    "NatGatewayId" : cNATGateway,
+                    "NetworkInterfaceId" : cNetworkInterface,
+                },
+                Icon = network.RouteTable
+            ),
+
+            cNetworkInterface: md(
+                Class = cNetworkInterface,
+                GetObjects = lambda lst=None: boto3.client('ec2').describe_network_interfaces()['NetworkInterfaces'],
+                Fields = {
+                    "NetworkInterfaceId" : cNetworkInterface,
+                    "Status" : str,
+                    "Attachment" : str, #    print("Attachment ID:", network_interface['Attachment']['AttachmentId'])
+                    "VpcId" : cVpc,
+                    "SubnetId" : cSubnet,
+                    "PrivateIpAddresses" : str, # print("Private IP Addresses:", [private_ip['PrivateIpAddress'] for private_ip in network_interface['PrivateIpAddresses']])
+                },
+                Icon = network.VPCElasticNetworkInterface
             ),
 
             cVpc: md(
@@ -155,8 +210,32 @@ class MyWidget(QWidget):
                 GetObjects = lambda lst=None: boto3.client('ec2').describe_vpcs()['Vpcs'],
                 Fields = {
                     "VpcId" : cVpc,
+                    "NetworkAclId" : cNetworkAcl,
                 },
                 Icon = network.VPCCustomerGateway
+            ),
+
+            cVpcEntry: md(
+                Class = cVpcEntry,
+                GetObjects = lambda lst=None: lst,
+                Fields = {
+                    #"_Parent" : cVpc,
+                    "RuleNumber" : int,
+                    "Protocol" : str,
+                    "PortRange" : str,
+                    "RuleAction" : str,
+                    "CidrBlock" : str,
+                },
+                Icon = network.VPCElasticNetworkAdapter
+            ),
+
+            cS3: md(
+                Class = cS3,
+                GetObjects = lambda lst=None: boto3.client('s3').list_buckets()['Buckets'],
+                Fields = {
+                    "Name" : cS3,
+                },
+                Icon = storage.S3
             ),
 
         }
@@ -175,12 +254,13 @@ class MyWidget(QWidget):
 
         with Diagram("graph", show=False):
 
+
             with Cluster("EC2"):
                 for id, item in self.MD[cEC2].Objects.items():
                     icon = self.MD[cReservation].Icon(id)
                     setattr(item, "Icon", icon)
 
-            with Cluster("Subnets"):
+            with Cluster("EC2"):
                 for id, item in self.MD[cSubnet].Objects.items():
                     icon = self.MD[cSubnet].Icon(id)
                     setattr(item, "Icon", icon)
@@ -206,11 +286,15 @@ class MyWidget(QWidget):
                     setattr(item, "Icon", icon)
 
 
+
             for id, item in self.MD[cEC2].Objects.items():
-                item.Icon >> self.MD[cSubnet].Objects[item.SubnetId].Icon
+                if hasattr(item, "SubnetId"):
+                    item.Icon >> self.MD[cSubnet].Objects[item.SubnetId].Icon
             
             for id, item in self.MD[cSubnet].Objects.items():
-                item.Icon >> self.MD[cVpc].Objects[item.VpcId].Icon
+                if hasattr(item, "VpcId"):
+                    item.Icon >> self.MD[cVpc].Objects[item.VpcId].Icon
+
 
 
         Diagram("Web Services", show=False).render()
