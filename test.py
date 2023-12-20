@@ -22,7 +22,7 @@ for i in range(1, rows + 1):
                 row.node(f'EC2_{index}', shape='plaintext', label=f'''<
                     <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
                         <TR><TD BGCOLOR="#A9DFBF" PORT="p1">EC2 {index}</TD></TR>
-                        <TR><TD BGCOLOR="white" PORT="p2"><IMG SRC="Res_Amazon-EC2_Instance_48.png"/></TD></TR>
+                        <TR><TD BGCOLOR="white" PORT="p2"><IMG SRC="icons\Res_Amazon-EC2_Instance_48.png"/></TD></TR>
                     </TABLE>>''')
 
 # Добавляем связи (10 случайных связей)
