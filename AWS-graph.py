@@ -106,23 +106,21 @@ class cEC2(cParent):
                     "PublicIpAddress" : str,
                     "PrivateIpAddress": str,
                     "SubnetId": cSubnet,
+                    'PlatformDetails': str,
+                    'Tags': {"Key" : "Value"},
                 }
     
 # 'AmiLaunchIndex': 0
 # 'ImageId': 'ami-0669b163befffbdfc'
-# 'InstanceId': 'i-074df4a891ade9495'
-# 'InstanceType': 't2.micro'
 # 'KeyName': 'key-antony'
 # 'LaunchTime': datetime.datetime(2023, 12, 14, 15, 31, 2, tzinfo=tzutc())
 # 'Monitoring': {'State': 'disabled'}
 # 'Placement': {'AvailabilityZone': 'eu-central-1b', 'GroupName': '', 'Tenancy': 'default'}
 # 'PrivateDnsName': 'ip-10-222-2-11.eu-central-1.compute.internal'
-# 'PrivateIpAddress': '10.222.2.11'
 # 'ProductCodes': []
 # 'PublicDnsName': ''
 # 'State': {'Code': 16, 'Name': 'running'}
 # 'StateTransitionReason': ''
-# 'SubnetId': 'subnet-0abb2b25f63d39386'
 # 'VpcId': 'vpc-055b28f7d73c69acf'
 # 'Architecture': 'x86_64'
 # 'BlockDeviceMappings': [{'DeviceName': '/dev/xvda', 'Ebs': {...}}]
@@ -135,7 +133,6 @@ class cEC2(cParent):
 # 'RootDeviceType': 'ebs'
 # 'SecurityGroups': [{'GroupName': 'secgrup-antony', 'GroupId': 'sg-0e050b1cd54e6fcc8'}]
 # 'SourceDestCheck': True
-# 'Tags': [{'Key': 'Name', 'Value': 'app-server-antony'}]
 # 'VirtualizationType': 'hvm'
 # 'CpuOptions': {'CoreCount': 1, 'ThreadsPerCore': 1}
 # 'CapacityReservationSpecification': {'CapacityReservationPreference': 'open'}
@@ -143,7 +140,6 @@ class cEC2(cParent):
 # 'MetadataOptions': {'State': 'applied', 'HttpTokens': 'required', 'HttpPutResponseHopLimit': 2, 'HttpEndpoint': 'enabled', 'HttpProtocolIpv6': 'disabled', 'InstanceMetadataTags': 'disabled'}
 # 'EnclaveOptions': {'Enabled': False}
 # 'BootMode': 'uefi-preferred'
-# 'PlatformDetails': 'Linux/UNIX'
 # 'UsageOperation': 'RunInstances'
 # 'UsageOperationUpdateTime': datetime.datetime(2023, 12, 14, 15, 31, 2, tzinfo=tzutc())
 # 'PrivateDnsNameOptions': {'HostnameType': 'ip-name', 'EnableResourceNameDnsARecord': False, 'EnableResourceNameDn...AAAARecord': False}
@@ -154,6 +150,11 @@ class cEC2(cParent):
     @staticmethod
     def GetObjects(parent, lst):
         return lst
+
+    def GetView(self):
+        return f"{getattr(self, 'Tag_Name', "<>")} ({getattr(self, "PlatformDetails")})"
+    #\n {getattr(self, "PublicIpAddress", "")} / {getattr(self, "PrivateIpAddress", "")}
+
 
 class cInternetGateway(cParent): 
     ParentField = None
@@ -232,12 +233,33 @@ class cSubnet(cParent):
                     "CidrBlock" : str,
                     "VpcId" : cVpc,
                     "AvailabilityZone" : str, ##!!!!!!!!!!!!!!!
+                    'AvailabilityZoneId': 'euc1-az1', ##!!!!!!!!!!!!!!!
+                    'Tags': {"Key" : "Value"}
                 }
     
+# 'AvailableIpAddressCount': 251
+# 'DefaultForAz': False
+# 'MapPublicIpOnLaunch': False
+# 'MapCustomerOwnedIpOnLaunch': False
+# 'State': 'available'
+# 'OwnerId': '047989593255'
+# 'AssignIpv6AddressOnCreation': False
+# 'Ipv6CidrBlockAssociationSet': []
+# 'SubnetArn': 'arn:aws:ec2:eu-central-1:047989593255:subnet/subnet-06678d33e23eba72f'
+# 'EnableDns64': False
+# 'Ipv6Native': False
+# 'PrivateDnsNameOptionsOnLaunch': {'HostnameType': 'ip-name', 'EnableResourceNameDnsARecord': False, 'EnableResourceNameDn...AAAARecord': False}
+
+
     @staticmethod
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_subnets()['Subnets']
     
+    def GetView(self):
+        return f"{getattr(self, 'Tag_Name', "<>")} ({getattr(self, "CidrBlock", "")})"
+
+
+
 class cNetworkAcl(cParent): 
     ParentField = None
     Icon = "NetworkAccessControlList"
