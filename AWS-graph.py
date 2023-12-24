@@ -10,7 +10,11 @@ import boto3
 
 from graphviz import Digraph
 
-
+fType = 0
+fId = 1
+fOwner = 2
+fIn = 3
+fOut = 4
 
 class cParent:
     Icon = "AWS"
@@ -21,10 +25,11 @@ class cParent:
             setattr(self, "_Parent", parent)
 
         fields = type(self).Fields()
-        for key, value in resp.items():
-            if not key in fields:
+        for key, cfg in fields.items():
+            if not key in resp:
                 continue
-            field = fields[key]
+            value = resp[key]
+            field = fields[key][fType]
             if type(field) == list:
                 if len(field) == 0:
                     #setattr(self, key, value)
@@ -48,9 +53,20 @@ class cParent:
         self.items = []
 
     def GetId(self):
-        firstfield = next(iter(self.Fields()))
-        return getattr(self, firstfield)
-    
+        field = next((key for key, value in self.Fields().items() if value[fId]), None)
+        return getattr(self, field)
+
+    def GetOwner(self, Data):
+        field = next(((key, value) for key, value in self.Fields().items() if value[fOwner]), (None, None))
+
+        if field[0] == None:
+            return None
+        
+        id = getattr(self, field[0])
+        clss = field[1][fType]
+
+        return Data[clss][id]
+
     def GetView(self):
         return self.GetId()
 
@@ -68,25 +84,23 @@ class cParent:
 
 class cRoot(cParent):
     def __init__(self, Data):
-        super().__init__(Data, None, {})
-        self.Id = "root-" + 17*"0"
+        super().__init__(Data, None, {"Id": "root-" + 17*"0"})
 
     @staticmethod
     def Fields():
-        return {"Id": cRoot}
+        return {"Id" : (cRoot,True,False,False,False)}
         
 class cReservation(cParent): 
-    ParentField = None
     Icon = "EC2"
     Show = False
 
     @staticmethod
     def Fields():
         return {
-                    "ReservationId" : cReservation,
-                    "OwnerId" : str,
-                    "Groups" : [str], # !!!
-                    "Instances" : [cEC2],
+                    "ReservationId" : (cReservation,True,False,False,False),
+                    "OwnerId"       : (str,False,False,False,False),
+                    "Groups"        : ([str],False,False,False,False), # !!!
+                    "Instances"     : ([cEC2],False,False,False,False),
                 }
     
     @staticmethod
@@ -94,20 +108,19 @@ class cReservation(cParent):
         return boto3.client('ec2').describe_instances()['Reservations']
     
 class cEC2(cParent): 
-    ParentField = "SubnetId" # 
+    _ParentType : cReservation
     Icon = "EC2"
 
     @staticmethod
     def Fields():
         return {
-                    "InstanceId" : cEC2,
-                    "_Parent" : cReservation,
-                    "InstanceType" : str,
-                    "PublicIpAddress" : str,
-                    "PrivateIpAddress": str,
-                    "SubnetId": cSubnet,
-                    'PlatformDetails': str,
-                    'Tags': {"Key" : "Value"},
+                    "InstanceId" : (cEC2,True,False,False,False),
+                    "InstanceType" : (str,False,False,False,False),
+                    "PublicIpAddress" : (str,False,False,False,False),
+                    "PrivateIpAddress" : (str,False,False,False,False),
+                    "SubnetId" : (cSubnet,False,True,False,False),
+                    'PlatformDetails' : (str,False,False,False,False),
+                    'Tags' : ({"Key" : "Value"},False,False,False,False),
                 }
     
 # 'AmiLaunchIndex': 0
@@ -157,43 +170,53 @@ class cEC2(cParent):
 
 
 class cInternetGateway(cParent): 
-    ParentField = None
     Icon = "Gateway"
 
     @staticmethod
     def Fields():
         return {
-                    "InternetGatewayId" : cInternetGateway,
+                    "InternetGatewayId" : (cInternetGateway,True,False,False,False),
+                    'OwnerId' : (str,False,False,False,False),
+                    'Attachments' : ([cInternetGatewayAttachment],False,False,False,False),
+                    'Tags' : ({"Key" : "Value"},False,False,False,False),
                 }
     
     @staticmethod
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_internet_gateways()['InternetGateways']
 
+    def GetView(self):
+        return f"{getattr(self, 'Tag_Name', "")}"
+
 class cInternetGatewayAttachment(cParent): 
-    ParentField = None # _Parent
+    _ParentType = cInternetGateway
     Icon = "Gateway"
 
     @staticmethod
     def Fields():
         return {
-                    "VpcId" : cVpc,
+                    "VpcId" : (cVpc,False,False,False,False),
+                    'State' : (str,False,False,False,False),
                 }
     
     @staticmethod
     def GetObjects(parent, lst):
         return lst
     
+    def GetId(self):
+        return self._Parent.GetId() + " ??"
+        field = next((key for key, value in self.Fields().items() if value[fId]), None)
+        return getattr(self, field)
+
 class cNATGateway(cParent): 
-    ParentField = "SubnetId"
     Icon = "NATGateway"
 
     @staticmethod
     def Fields():
         return {
-                    "NatGatewayId" : cNATGateway,
-                    "SubnetId" : cSubnet,
-                    "State" : str,
+                    "NatGatewayId" : (cNATGateway,True,False,False,False),
+                    "SubnetId" : (cSubnet,False,True,False,False),
+                    "State" : (str,False,False,False,False),
                 }
     
     @staticmethod
@@ -201,14 +224,12 @@ class cNATGateway(cParent):
         return boto3.client('ec2').describe_nat_gateways()['NatGateways']
     
 class cSecurityGroup(cParent): 
-    ParentField = "VpcId"
-
     @staticmethod
     def Fields():
         return {
-                    "GroupName" : str,
-                    "GroupId" : str,
-                    "VpcId" : cVpc,
+                    "GroupName" : (str,False,False,False,False),
+                    "GroupId" : (str,True,False,False,False),
+                    "VpcId" : (cVpc,False,True,False,False),
 #                    IpPermissions\IpRanges\
                         # for permission in group['IpPermissions']:
                         #     print(f"- From Port: {permission.get('FromPort', 'N/A')}")
@@ -224,17 +245,15 @@ class cSecurityGroup(cParent):
         return boto3.client('ec2').describe_security_groups()['SecurityGroups']
     
 class cSubnet(cParent): 
-    ParentField = "VpcId"
-
     @staticmethod
     def Fields():
         return {
-                    "SubnetId" : cSubnet,
-                    "CidrBlock" : str,
-                    "VpcId" : cVpc,
-                    "AvailabilityZone" : str, ##!!!!!!!!!!!!!!!
-                    'AvailabilityZoneId': 'euc1-az1', ##!!!!!!!!!!!!!!!
-                    'Tags': {"Key" : "Value"}
+                    "SubnetId" : (cSubnet,True,False,False,False),
+                    "CidrBlock" : (str,False,False,False,False),
+                    "VpcId" : (cVpc,False,True,False,False),
+                    "AvailabilityZone" : (str,False,False,False,False), ##!!!!!!!!!!!!!!!
+                    'AvailabilityZoneId' : (str,False,False,False,False), ##!!!!!!!!!!!!!!!
+                    'Tags' : ({"Key" : "Value"},False,False,False,False),
                 }
     
 # 'AvailableIpAddressCount': 251
@@ -261,13 +280,12 @@ class cSubnet(cParent):
 
 
 class cNetworkAcl(cParent): 
-    ParentField = None
     Icon = "NetworkAccessControlList"
 
     @staticmethod
     def Fields():
         return {
-                    "NetworkAclId" : cNetworkAcl,
+                    "NetworkAclId" : (cNetworkAcl,True,False,False,False),
                 }
     
     @staticmethod
@@ -275,15 +293,14 @@ class cNetworkAcl(cParent):
         return boto3.client('ec2').describe_network_acls()['NetworkAcls']
     
 class cRouteTable(cParent): 
-    ParentField = "VpcId"
     Icon = "RouteTable"
 
     @staticmethod
     def Fields():
         return {
-                    "RouteTableId" : cRouteTable,
-                    "VpcId" : cVpc,
-                    "Routes" : [cRoute],
+                    "RouteTableId" : (cRouteTable,True,False,False,False),
+                    "VpcId" : (cVpc,False,True,False,False),
+                    "Routes" : ([cRoute],False,False,False,False),
                 }
     
     @staticmethod
@@ -291,18 +308,17 @@ class cRouteTable(cParent):
         return boto3.client('ec2').describe_route_tables()['RouteTables']
     
 class cRoute(cParent): 
-    ParentField = None # _Parent
+    _ParentType = cRouteTable
     Icon = "Route"
 
     @staticmethod
     def Fields():
         return {
-                    #"_Parent" : cRouteTable,
-                    "DestinationCidrBlock" : str,
-                    "GatewayId" : cInternetGateway,
-                    "InstanceId" : cEC2,
-                    "NatGatewayId" : cNATGateway,
-                    "NetworkInterfaceId" : cNetworkInterface,
+                    "DestinationCidrBlock" : (str,False,False,False,False),
+                    "GatewayId" : (cInternetGateway,False,False,False,False),
+                    "InstanceId" : (cEC2,False,False,False,False),
+                    "NatGatewayId" : (cNATGateway,False,False,False,False),
+                    "NetworkInterfaceId" : (cNetworkInterface,False,False,False,False),
                 }
     
     @staticmethod
@@ -310,22 +326,21 @@ class cRoute(cParent):
         return lst
     
 class cVpc(cParent): 
-    ParentField = None
     Icon = "VPC"
 
     @staticmethod
     def Fields():
         return {
-                    "VpcId" : cVpc,
-                    "NetworkAclId" : cNetworkAcl,
-                    'CidrBlock': str,
-                    'DhcpOptionsId': str, #'dopt-0de83e37b426fcfda'
-                    'State': 'available',
-                    'OwnerId': '047989593255',
-                    'InstanceTenancy': 'default',
-#                    'CidrBlockAssociationSet': [{'AssociationId': 'vpc-cidr-assoc-070bb...bcc9c9695b', 'CidrBlock': '10.222.0.0/16', 'CidrBlockState': {...}}],
-                    'IsDefault': bool,
-                    'Tags': {"Key" : "Value"}
+                    "VpcId"           : (cVpc,True,False,False,False),
+                    "NetworkAclId"    : (cNetworkAcl,False,False,False,False),
+                    'CidrBlock'       : (str,False,False,False,False),
+                    'DhcpOptionsId'   : (str,False,False,False,False), #'dopt-0de83e37b426fcfda'
+                    'State'           : (str,False,False,False,False),
+                    'OwnerId'         : (str,False,False,False,False), #'047989593255'
+                    'InstanceTenancy' : (str,False,False,False,False),
+#                    'CidrBlockAssociationSet' : [{'AssociationId': 'vpc-cidr-assoc-070bb...bcc9c9695b', 'CidrBlock': '10.222.0.0/16', 'CidrBlockState': {...}}],
+                    'IsDefault'       : (bool,False,False,False,False),
+                    'Tags'            : ({"Key" : "Value"},False,False,False,False)
                 }
     
     @staticmethod
@@ -336,18 +351,17 @@ class cVpc(cParent):
         return f"VPC {getattr(self, 'Tag_Name', "<>")} {self.CidrBlock}"
     
 class cVpcEntry(cParent): 
-    ParentField = None # _Parent
+    _ParentType = cVpc
     Icon = "VPC"
 
     @staticmethod
     def Fields():
         return {
-                    #"_Parent" : cVpc,
-                    "RuleNumber" : int,
-                    "Protocol" : str,
-                    "PortRange" : str,
-                    "RuleAction" : str,
-                    "CidrBlock" : str,
+                    "RuleNumber" : (int,False,False,False,False),
+                    "Protocol"   : (str,False,False,False,False),
+                    "PortRange"  : (str,False,False,False,False),
+                    "RuleAction" : (str,False,False,False,False),
+                    "CidrBlock"  : (str,False,False,False,False),
                 }
     
     @staticmethod
@@ -355,18 +369,17 @@ class cVpcEntry(cParent):
         return lst
     
 class cNetworkInterface(cParent): 
-    ParentField = None # _Parent
 #    Icon = "network.VPCElasticNetworkInterface"
 
     @staticmethod
     def Fields():
         return {
-                    "NetworkInterfaceId" : cNetworkInterface,
-                    "Status" : str,
-                    "Attachment" : str, #    print("Attachment ID:", network_interface['Attachment']['AttachmentId'])
-                    "VpcId" : cVpc,
-                    "SubnetId" : cSubnet,
-                    "PrivateIpAddresses" : str, # print("Private IP Addresses:", [private_ip['PrivateIpAddress'] for private_ip in network_interface['PrivateIpAddresses']])
+                    "NetworkInterfaceId" : (cNetworkInterface,True,False,False,False),
+                    "Status"             : (str,False,False,False,False),
+                    "Attachment"         : (str,False,False,False,False), #    print("Attachment ID:", network_interface['Attachment']['AttachmentId'])
+                    "VpcId"              : (cVpc,False,False,False,False),
+                    "SubnetId"           : (cSubnet,False,False,False,False),
+                    "PrivateIpAddresses" : (str,False,False,False,False), # print("Private IP Addresses:", [private_ip['PrivateIpAddress'] for private_ip in network_interface['PrivateIpAddresses']])
                 }
     
     @staticmethod
@@ -374,13 +387,12 @@ class cNetworkInterface(cParent):
         return boto3.client('ec2').describe_network_interfaces()['NetworkInterfaces']
     
 class cS3(cParent): 
-    ParentField = None
     Icon = "S3"
 
     @staticmethod
     def Fields():
         return {
-                    "Name" : cS3,
+                    "Name" : (cS3,True,False,False,False),
                 }
     
     @staticmethod
@@ -433,15 +445,15 @@ class MyWidget(QWidget):
 
             for id, obj in list.items():
                 if par == None:
-                    if hasattr(obj, "_Parent") : continue
+                    if hasattr(obj, "_Owner") : continue
                 else:
-                    if (not hasattr(obj, "_Parent") or obj._Parent != par) \
+                    if (not hasattr(obj, "_Owner") or obj._Owner != par) \
                     : continue
                         #and obj != par \
 
                 if not hasattr(par, "_Digraph"):
                     name = "cluster_" + obj.GetId()[-17:]
-                    par._Context = par._Parent._Digraph.subgraph(name=name)
+                    par._Context = par._Owner._Digraph.subgraph(name=name)
                     par._Digraph = par._Context.__enter__()
 #                    par._Digraph.attr(label='cluster\n' + par.GetId()) # + par.GetId()
                     par._Digraph.attr(label=self.ClusterLabel(par)) # + par.GetId()
@@ -473,25 +485,28 @@ class MyWidget(QWidget):
         cParent.LoadObjects(self.Data, cVpc        )
         cParent.LoadObjects(self.Data, cSubnet     )
         cParent.LoadObjects(self.Data, cReservation)
+        cParent.LoadObjects(self.Data, cInternetGateway)
+        
 #       cParent.LoadObjects(self.Data, cNetworkAcl )
 #       cParent.LoadObjects(self.Data, cRouteTable )
-#       cParent.LoadObjects(self.Data, cInternetGateway)
 
         for clss, lst in self.Data.items():
             for id, obj in lst.items():
-                par = root
+                owner = obj.GetOwner(self.Data)
+                if owner == None:
+                    owner = root
 
-                if obj.ParentField != None:
-                    parcl = clss.Fields()[obj.ParentField]
-                    if hasattr(obj, obj.ParentField):
-                        if obj.ParentField == "_Parent":
-                            par = obj._Parent
-                        else:
-                            parid = getattr(obj, obj.ParentField)
-                            par = self.Data[parcl][parid]
+                # if obj.ParentField != None:
+                #     parcl = clss.Fields()[obj.ParentField][fType]
+                #     if hasattr(obj, obj.ParentField):
+                #         if obj.ParentField == "_Parent":
+                #             owner = obj._Parent
+                #         else:
+                #             parid = getattr(obj, obj.ParentField)
+                #             owner = self.Data[parcl][parid]
 
-                obj._Parent = par
-                par.items.append(obj)
+                obj._Owner = owner
+                owner.items.append(obj)
 
         dot = Digraph('AWS_Structure', format='png')
 
