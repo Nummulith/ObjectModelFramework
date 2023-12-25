@@ -10,19 +10,20 @@ import boto3
 
 from graphviz import Digraph
 
-fType = 0
-fId = 1
+fType  = 0
+fId    = 1
 fOwner = 2
-fIn = 3
-fOut = 4
+fIn    = 3
+fOut   = 4
 
 class cParent:
     Icon = "AWS"
     Show = True
 
-    def __init__(self, Data, parent, resp):
+    def __init__(self, Data, parent, index, resp):
         if parent != None:
             setattr(self, "_Parent", parent)
+            setattr(self, "_Index" , index )
 
         fields = type(self).Fields()
         for key, cfg in fields.items():
@@ -52,18 +53,22 @@ class cParent:
         
         self.items = []
 
+    def FieldsOfAKind(self, kind):
+        return (key for key, value in self.Fields().items() if value[kind])
+
     def GetId(self):
-        field = next((key for key, value in self.Fields().items() if value[fId]), None)
+        field = next(self.FieldsOfAKind(fId), None)
         return getattr(self, field)
 
     def GetOwner(self, Data):
-        field = next(((key, value) for key, value in self.Fields().items() if value[fOwner]), (None, None))
+#       field = next(((key, value[0]) for key, value in self.Fields().items() if value[fOwner]), (None, None))
+        field = next(self.FieldsOfAKind(fOwner), None)
 
-        if field[0] == None:
+        if field == None:
             return None
         
-        id = getattr(self, field[0])
-        clss = field[1][fType]
+        id = getattr(self, field)
+        clss = self.Fields()[field][fType]
 
         return Data[clss][id]
 
@@ -77,14 +82,14 @@ class cParent:
             Data[Class] = {}
 
         els = Class.GetObjects(parent, lst)
-        for el in els:
-            obj = Class(Data, parent, el)
+        for index, el in enumerate(els):
+            obj = Class(Data, parent, index, el)
             Data[Class][obj.GetId()] = obj
 
 
 class cRoot(cParent):
     def __init__(self, Data):
-        super().__init__(Data, None, {"Id": "root-" + 17*"0"})
+        super().__init__(Data, None, 0, {"Id": "root-" + 17*"0"})
 
     @staticmethod
     def Fields():
@@ -108,7 +113,6 @@ class cReservation(cParent):
         return boto3.client('ec2').describe_instances()['Reservations']
     
 class cEC2(cParent): 
-    _ParentType : cReservation
     Icon = "EC2"
 
     @staticmethod
@@ -121,6 +125,7 @@ class cEC2(cParent):
                     "SubnetId" : (cSubnet,False,True,False,False),
                     'PlatformDetails' : (str,False,False,False,False),
                     'Tags' : ({"Key" : "Value"},False,False,False,False),
+                    'VpcId': (cVpc,False,False,False,False) 
                 }
     
 # 'AmiLaunchIndex': 0
@@ -134,7 +139,6 @@ class cEC2(cParent):
 # 'PublicDnsName': ''
 # 'State': {'Code': 16, 'Name': 'running'}
 # 'StateTransitionReason': ''
-# 'VpcId': 'vpc-055b28f7d73c69acf'
 # 'Architecture': 'x86_64'
 # 'BlockDeviceMappings': [{'DeviceName': '/dev/xvda', 'Ebs': {...}}]
 # 'ClientToken': '5db5facc-d068-410c-a526-29dba78f8184'
@@ -189,13 +193,12 @@ class cInternetGateway(cParent):
         return f"{getattr(self, 'Tag_Name', "")}"
 
 class cInternetGatewayAttachment(cParent): 
-    _ParentType = cInternetGateway
     Icon = "Gateway"
 
     @staticmethod
     def Fields():
         return {
-                    "VpcId" : (cVpc,False,False,False,False),
+                    "VpcId" : (cVpc,False,False,False,True),
                     'State' : (str,False,False,False,False),
                 }
     
@@ -204,9 +207,10 @@ class cInternetGatewayAttachment(cParent):
         return lst
     
     def GetId(self):
-        return self._Parent.GetId() + " ??"
-        field = next((key for key, value in self.Fields().items() if value[fId]), None)
-        return getattr(self, field)
+        return f"{self._Parent.GetId()}-{self._Index}"
+
+    def GetOwner(self, Data):
+        return self._Parent
 
 class cNATGateway(cParent): 
     Icon = "NATGateway"
@@ -214,9 +218,9 @@ class cNATGateway(cParent):
     @staticmethod
     def Fields():
         return {
-                    "NatGatewayId" : (cNATGateway,True,False,False,False),
-                    "SubnetId" : (cSubnet,False,True,False,False),
-                    "State" : (str,False,False,False,False),
+                    "NatGatewayId" : (cNATGateway, True ,False,False,False),
+                    "SubnetId"     : (cSubnet    , False,True ,False,False),
+                    "State"        : (str        , False,False,False,False),
                 }
     
     @staticmethod
@@ -227,9 +231,9 @@ class cSecurityGroup(cParent):
     @staticmethod
     def Fields():
         return {
-                    "GroupName" : (str,False,False,False,False),
-                    "GroupId" : (str,True,False,False,False),
-                    "VpcId" : (cVpc,False,True,False,False),
+                    "GroupName" : (str ,False,False,False,False),
+                    "GroupId"   : (str ,True,False,False,False),
+                    "VpcId"     : (cVpc,False,True,False,False),
 #                    IpPermissions\IpRanges\
                         # for permission in group['IpPermissions']:
                         #     print(f"- From Port: {permission.get('FromPort', 'N/A')}")
@@ -286,7 +290,13 @@ class cNetworkAcl(cParent):
     def Fields():
         return {
                     "NetworkAclId" : (cNetworkAcl,True,False,False,False),
+                    'IsDefault': (bool,False,False,False,False),
+                    'VpcId': (cVpc,False,True,False,False),
+                    'OwnerId': (str,False,True,False,False),
+                    'Tags' : ({"Key" : "Value"},False,False,False,False),
                 }
+                    # 'Associations': [{'NetworkAclAssociationId': 'aclassoc-0c867a11b811c5be1', 'NetworkAclId': 'acl-0334606b00fe7551c', 'SubnetId': 'subnet-06678d33e23eba72f'}]
+                    # 'Entries': [{'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}]
     
     @staticmethod
     def GetObjects(parent, lst):
@@ -301,30 +311,42 @@ class cRouteTable(cParent):
                     "RouteTableId" : (cRouteTable,True,False,False,False),
                     "VpcId" : (cVpc,False,True,False,False),
                     "Routes" : ([cRoute],False,False,False,False),
+                    'Tags' : ({"Key" : "Value"},False,False,False,False),
                 }
+
+# 'Associations': [{'Main': True, 'RouteTableAssociationId': 'rtbassoc-0fcb79c6b321c4521', 'RouteTableId': 'rtb-0c7697e0d2c9ba149', 'AssociationState': {...}}]
+# 'PropagatingVgws': []
+# 'OwnerId': '047989593255'
     
     @staticmethod
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_route_tables()['RouteTables']
     
 class cRoute(cParent): 
-    _ParentType = cRouteTable
     Icon = "Route"
 
     @staticmethod
     def Fields():
         return {
                     "DestinationCidrBlock" : (str,False,False,False,False),
-                    "GatewayId" : (cInternetGateway,False,False,False,False),
-                    "InstanceId" : (cEC2,False,False,False,False),
-                    "NatGatewayId" : (cNATGateway,False,False,False,False),
-                    "NetworkInterfaceId" : (cNetworkInterface,False,False,False,False),
-                }
-    
+                    "GatewayId" : (cInternetGateway,False,False,True,False),
+                    "InstanceId" : (cEC2,False,False,True,False),
+                    "NatGatewayId" : (cNATGateway,False,False,True,False),
+                    "NetworkInterfaceId" : (cNetworkInterface,False,True,False,False),
+                    'Origin': (str,False,False,False,False),
+                    'State': (str,False,False,False,False),
+                } # +
+
     @staticmethod
     def GetObjects(parent, lst):
         return lst
     
+    def GetId(self):
+        return f"{self._Parent.GetId()}-{self._Index}"
+
+    def GetOwner(self, Data):
+        return self._Parent
+
 class cVpc(cParent): 
     Icon = "VPC"
 
@@ -351,7 +373,6 @@ class cVpc(cParent):
         return f"VPC {getattr(self, 'Tag_Name', "<>")} {self.CidrBlock}"
     
 class cVpcEntry(cParent): 
-    _ParentType = cVpc
     Icon = "VPC"
 
     @staticmethod
@@ -482,13 +503,13 @@ class MyWidget(QWidget):
         self.Data = {}
 
         root = cRoot(self.Data)
+        cParent.LoadObjects(self.Data, cInternetGateway)
         cParent.LoadObjects(self.Data, cVpc        )
         cParent.LoadObjects(self.Data, cSubnet     )
         cParent.LoadObjects(self.Data, cReservation)
-        cParent.LoadObjects(self.Data, cInternetGateway)
-        
-#       cParent.LoadObjects(self.Data, cNetworkAcl )
-#       cParent.LoadObjects(self.Data, cRouteTable )
+        cParent.LoadObjects(self.Data, cNATGateway )
+        cParent.LoadObjects(self.Data, cNetworkAcl )
+        cParent.LoadObjects(self.Data, cRouteTable )
 
         for clss, lst in self.Data.items():
             for id, obj in lst.items():
@@ -513,6 +534,25 @@ class MyWidget(QWidget):
         root._Digraph = dot
 
         self.DrawRec(root)
+
+
+        for clss, lst in self.Data.items():
+            for id, obj in lst.items():
+                objid = obj.GetId()
+
+                for field in obj.FieldsOfAKind(fIn):
+                    corr = getattr(obj, field, None)
+                    if corr == None: continue
+                    dot.edge(objid, corr)
+
+                for field in obj.FieldsOfAKind(fOut):
+                    corr = getattr(obj, field, None)
+                    if corr == None: continue
+                    dot.edge(corr, objid)
+
+        # Добавляем связи
+#        dot.edge('vpc-055b28f7d73c69acf:p1', 'subnet-00956c35e071ae718')
+#        dot.edge('vpc-055b28f7d73c69acf:p1', 'cluster_0abb2b25f63d39386')
 
         # if hasattr(root, "_Context"):
         #     root._Context.__exit__(None, None, None)
@@ -602,11 +642,6 @@ class MyWidget(QWidget):
             subnet0.attr(style='filled', fillcolor='#D4E6F1')  # Цветной фон кластера
             subnet0.node(name='EC2_1', shape='plaintext', label=self.NodeLabel("1234", "id0"))
             context0.__exit__(None, None, None)
-
-
-        # Добавляем связи
-        dot.edge('vpc-055b28f7d73c69acf:p1', 'subnet-00956c35e071ae718')
-#        dot.edge('vpc-055b28f7d73c69acf:p1', 'cluster_0abb2b25f63d39386')
 
 
 
