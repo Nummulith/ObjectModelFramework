@@ -4,10 +4,6 @@ from PyQt5.QtGui import QPixmap
 
 import boto3
 
-# https://diagrams.mingrammer.com/
-#from diagrams import Diagram, Cluster
-#from diagrams.aws import general, compute, database, network, storage, security
-
 from graphviz import Digraph
 
 fType  = 0
@@ -19,6 +15,8 @@ fOut   = 4
 class cParent:
     Icon = "AWS"
     Show = True
+    Draw = (True, False, True, True)
+    Color = "#A9DFBF"
 
     def __init__(self, Data, parent, index, resp):
         if parent != None:
@@ -63,17 +61,20 @@ class cParent:
     def GetOwner(self, Data):
 #       field = next(((key, value[0]) for key, value in self.Fields().items() if value[fOwner]), (None, None))
         field = next(self.FieldsOfAKind(fOwner), None)
-
-        if field == None:
-            return None
+        if field == None: return None
         
-        id = getattr(self, field)
+        id = getattr(self, field, None)
+        if id == None: return None
+
         clss = self.Fields()[field][fType]
 
-        return Data[clss][id]
+        if not id in Data[clss] : return None
+
+        owner = Data[clss][id]
+        return owner
 
     def GetView(self):
-        return self.GetId()
+        return f"{getattr(self, 'Tag_Name', type(self).__name__[1:])}"
 
     @staticmethod
     def LoadObjects(Data, Class, parent = None, lst = None):
@@ -85,7 +86,6 @@ class cParent:
         for index, el in enumerate(els):
             obj = Class(Data, parent, index, el)
             Data[Class][obj.GetId()] = obj
-
 
 class cRoot(cParent):
     def __init__(self, Data):
@@ -113,7 +113,9 @@ class cReservation(cParent):
         return boto3.client('ec2').describe_instances()['Reservations']
     
 class cEC2(cParent): 
+    Draw = (True, True, True, True)
     Icon = "EC2"
+    Color = "#FFC18A"
 
     @staticmethod
     def Fields():
@@ -168,13 +170,13 @@ class cEC2(cParent):
     def GetObjects(parent, lst):
         return lst
 
-    def GetView(self):
-        return f"{getattr(self, 'Tag_Name', "<>")} ({getattr(self, "PlatformDetails")})"
-    #\n {getattr(self, "PublicIpAddress", "")} / {getattr(self, "PrivateIpAddress", "")}
+    def GetAdd(self):
+        return f"{getattr(self, "PlatformDetails")}"
 
 
 class cInternetGateway(cParent): 
     Icon = "Gateway"
+    Color = "#F9BBD9"
 
     @staticmethod
     def Fields():
@@ -189,11 +191,10 @@ class cInternetGateway(cParent):
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_internet_gateways()['InternetGateways']
 
-    def GetView(self):
-        return f"{getattr(self, 'Tag_Name', "")}"
-
 class cInternetGatewayAttachment(cParent): 
     Icon = "Gateway"
+    Draw = (True, False, False, False)
+    Color = "#F488BB"
 
     @staticmethod
     def Fields():
@@ -202,6 +203,9 @@ class cInternetGatewayAttachment(cParent):
                     'State' : (str,False,False,False,False),
                 }
     
+    def GetView(self):
+        return f"Attach[{self._Index}]"
+
     @staticmethod
     def GetObjects(parent, lst):
         return lst
@@ -214,6 +218,7 @@ class cInternetGatewayAttachment(cParent):
 
 class cNATGateway(cParent): 
     Icon = "NATGateway"
+    Draw = (True, False, True, True)
 
     @staticmethod
     def Fields():
@@ -227,6 +232,9 @@ class cNATGateway(cParent):
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_nat_gateways()['NatGateways']
     
+    def GetView(self):
+        return f"NAT"
+
 class cSecurityGroup(cParent): 
     @staticmethod
     def Fields():
@@ -249,6 +257,9 @@ class cSecurityGroup(cParent):
         return boto3.client('ec2').describe_security_groups()['SecurityGroups']
     
 class cSubnet(cParent): 
+    Draw = (True, True, True, True)
+    Color = '#D4E6F1'
+
     @staticmethod
     def Fields():
         return {
@@ -278,9 +289,8 @@ class cSubnet(cParent):
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_subnets()['Subnets']
     
-    def GetView(self):
-        return f"{getattr(self, 'Tag_Name', "<>")} ({getattr(self, "CidrBlock", "")})"
-
+    def GetAdd(self):
+        return f"{getattr(self, "CidrBlock", "")}"
 
 
 class cNetworkAcl(cParent): 
@@ -302,8 +312,11 @@ class cNetworkAcl(cParent):
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_network_acls()['NetworkAcls']
     
+
 class cRouteTable(cParent): 
+    Draw = (True, False, True, True)
     Icon = "RouteTable"
+    Color = "#A9DFBF"
 
     @staticmethod
     def Fields():
@@ -311,9 +324,9 @@ class cRouteTable(cParent):
                     "RouteTableId" : (cRouteTable,True,False,False,False),
                     "VpcId" : (cVpc,False,True,False,False),
                     "Routes" : ([cRoute],False,False,False,False),
+                    "Associations" : ([cRouteTableAssociation],False,False,False,False),
                     'Tags' : ({"Key" : "Value"},False,False,False,False),
                 }
-
 # 'Associations': [{'Main': True, 'RouteTableAssociationId': 'rtbassoc-0fcb79c6b321c4521', 'RouteTableId': 'rtb-0c7697e0d2c9ba149', 'AssociationState': {...}}]
 # 'PropagatingVgws': []
 # 'OwnerId': '047989593255'
@@ -322,8 +335,32 @@ class cRouteTable(cParent):
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_route_tables()['RouteTables']
     
+class cRouteTableAssociation(cParent):
+    Color = "#7CCF9C"
+
+    @staticmethod
+    def Fields():
+        return {
+                    'RouteTableAssociationId': (cRouteTableAssociation,True,False,False,False),
+                    'RouteTableId': (cRouteTable,False,True,False,False),
+                    'SubnetId': (cSubnet,False,False,True,False),
+                    'AssociationState': (str,False,False,False,False), #!!!
+                    'Main': (bool,False,False,False,False),
+                } # +
+
+    @staticmethod
+    def GetObjects(parent, lst):
+        return lst
+
+    def GetView(self):
+        return f"Assoc[{self._Index}]"
+
+
+
 class cRoute(cParent): 
+    Draw = (True, True, True, False)
     Icon = "Route"
+    Color = "#7CCF9C"
 
     @staticmethod
     def Fields():
@@ -332,9 +369,11 @@ class cRoute(cParent):
                     "GatewayId" : (cInternetGateway,False,False,True,False),
                     "InstanceId" : (cEC2,False,False,True,False),
                     "NatGatewayId" : (cNATGateway,False,False,True,False),
-                    "NetworkInterfaceId" : (cNetworkInterface,False,True,False,False),
+                    "NetworkInterfaceId" : (cNetworkInterface,False,False,True,False),
                     'Origin': (str,False,False,False,False),
                     'State': (str,False,False,False,False),
+
+                    "GatewayId_local" : (cVpc,False,False,True,False),
                 } # +
 
     @staticmethod
@@ -347,8 +386,25 @@ class cRoute(cParent):
     def GetOwner(self, Data):
         return self._Parent
 
+    def GetView(self):
+        return f"Route[{self._Index}]"
+
+    def GetAdd(self):
+        return f"{self.DestinationCidrBlock}"
+
+    def __init__(self, Data, parent, index, resp):
+
+        super().__init__(Data, parent, index, resp)
+
+        if hasattr(self, "GatewayId") and self.GatewayId == "local":
+            self.GatewayId = None
+            setattr(self, "GatewayId_local", self._Parent.VpcId)
+
+
 class cVpc(cParent): 
+    Draw = (True, True, True, True)
     Icon = "VPC"
+    Color = '#E3D5FF'
 
     @staticmethod
     def Fields():
@@ -369,8 +425,8 @@ class cVpc(cParent):
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_vpcs()['Vpcs']
     
-    def GetView(self):
-        return f"VPC {getattr(self, 'Tag_Name', "<>")} {self.CidrBlock}"
+    def GetAdd(self):
+        return f"{self.CidrBlock}"
     
 class cVpcEntry(cParent): 
     Icon = "VPC"
@@ -433,30 +489,69 @@ class MyWidget(QWidget):
         self.Draw()
 
     def NodeLabel(self, obj):
-        return f'''<
-            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+        draw  = type(obj).Draw
+        color = type(obj).Color
+
+        res = ""
+        if draw[0]: res = res + f'''
                 <TR>
-                    <TD BGCOLOR="#A9DFBF" PORT="p1"><B>{obj.GetView()}</B></TD>
+                    <TD BGCOLOR="{color}" PORT="p0"><B>{obj.GetView()}</B></TD>
                 </TR>
+        '''
+        if draw[1]: res = res + f'''
+                 <TR>
+                     <TD BGCOLOR="white" PORT="p1"><B>{obj.GetAdd()}</B></TD>
+                 </TR>
+        '''
+        if draw[2]: res = res + f'''
                 <TR>
                     <TD BGCOLOR="white" PORT="p2"><IMG SRC="icons/{type(obj).Icon}.png"/></TD>
                 </TR>
+        '''
+        if draw[3]: res = res + f'''
                 <TR>
-                    <TD BGCOLOR="#A9DFBF" PORT="p3"><FONT POINT-SIZE="7.0">{obj.GetId()[-17:]}</FONT></TD>
+                    <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="7.0">{obj.GetId()[-17:]}</FONT></TD>
                 </TR>
+        '''
+        
+        return f'''<
+            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+            {res}
             </TABLE>
         >'''
 
     def ClusterLabel(self, obj):
-        return f'''<
-            <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">
-                <TR>
-                    <TD ROWSPAN="2"><IMG SRC="icons/{type(obj).Icon}.png"/></TD>
+        draw = obj.Draw
+
+        res0 = ""
+        if draw[2]: res0 = res0 + f'''
+                    <TD ROWSPAN="3"><IMG SRC="icons/{type(obj).Icon}.png"/></TD>
+        '''
+        if draw[0]: res0 = res0 + f'''
                     <TD><B>{obj.GetView()}</B></TD>
+        '''
+        res0 = f'''
+                <TR>
+                    {res0}
                 </TR>
+        '''
+
+        res1 = ""
+        if draw[1]: res1 = res1 + f'''
+                <TR>
+                    <TD><FONT POINT-SIZE="7.0">{obj.GetAdd()}</FONT></TD>
+                </TR>
+        '''
+        if draw[3]: res1 = res1 + f'''
                 <TR>
                     <TD><FONT POINT-SIZE="7.0">{obj.GetId()[-17:]}</FONT></TD>
                 </TR>
+        '''
+
+        return f'''<
+            <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">
+                {res0}
+                {res1}
             </TABLE>
         >'''
 
@@ -478,7 +573,7 @@ class MyWidget(QWidget):
                     par._Digraph = par._Context.__enter__()
 #                    par._Digraph.attr(label='cluster\n' + par.GetId()) # + par.GetId()
                     par._Digraph.attr(label=self.ClusterLabel(par)) # + par.GetId()
-                    par._Digraph.attr(style='filled', fillcolor='#D4E6F1')
+                    par._Digraph.attr(style = 'filled', fillcolor = type(par).Color)
 
                     par._Digraph.node(name=par.GetId(), shape='point', width='0.1')
                 
@@ -543,109 +638,13 @@ class MyWidget(QWidget):
                 for field in obj.FieldsOfAKind(fIn):
                     corr = getattr(obj, field, None)
                     if corr == None: continue
-                    dot.edge(objid, corr)
+                    dot.edge(objid, corr, label = field)
 
                 for field in obj.FieldsOfAKind(fOut):
                     corr = getattr(obj, field, None)
                     if corr == None: continue
-                    dot.edge(corr, objid)
+                    dot.edge(corr, objid, label = field + "<")
 
-        # Добавляем связи
-#        dot.edge('vpc-055b28f7d73c69acf:p1', 'subnet-00956c35e071ae718')
-#        dot.edge('vpc-055b28f7d73c69acf:p1', 'cluster_0abb2b25f63d39386')
-
-        # if hasattr(root, "_Context"):
-        #     root._Context.__exit__(None, None, None)
-        # for clss, lst in self.Data.items():
-        #     for id, obj in lst.items():
-        #         if hasattr(obj, "_Context"):
-        #             obj._Context.__exit__(None, None, None)
-
-
-
-#       !!!!!!!!!!!!!!!!!
-           
-#       With
-        if False:
-            with dot.subgraph(name='cluster_subnet') as subnet:
-                subnet.attr(label='Subnet Cluster') 
-                subnet.attr(style='filled', fillcolor='#D4E6F1')
-
-                for id, item in self.Data[cEC2].items():
-                    subnet.node(name=f'EC2_{id}', shape='plaintext', label=self.NodeLabel(item))
-
-                    break
-
-#       It works
-        if False:
-            context0 = dot.subgraph(name='cluster_subnet0')
-            subnet0 = context0.__enter__()
-    #        with dot.subgraph(name='cluster_subnet') as subnet:
-            subnet0.attr(label='Subnet Cluster 0')  # Задаем имя кластера
-            subnet0.attr(style='filled', fillcolor='#D4E6F1')  # Цветной фон кластера
-
-            context1 = dot.subgraph(name='cluster_subnet1')
-            subnet1 = context1.__enter__()
-    #        with dot.subgraph(name='cluster_subnet') as subnet:
-            subnet1.attr(label='Subnet Cluster 1')  # Задаем имя кластера
-            subnet1.attr(style='filled', fillcolor='#D4E6F1')  # Цветной фон кластера
-
-            for i in range(0, 4):
-                node_label = f'Node {i}'
-                sn=subnet0 if i % 2 == 0 else subnet1
-                sn.node(name=f'Node_{i}', shape='plaintext', label=self.NodeLabel(f'Node_{i}', f'{i}'))
-                
-#            subnet0.node(name='EC2_1', shape='plaintext', label=self.NodeLabel("1234", "id0"))
-#            subnet1.node(name='EC2_2', shape='plaintext', label=self.NodeLabel("4321", "id1"))
-            
-            context0.__exit__(None, None, None)
-            context1.__exit__(None, None, None)
-
-
-#       nested
-        if False:
-            context5 = dot.subgraph(name='cluster_subnet0')
-            subnet5 = context5.__enter__()
-    #        with dot.subgraph(name='cluster_subnet') as subnet:
-            subnet5.attr(label='Common')  # Задаем имя кластера
-            subnet5.attr(style='filled', fillcolor='#D4FFF1')  # Цветной фон кластера
-
-            context0 = subnet5.subgraph(name='cluster_subnet0')
-            subnet0 = context0.__enter__()
-    #        with dot.subgraph(name='cluster_subnet') as subnet:
-            subnet0.attr(label='Subnet Cluster 0')  # Задаем имя кластера
-            subnet0.attr(style='filled', fillcolor='#D4E6F1')  # Цветной фон кластера
-
-            context1 = subnet5.subgraph(name='cluster_subnet1')
-            subnet1 = context1.__enter__()
-    #        with dot.subgraph(name='cluster_subnet') as subnet:
-            subnet1.attr(label='Subnet Cluster 1')  # Задаем имя кластера
-            subnet1.attr(style='filled', fillcolor='#D4E6F1')  # Цветной фон кластера
-
-            for i in range(0, 4):
-                node_label = f'Node {i}'
-                sn=subnet0 if i % 2 == 0 else subnet1
-                sn.node(name=f'Node_{i}', shape='plaintext', label=self.NodeLabel(f'Node_{i}', f'{i}'))
-                
-#            subnet0.node(name='EC2_1', shape='plaintext', label=self.NodeLabel("1234", "id0"))
-#            subnet1.node(name='EC2_2', shape='plaintext', label=self.NodeLabel("4321", "id1"))
-            
-            context0.__exit__(None, None, None)
-            context1.__exit__(None, None, None)
-            context5.__exit__(None, None, None)
-
-
-        if False:
-            context0 = dot.subgraph(name='cluster_subnet2')
-            subnet0 = context0.__enter__()
-            subnet0.attr(label='Subnet Cluster 2')  # Задаем имя кластера
-            subnet0.attr(style='filled', fillcolor='#D4E6F1')  # Цветной фон кластера
-            subnet0.node(name='EC2_1', shape='plaintext', label=self.NodeLabel("1234", "id0"))
-            context0.__exit__(None, None, None)
-
-
-
-#       !!!!!!!!!!!!!!!!!
 
         # Сохраняем диаграмму в файл
         dot.render('AWS-graph', format='png', cleanup=True)
