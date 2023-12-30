@@ -56,22 +56,30 @@ class cParent:
 
     def GetId(self):
         field = next(self.FieldsOfAKind(fId), None)
+
+        if field == None:
+            return f"{self._Parent.GetId()}-{self._Index}"
+        
         return getattr(self, field)
 
     def GetOwner(self, Data):
 #       field = next(((key, value[0]) for key, value in self.Fields().items() if value[fOwner]), (None, None))
         field = next(self.FieldsOfAKind(fOwner), None)
-        if field == None: return None
-        
-        id = getattr(self, field, None)
-        if id == None: return None
+        if field != None:
+            id = getattr(self, field, None)
+            if id == None: return None
 
-        clss = self.Fields()[field][fType]
+            clss = self.Fields()[field][fType]
 
-        if not id in Data[clss] : return None
+            if not id in Data[clss] : return None
 
-        owner = Data[clss][id]
-        return owner
+            owner = Data[clss][id]
+            return owner
+
+        if hasattr(self, "_Parent"):
+            return self._Parent
+
+        return None
 
     def GetView(self):
         return f"{getattr(self, 'Tag_Name', type(self).__name__[1:])}"
@@ -87,6 +95,14 @@ class cParent:
             obj = Class(Data, parent, index, el)
             Data[Class][obj.GetId()] = obj
 
+    @staticmethod
+    def GetObjects(parent, lst):
+        return lst
+    
+    @staticmethod
+    def Fields():
+        return {}
+
 class cRoot(cParent):
     def __init__(self, Data):
         super().__init__(Data, None, 0, {"Id": "root-" + 17*"0"})
@@ -94,7 +110,8 @@ class cRoot(cParent):
     @staticmethod
     def Fields():
         return {"Id" : (cRoot,True,False,False,False)}
-        
+
+
 class cReservation(cParent): 
     Icon = "EC2"
     Show = False
@@ -185,7 +202,7 @@ class cInternetGateway(cParent):
                     'OwnerId' : (str,False,False,False,False),
                     'Attachments' : ([cInternetGatewayAttachment],False,False,False,False),
                     'Tags' : ({"Key" : "Value"},False,False,False,False),
-                }
+                } # +
     
     @staticmethod
     def GetObjects(parent, lst):
@@ -239,23 +256,48 @@ class cSecurityGroup(cParent):
     @staticmethod
     def Fields():
         return {
-                    "GroupName" : (str ,False,False,False,False),
-                    "GroupId"   : (str ,True,False,False,False),
-                    "VpcId"     : (cVpc,False,True,False,False),
-#                    IpPermissions\IpRanges\
-                        # for permission in group['IpPermissions']:
-                        #     print(f"- From Port: {permission.get('FromPort', 'N/A')}")
-                        #     print(f"  To Port: {permission.get('ToPort', 'N/A')}")
-                        #     print(f"  Protocol: {permission.get('IpProtocol', 'N/A')}")
-                        #     print("  IP Ranges:")
-                        #     for ip_range in permission.get('IpRanges', []):
-                        #         print(f"  - {ip_range.get('CidrIp', 'N/A')}")
+                    "GroupId"    : (str ,True,False,False,False),
+                    "GroupName"  : (str ,False,False,False,False),
+                    'Description': (str ,False,False,False,False),
+                    "VpcId"      : (cVpc,False,True,False,False),
+                    'OwnerId'    : (str ,False,False,False,False),
+                    "IpPermissions" : ([cIpPermission],False,False,False,False),
+#'IpPermissionsEgress': [{'IpProtocol': '-1', 'IpRanges': [...], 'Ipv6Ranges': [...], 'PrefixListIds': [...], 'UserIdGroupPairs': [...]}]
                 }
     
     @staticmethod
     def GetObjects(parent, lst):
         return boto3.client('ec2').describe_security_groups()['SecurityGroups']
+
+    def GetView(self):
+        return f"{self.GroupName}"
+
+
+class cIpPermission(cParent): 
+    @staticmethod
+    def Fields():
+        return {
+            'FromPort': (int,False,False,False,False),
+            'IpProtocol': (str,False,False,False,False),
+#            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
+#            'Ipv6Ranges': []
+#            'PrefixListIds': []
+            'ToPort': (int,False,False,False,False),
+#            'UserIdGroupPairs': []
+        }
     
+    def GetView(self):
+        res = ""
+        res = f"{res}{getattr(self, "IpProtocol", "")}"
+        if hasattr(self, "FromPort"):
+            ips = f"{self.FromPort}"
+            if self.FromPort != self.ToPort:
+                ips = f"{ips} - {self.ToPort}"
+            res = f"{res}({ips})"
+            
+        return res
+
+
 class cSubnet(cParent): 
     Draw = (True, True, True, True)
     Color = '#D4E6F1'
@@ -325,11 +367,10 @@ class cRouteTable(cParent):
                     "VpcId" : (cVpc,False,True,False,False),
                     "Routes" : ([cRoute],False,False,False,False),
                     "Associations" : ([cRouteTableAssociation],False,False,False,False),
+                    'OwnerId': (str,False,True,False,False),
                     'Tags' : ({"Key" : "Value"},False,False,False,False),
+                    # 'PropagatingVgws': []
                 }
-# 'Associations': [{'Main': True, 'RouteTableAssociationId': 'rtbassoc-0fcb79c6b321c4521', 'RouteTableId': 'rtb-0c7697e0d2c9ba149', 'AssociationState': {...}}]
-# 'PropagatingVgws': []
-# 'OwnerId': '047989593255'
     
     @staticmethod
     def GetObjects(parent, lst):
@@ -343,7 +384,7 @@ class cRouteTableAssociation(cParent):
         return {
                     'RouteTableAssociationId': (cRouteTableAssociation,True,False,False,False),
                     'RouteTableId': (cRouteTable,False,True,False,False),
-                    'SubnetId': (cSubnet,False,False,True,False),
+                    'SubnetId': (cSubnet,False,False,False,True),
                     'AssociationState': (str,False,False,False,False), #!!!
                     'Main': (bool,False,False,False,False),
                 } # +
@@ -470,6 +511,7 @@ class cS3(cParent):
     def Fields():
         return {
                     "Name" : (cS3,True,False,False,False),
+#                    'CreationDate': datetime.datetime(2023, 9, 29, 12, 28, 16, tzinfo=tzutc())
                 }
     
     @staticmethod
@@ -605,6 +647,11 @@ class MyWidget(QWidget):
         cParent.LoadObjects(self.Data, cNATGateway )
         cParent.LoadObjects(self.Data, cNetworkAcl )
         cParent.LoadObjects(self.Data, cRouteTable )
+        cParent.LoadObjects(self.Data, cSecurityGroup)
+        cParent.LoadObjects(self.Data, cNetworkInterface)
+#        cParent.LoadObjects(self.Data, cS3)
+
+        
 
         for clss, lst in self.Data.items():
             for id, obj in lst.items():
