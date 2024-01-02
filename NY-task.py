@@ -206,7 +206,7 @@ class MyWidget(QWidget):
                     Domain='vpc'
                 )
                 eip_allocation_id = response['AllocationId']
-                self.addTag(route_table_id, "Name", "eipassoc-Pavel-Eresko-NAT")
+                self.addTag(eip_allocation_id, "Name", "eipassoc-Pavel-Eresko-NAT")
                 self.Val(field, eip_allocation_id)
 
 

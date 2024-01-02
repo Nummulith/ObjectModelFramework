@@ -12,6 +12,16 @@ fOwner = 2
 fIn    = 3
 fOut   = 4
 
+def region():
+    return "eu-central-1"
+    return "eu-west-1"
+
+def botoec2():
+    return boto3.client('ec2', region_name = region())
+
+def botos3():
+    return boto3.client('s3' , region_name = region())
+
 class cParent:
     Icon = "AWS"
     Show = True
@@ -127,7 +137,7 @@ class cReservation(cParent):
     
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('ec2').describe_instances()['Reservations']
+        return botoec2().describe_instances()['Reservations']
     
 class cEC2(cParent): 
     Draw = (True, True, True, True)
@@ -206,7 +216,7 @@ class cInternetGateway(cParent):
     
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('ec2').describe_internet_gateways()['InternetGateways']
+        return botoec2().describe_internet_gateways()['InternetGateways']
 
 class cInternetGatewayAttachment(cParent): 
     Icon = "Gateway"
@@ -247,7 +257,7 @@ class cNATGateway(cParent):
     
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('ec2').describe_nat_gateways()['NatGateways']
+        return botoec2().describe_nat_gateways()['NatGateways']
     
     def GetView(self):
         return f"NAT"
@@ -267,7 +277,7 @@ class cSecurityGroup(cParent):
     
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('ec2').describe_security_groups()['SecurityGroups']
+        return botoec2().describe_security_groups()['SecurityGroups']
 
     def GetView(self):
         return f"{self.GroupName}"
@@ -329,7 +339,7 @@ class cSubnet(cParent):
 
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('ec2').describe_subnets()['Subnets']
+        return botoec2().describe_subnets()['Subnets']
     
     def GetAdd(self):
         return f"{getattr(self, "CidrBlock", "")}"
@@ -352,7 +362,7 @@ class cNetworkAcl(cParent):
     
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('ec2').describe_network_acls()['NetworkAcls']
+        return botoec2().describe_network_acls()['NetworkAcls']
     
 
 class cRouteTable(cParent): 
@@ -374,7 +384,7 @@ class cRouteTable(cParent):
     
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('ec2').describe_route_tables()['RouteTables']
+        return botoec2().describe_route_tables()['RouteTables']
     
 class cRouteTableAssociation(cParent):
     Color = "#7CCF9C"
@@ -464,7 +474,7 @@ class cVpc(cParent):
     
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('ec2').describe_vpcs()['Vpcs']
+        return botoec2().describe_vpcs()['Vpcs']
     
     def GetAdd(self):
         return f"{self.CidrBlock}"
@@ -502,7 +512,7 @@ class cNetworkInterface(cParent):
     
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('ec2').describe_network_interfaces()['NetworkInterfaces']
+        return botoec2().describe_network_interfaces()['NetworkInterfaces']
     
 class cS3(cParent): 
     Icon = "S3"
@@ -516,7 +526,9 @@ class cS3(cParent):
     
     @staticmethod
     def GetObjects(parent, lst):
-        return boto3.client('s3').list_buckets()['Buckets']
+        return botos3().list_buckets()['Buckets']
+
+
 
 
 class MyWidget(QWidget):
