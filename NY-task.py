@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QDialog
 from PyQt5 import QtWidgets
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import Qt
@@ -13,6 +13,22 @@ from datetime import datetime
 
 import re
 
+from AWSclasses import *
+
+prefix_map = {
+    "VPC"   : cVpc,
+    "IGW"   : cInternetGateway,
+    "VPCIGW": cInternetGatewayAttachment,
+    "SN"    : cSubnet,
+    "SG"    : cSecurityGroup,
+    "RTB"   : cRouteTable,
+    "RTBSN" : cRouteTableAssociation,
+    "RT"    : cRoute,
+    "EIP"   : cElasticIP,
+    "NAT"   : cNATGateway,
+    "KEY"   : cKeyPair,
+}
+
 def prettify(elem):
     rough_string = ET.tostring(elem, "utf-8")
     reparsed = minidom.parseString(rough_string)
@@ -21,6 +37,27 @@ def prettify(elem):
 def Prefix(field):
     match = re.match(r'^([^_]+)_?', field)
     return match.group(1) if match else field
+
+class AWS_Window(QDialog):
+    def __init__(self, parent, clss, params):
+        super(AWS_Window, self).__init__(parent)
+        loadUi('AWSclasses.ui', self)
+        self.main_window = parent
+        self.Class = clss
+
+        self.pyAdd.clicked.connect(self.AddCall)
+        self.pyDel.clicked.connect(self.DelCall)
+
+        self.Close.clicked.connect(self.accept)
+
+        self.cliAdd.setText(clss.CLIAdd())
+        self.cliDel.setText(clss.CLIDel())
+
+    def AddCall(self, args):
+        print("AddCall")
+
+    def DelCall(self, args):
+        print("DelCall")
 
 class MyWidget(QWidget):
 
@@ -86,6 +123,12 @@ class MyWidget(QWidget):
             del_button.clicked.connect(lambda: self.Del_Clicked(field))
             layout.addWidget(del_button)
 
+            cls_button = QtWidgets.QPushButton("c", self)
+            cls_button.setObjectName(field + "_Class")
+            cls_button.setFixedWidth(32)
+            cls_button.clicked.connect(lambda: self.Cls_Clicked(field))
+            layout.addWidget(cls_button)
+
     def Val(self, field, setval = None):
         line_edit = self.findChild(QtWidgets.QLineEdit, field + "_Id")
         if line_edit != None:
@@ -114,6 +157,18 @@ class MyWidget(QWidget):
                 },
             ]
         )
+
+
+    def Cls_Clicked(self, field):
+        pref = Prefix(field)
+
+        new_window = AWS_Window(self, prefix_map[pref], ())
+
+        new_window.exec_()
+
+        # Получаем данные из дочернего окна
+        #new_window_data = new_window.get_data()
+        #self.new_window_data_label.setText(new_window_data)
 
 
     def Add_Clicked(self, field):
