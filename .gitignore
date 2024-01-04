@@ -1,5 +1,6 @@
-*.png
 web_services
 __pycache__/
 *.pem
+*.png
 test.py
+AWS-graph.png
