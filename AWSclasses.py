@@ -302,7 +302,7 @@ class cIpPermission(cParent):
     
     def GetView(self):
         res = ""
-        res = f"{res}{getattr(self, "IpProtocol", "")}"
+        res = f"{res}{getattr(self, 'IpProtocol', '')}"
         if hasattr(self, "FromPort"):
             ips = f"{self.FromPort}"
             if self.FromPort != self.ToPort:
