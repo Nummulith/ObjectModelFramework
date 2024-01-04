@@ -119,11 +119,11 @@ class cParent:
         return {}
 
     @staticmethod
-    def CLIAdd():
+    def CLIAdd(args = None):
         return "<?>"
 
     @staticmethod
-    def CLIDel():
+    def CLIDel(args = None):
         return "<?>"
 
 class cReservation(cParent): 
@@ -202,7 +202,7 @@ class cEC2(cParent):
         return lst
 
     def GetExt(self):
-        return f"{getattr(self, "PlatformDetails")}"
+        return f"{getattr(self, 'PlatformDetails', '-')}"
 
 
 class cInternetGateway(cParent): 
@@ -346,7 +346,7 @@ class cSubnet(cParent):
         return botoec2().describe_subnets()['Subnets']
     
     def GetExt(self):
-        return f"{getattr(self, "CidrBlock", "")}"
+        return f"{getattr(self, 'CidrBlock', '-')}"
 
 
 class cNetworkAcl(cParent): 
@@ -390,7 +390,7 @@ class cNetworkAclEntry(cParent):
         return f"{self.RuleNumber}:{self.Protocol} {getattr(self, 'PortRange', '')}"
 
     def GetExt(self):
-        return f"{self.RuleAction} - {getattr(self, "CidrBlock", "")}"
+        return f"{self.RuleAction} - {getattr(self, 'CidrBlock', '*')}"
 
 class cRouteTable(cParent): 
     Draw = (True, False, True, True)
@@ -468,7 +468,7 @@ class cRoute(cParent):
         return f"Route[{self._Index}]"
 
     def GetExt(self):
-        return f"{getattr(self, 'DestinationCidrBlock', '()')}"
+        return f"{getattr(self, 'DestinationCidrBlock', '-')}"
 
     def __init__(self, Data, parent, index, resp):
 
@@ -505,7 +505,7 @@ class cVpc(cParent):
         return botoec2().describe_vpcs()['Vpcs']
     
     def GetExt(self):
-        return f"{self.CidrBlock}"
+        return f"{getattr(self, 'CidrBlock', '-')}"
     
     @staticmethod
     def Add(Name, CidrBlock):
@@ -560,13 +560,21 @@ class cS3(cParent):
 class cElasticIP(cParent): pass
 
 class cKeyPair(cParent):
-    def Call(func, params):
-        key = func
+    def Add(Name):
+        response = botoec2().create_key_pair(KeyName = Name)
+        private_key = response['KeyMaterial']
+            
+        with open(f'{Name}.pem', 'w') as key_file:
+            key_file.write(private_key)
+        return Name
+
+    def Del(Name):
+        botoec2().delete_key_pair(KeyName = Name)
 
     @staticmethod
-    def CLIAdd():
-        return "create_key_pair(KeyName=key_name)"
+    def CLIAdd(Name):
+        return f"aws ec2 create-key-pair --key-name {Name} --query 'KeyMaterial' --output text > {Name}.pem"
 
     @staticmethod
-    def CLIDel():
-        return "delete_key_pair(KeyName=key_name)"
+    def CLIDel(Name):
+        return f"aws ec2 delete-key-pair --key-name {Name}"

@@ -13,21 +13,9 @@ from datetime import datetime
 
 import re
 
-from AWSclasses import *
+import subprocess
 
-prefix_map = {
-    "VPC"   : cVpc,
-    "IGW"   : cInternetGateway,
-    "VPCIGW": cInternetGatewayAttachment,
-    "SN"    : cSubnet,
-    "SG"    : cSecurityGroup,
-    "RTB"   : cRouteTable,
-    "RTBSN" : cRouteTableAssociation,
-    "RT"    : cRoute,
-    "EIP"   : cElasticIP,
-    "NAT"   : cNATGateway,
-    "KEY"   : cKeyPair,
-}
+from AWSclasses import *
 
 def prettify(elem):
     rough_string = ET.tostring(elem, "utf-8")
@@ -39,27 +27,75 @@ def Prefix(field):
     return match.group(1) if match else field
 
 class AWS_Window(QDialog):
-    def __init__(self, parent, clss, params):
+    def __init__(self, parent, clss, id, AddParams, DelParams):
         super(AWS_Window, self).__init__(parent)
         loadUi('AWSclasses.ui', self)
-        self.main_window = parent
-        self.Class = clss
+        self.MainWindow = parent
 
-        self.pyAdd.clicked.connect(self.AddCall)
-        self.pyDel.clicked.connect(self.DelCall)
+        self.Class  = clss
+        self.Id.setText(id)
+        self.AddParams = AddParams
+        self.DelParams = DelParams
+
+        self.pyAdd.clicked.connect(self.pyAddCall)
+        self.pyDel.clicked.connect(self.pyDelCall)
+
+        self.cliAdd.clicked.connect(self.cliAddCall)
+        self.cliDel.clicked.connect(self.cliDelCall)
+
+        self.cliAddLine.setText(clss.CLIAdd(self.AddParams))
+        self.cliDelLine.setText(clss.CLIDel(self.DelParams))
 
         self.Close.clicked.connect(self.accept)
 
-        self.cliAdd.setText(clss.CLIAdd())
-        self.cliDel.setText(clss.CLIDel())
+    def pyAddCall(self, args):
+        try:
+            AddId = self.Class.Add(self.AddParams)
+            self.Id.setText(AddId)
+        except Exception as e:
+            print(f"Error: {str(e)}")        
 
-    def AddCall(self, args):
-        print("AddCall")
+    def pyDelCall(self, args):
+        try:
+            self.Class.Del(self.DelParams)
+            self.Id.setText("")
+        except Exception as e:
+            print(f"Error: {str(e)}")        
 
-    def DelCall(self, args):
-        print("DelCall")
+    def psRun(self, ps_command):
+        try:
+            result = subprocess.run(["powershell", "-Command", ps_command], capture_output=True, text=True)
+        except Exception as e:
+            print(f"Error: {str(e)}")        
+            return
+
+        if result.returncode != 0:
+            print("stderr:", result.stderr)            
+
+        #print("Exit Code:", result.returncode)
+        #print("stdout:", result.stdout)
+        #print("stderr:", result.stderr)
+
+    def cliAddCall(self):
+        self.psRun(self.cliAddLine.toPlainText())
+
+    def cliDelCall(self):
+        self.psRun(self.cliDelLine.toPlainText())
 
 class MyWidget(QWidget):
+    prefix_map = {
+        "VPC"   : (cVpc, lambda self: None, lambda self: None),
+        "IGW"   : (cInternetGateway, lambda self: None, lambda self: None),
+        "VPCIGW": (cInternetGatewayAttachment, lambda self: None, lambda self: None),
+        "SN"    : (cSubnet, lambda self: None, lambda self: None),
+        "SG"    : (cSecurityGroup, lambda self: None, lambda self: None),
+        "RTB"   : (cRouteTable, lambda self: None, lambda self: None),
+        "RTBSN" : (cRouteTableAssociation, lambda self: None, lambda self: None),
+        "RT"    : (cRoute, lambda self: None, lambda self: None),
+        "EIP"   : (cElasticIP, lambda self: None, lambda self: None),
+        "NAT"   : (cNATGateway, lambda self: None, lambda self: None),
+        "KEY"   : (cKeyPair, lambda self: self.Val("KEY"), lambda self: self.Val("KEY")),
+    }
 
     def fullresponse(self):
         # Custom JSON serializer for datetime objects
@@ -160,15 +196,12 @@ class MyWidget(QWidget):
 
 
     def Cls_Clicked(self, field):
-        pref = Prefix(field)
+        clss, addlambda, dellambda = self.prefix_map[Prefix(field)]
 
-        new_window = AWS_Window(self, prefix_map[pref], ())
-
+        new_window = AWS_Window(self, clss, self.Val(field), addlambda(self), dellambda(self))
         new_window.exec_()
 
-        # Получаем данные из дочернего окна
-        #new_window_data = new_window.get_data()
-        #self.new_window_data_label.setText(new_window_data)
+        self.Val(field, new_window.Id.text())
 
 
     def Add_Clicked(self, field):
@@ -481,19 +514,9 @@ class MyWidget(QWidget):
         super(MyWidget, self).__init__()
         loadUi('NY-task.ui', self)
 
-
         self.Fields = []
         for layout in self.findChildren(QtWidgets.QHBoxLayout):
             self.CreateInput(layout.objectName().replace("_Layout", ""))
-
-        # self.CreateInput("Region")
-        # self.CreateInput("VPC")
-        # self.CreateInput("IGW" )
-        # self.CreateInput("VPCIGW", False, True)
-        # self.CreateInput("Subnet_A")
-        # self.CreateInput("Subnet_B")
-        # self.CreateInput("EC2")
-
 
         self.Val("Region", 'eu-central-1')
 
