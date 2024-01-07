@@ -126,6 +126,7 @@ class cParent:
     def CLIDel(args = None):
         return "<?>"
 
+
 class cReservation(cParent): 
     Icon = "EC2"
     Show = False
@@ -142,7 +143,8 @@ class cReservation(cParent):
     @staticmethod
     def GetObjects(parent, lst):
         return botoec2().describe_instances()['Reservations']
-    
+
+
 class cEC2(cParent): 
     Draw = (True, True, True, True)
     Icon = "EC2"
@@ -222,6 +224,7 @@ class cInternetGateway(cParent):
     def GetObjects(parent, lst):
         return botoec2().describe_internet_gateways()['InternetGateways']
 
+
 class cInternetGatewayAttachment(cParent): 
     Icon = "Gateway"
     Draw = (True, False, False, False)
@@ -247,6 +250,7 @@ class cInternetGatewayAttachment(cParent):
     def GetOwner(self, Data):
         return self._Parent
 
+
 class cNATGateway(cParent): 
     Icon = "NATGateway"
     Draw = (True, False, True, True)
@@ -265,6 +269,7 @@ class cNATGateway(cParent):
     
     def GetView(self):
         return f"NAT"
+
 
 class cSecurityGroup(cParent): 
     @staticmethod
@@ -367,7 +372,8 @@ class cNetworkAcl(cParent):
     @staticmethod
     def GetObjects(parent, lst):
         return botoec2().describe_network_acls()['NetworkAcls']
-    
+
+
 class cNetworkAclEntry(cParent): 
     Draw = (True, True, False, False)
     Icon = "NetworkAccessControlList"
@@ -392,6 +398,7 @@ class cNetworkAclEntry(cParent):
     def GetExt(self):
         return f"{self.RuleAction} - {getattr(self, 'CidrBlock', '*')}"
 
+
 class cRouteTable(cParent): 
     Draw = (True, False, True, True)
     Icon = "RouteTable"
@@ -412,7 +419,8 @@ class cRouteTable(cParent):
     @staticmethod
     def GetObjects(parent, lst):
         return botoec2().describe_route_tables()['RouteTables']
-    
+
+
 class cRouteTableAssociation(cParent):
     Color = "#7CCF9C"
 
@@ -432,7 +440,6 @@ class cRouteTableAssociation(cParent):
 
     def GetView(self):
         return f"Assoc[{self._Index}]"
-
 
 
 class cRoute(cParent): 
@@ -522,9 +529,8 @@ class cVpc(cParent):
     def Del(VpcId):
         return None
         botoec2().delete_vpc(VpcId = VpcId)
-    
 
-    
+
 class cNetworkInterface(cParent): 
 #    Icon = "network.VPCElasticNetworkInterface"
 
@@ -542,7 +548,8 @@ class cNetworkInterface(cParent):
     @staticmethod
     def GetObjects(parent, lst):
         return botoec2().describe_network_interfaces()['NetworkInterfaces']
-    
+
+
 class cS3(cParent): 
     Icon = "S3"
 
@@ -557,7 +564,9 @@ class cS3(cParent):
     def GetObjects(parent, lst):
         return botos3().list_buckets()['Buckets']
 
+
 class cElasticIP(cParent): pass
+
 
 class cKeyPair(cParent):
     def Add(Name):
