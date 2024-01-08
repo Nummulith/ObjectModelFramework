@@ -4,3 +4,4 @@ __pycache__/
 *.png
 test.py
 AWS-graph.png
+*.svg

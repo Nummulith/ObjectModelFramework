@@ -167,7 +167,7 @@ class MyWidget(QWidget):
                 obj._Owner = owner
                 owner.items.append(obj)
 
-        dot = Digraph('AWS_Structure', format='png')
+        dot = Digraph('AWS_Structure') #, format='png'
 
         root._Digraph = dot
 
@@ -193,6 +193,7 @@ class MyWidget(QWidget):
 
         # Сохраняем диаграмму в файл
         dot.render('AWS-graph', format='png', cleanup=True)
+        dot.render('AWS-graph', format='svg', cleanup=True)
 
         #pixmap = QPixmap("AWS-graph.png")
         #pixmap_item = QGraphicsPixmapItem(pixmap)
