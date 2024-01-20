@@ -16,22 +16,12 @@ def botoec2():
 def botos3():
     return boto3.client('s3' , region_name = region())
 
-def addTag(resource_id, name, value):
-    botoec2().create_tags(
-        Resources=[resource_id],
-        Tags=[
-            {
-                'Key': name,
-                'Value': value
-            },
-        ]
-    )
-
 class cParent:
     Icon = "AWS"
     Show = True
     Draw = (True, False, True, True)
     Color = "#A9DFBF"
+    Prefix = ""
 
     def __init__(self, Data, parent, index, resp):
         if parent != None:
@@ -126,6 +116,9 @@ class cParent:
     def CLIDel(args = None):
         return "<?>"
 
+    @classmethod
+    def GetClassView(cls):
+        return cls.__name__[1:]
 
 class cReservation(cParent): 
     Icon = "EC2"
@@ -146,6 +139,7 @@ class cReservation(cParent):
 
 
 class cEC2(cParent): 
+    Prefix = "i"
     Draw = (True, True, True, True)
     Icon = "EC2"
     Color = "#FFC18A"
@@ -206,8 +200,40 @@ class cEC2(cParent):
     def GetExt(self):
         return f"{getattr(self, 'PlatformDetails', '-')}"
 
+    @staticmethod
+    def Create(Name, ImageId, InstanceType, KeyName, SubnetId, Groups=[], PrivateIpAddress=None, UserData=""):
+        id = botoec2().run_instances(
+            ImageId = ImageId,
+            InstanceType = InstanceType,
+#           SubnetId = SubnetId,
+            KeyName  = KeyName,
+            NetworkInterfaces=[
+                {
+                    'SubnetId': SubnetId,
+                    'DeviceIndex': 0,
+                    'AssociatePublicIpAddress': True if PrivateIpAddress != None else False,
+                    'PrivateIpAddress': PrivateIpAddress,
+                    'Groups': Groups,
+                }
+            ],
+            UserData = UserData,
+            MinCount = 1,
+            MaxCount = 1
+        )['Instances'][0]['InstanceId']
+
+        cTag.Create(id, "Name", f"{cEC2.Prefix}-{Name}")
+
+        return id
+    
+    @staticmethod
+    def Delete(id):
+        botoec2().terminate_instances(
+            InstanceIds=[id]
+        )
+    
 
 class cInternetGateway(cParent): 
+    Prefix = "igw"
     Icon = "Gateway"
     Color = "#F9BBD9"
 
@@ -224,8 +250,20 @@ class cInternetGateway(cParent):
     def GetObjects(parent, lst):
         return botoec2().describe_internet_gateways()['InternetGateways']
 
+    @staticmethod
+    def Create(Name):
+        id = botoec2().create_internet_gateway()['InternetGateway']['InternetGatewayId']
+        cTag.Create(id, "Name", f"{cInternetGateway.Prefix}-{Name}")
+        return id
+
+    @staticmethod
+    def Delete(id):
+        botoec2().delete_internet_gateway(InternetGatewayId = id)
+
+
 
 class cInternetGatewayAttachment(cParent): 
+    Prefix = "igwa"
     Icon = "Gateway"
     Draw = (True, False, False, False)
     Color = "#F488BB"
@@ -252,6 +290,7 @@ class cInternetGatewayAttachment(cParent):
 
 
 class cNATGateway(cParent): 
+    Prefix = "nat"
     Icon = "NATGateway"
     Draw = (True, False, True, True)
 
@@ -272,6 +311,8 @@ class cNATGateway(cParent):
 
 
 class cSecurityGroup(cParent): 
+    Prefix = "sg"
+
     @staticmethod
     def Fields():
         return {
@@ -291,8 +332,80 @@ class cSecurityGroup(cParent):
     def GetView(self):
         return f"{self.GroupName}"
 
+    @staticmethod
+    def Create(Name, Description, Vpc):
+        sgName = f"{cSecurityGroup.Prefix}-{Name}"
+
+        id = botoec2().create_security_group(
+            GroupName = Name,
+            Description = Description,
+            VpcId = Vpc
+        )['GroupId']
+
+        cTag.Create(id, "Name", sgName)
+
+
+        # SRId = botoec2().authorize_security_group_ingress( # SSH (22)
+        #     GroupId=id,
+        #     IpPermissions=[
+        #         {
+        #             'IpProtocol': 'tcp',
+        #             'FromPort': 22,
+        #             'ToPort': 22,
+        #             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
+        #         }
+        #     ]
+        # )["SecurityGroupRules"][0]["SecurityGroupRuleId"]
+
+        # SRId = botoec2().authorize_security_group_ingress( # HTTP (80)
+        #     GroupId=id,
+        #     IpPermissions=[
+        #         {
+        #             'IpProtocol': 'tcp',
+        #             'FromPort': 80,
+        #             'ToPort': 80,
+        #             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
+        #         }
+        #     ]
+        # )["SecurityGroupRules"][0]["SecurityGroupRuleId"]
+
+        return id
+    
+    @staticmethod
+    def Delete(id):
+        botoec2().delete_security_group(
+            GroupId=id
+        )
+
+class cSecurityGroupRule(cParent):
+    Prefix = "sgr"
+    SkipDeletionOnClear = True
+
+    @staticmethod
+    def Create(GroupId, IpProtocol, FromToPort, CidrIp):
+        id = botoec2().authorize_security_group_ingress(
+            GroupId=GroupId,
+            IpPermissions=[
+                {
+                    'IpProtocol': IpProtocol,
+                    'FromPort': FromToPort,
+                    'ToPort': FromToPort,
+                    'IpRanges': [{'CidrIp': CidrIp}]
+                }
+            ]
+        )["SecurityGroupRules"][0]["SecurityGroupRuleId"]
+
+        return id
+
+    @staticmethod
+    def Delete(security_group_id, id):
+        botoec2().revoke_security_group_rule(security_group_id, id)(
+            GroupId=id
+        )
 
 class cIpPermission(cParent): 
+    Prefix = "ipp"
+
     @staticmethod
     def Fields():
         return {
@@ -318,6 +431,7 @@ class cIpPermission(cParent):
 
 
 class cSubnet(cParent): 
+    Prefix = "subnet"
     Draw = (True, True, True, True)
     Color = '#D4E6F1'
 
@@ -353,8 +467,28 @@ class cSubnet(cParent):
     def GetExt(self):
         return f"{getattr(self, 'CidrBlock', '-')}"
 
+    @staticmethod
+    def Create(Name, Vpc, CidrBlock):
+        id = botoec2().create_subnet(
+            VpcId = Vpc,
+            CidrBlock = CidrBlock,
+#           AvailabilityZone='us-east-1a'
+        )["Subnet"]["SubnetId"]
+
+        cTag.Create(id, "Name", f"{cSubnet.Prefix}-{Name}")
+
+        return id
+    
+    @staticmethod
+    def Delete(id):
+        botoec2().delete_subnet(
+            SubnetId = id
+        )
+
+    
 
 class cNetworkAcl(cParent): 
+    Prefix = "nacl"
     Icon = "NetworkAccessControlList"
 
     @staticmethod
@@ -375,6 +509,7 @@ class cNetworkAcl(cParent):
 
 
 class cNetworkAclEntry(cParent): 
+    Prefix = "nacle"
     Draw = (True, True, False, False)
     Icon = "NetworkAccessControlList"
 
@@ -400,6 +535,7 @@ class cNetworkAclEntry(cParent):
 
 
 class cRouteTable(cParent): 
+    Prefix = "rt"
     Draw = (True, False, True, True)
     Icon = "RouteTable"
     Color = "#A9DFBF"
@@ -422,6 +558,7 @@ class cRouteTable(cParent):
 
 
 class cRouteTableAssociation(cParent):
+    Prefix = "rta"
     Color = "#7CCF9C"
 
     @staticmethod
@@ -443,6 +580,7 @@ class cRouteTableAssociation(cParent):
 
 
 class cRoute(cParent): 
+    Prefix = "route"
     Draw = (True, True, True, False)
     Icon = "Route"
     Color = "#7CCF9C"
@@ -487,10 +625,10 @@ class cRoute(cParent):
 
 
 class cVpc(cParent): 
+    Prefix = "vpc"
     Draw = (True, True, True, True)
     Icon = "VPC"
     Color = '#E3D5FF'
-    Prefix = "vpc"
 
     @staticmethod
     def Fields():
@@ -515,23 +653,26 @@ class cVpc(cParent):
         return f"{getattr(self, 'CidrBlock', '-')}"
     
     @staticmethod
-    def Add(Name, CidrBlock):
-        return "vpc_id"
-    
-        response = botoec2().create_vpc(CidrBlock=CidrBlock)
-        vpc_id = response['Vpc']['VpcId']
-
-        addTag(vpc_id, "Name", f"{cVpc.Prefix}-{Name}")
-
-        return vpc_id
+    def Create(Name, CidrBlock):
+        id = botoec2().create_vpc(CidrBlock=CidrBlock)['Vpc']['VpcId']
+        cTag.Create(id, "Name", f"{cVpc.Prefix}-{Name}")
+        return id
     
     @staticmethod
-    def Del(VpcId):
+    def Delete(id):
+        botoec2().delete_vpc(VpcId = id)
+    
+    @staticmethod
+    def Destroy(VpcId):
         return None
         botoec2().delete_vpc(VpcId = VpcId)
 
+    @staticmethod
+    def CLIAdd(Name, CidrBlock):
+        return f"id000000001"
 
 class cNetworkInterface(cParent): 
+    Prefix = "ni"
 #    Icon = "network.VPCElasticNetworkInterface"
 
     @staticmethod
@@ -549,8 +690,13 @@ class cNetworkInterface(cParent):
     def GetObjects(parent, lst):
         return botoec2().describe_network_interfaces()['NetworkInterfaces']
 
+    @staticmethod
+    def CLIAdd(Name, CidrBlock, fdrgtd):
+        return f"id000000002"
+
 
 class cS3(cParent): 
+    Prefix = "s3"
     Icon = "S3"
 
     @staticmethod
@@ -565,20 +711,14 @@ class cS3(cParent):
         return botos3().list_buckets()['Buckets']
 
 
-class cElasticIP(cParent): pass
-
+class cElasticIP(cParent):
+    Prefix = "eip"
 
 class cKeyPair(cParent):
-    def Add(Name):
-        response = botoec2().create_key_pair(KeyName = Name)
-        private_key = response['KeyMaterial']
-            
-        with open(f'{Name}.pem', 'w') as key_file:
-            key_file.write(private_key)
-        return Name
-
-    def Del(Name):
-        botoec2().delete_key_pair(KeyName = Name)
+    Prefix = "key"
+    
+    def Destroy(id):
+        botoec2().delete_key_pair(KeyName = id)
 
     @staticmethod
     def CLIAdd(Name):
@@ -587,3 +727,72 @@ class cKeyPair(cParent):
     @staticmethod
     def CLIDel(Name):
         return f"aws ec2 delete-key-pair --key-name {Name}"
+
+
+    @staticmethod
+    def Create(Name):
+        id = f"{cKeyPair.Prefix}-{Name}"
+        response = botoec2().create_key_pair(KeyName=id)
+        private_key = response['KeyMaterial']
+
+        try:
+            with open(f'PrivateKeys\\{id}.pem', 'w') as key_file: key_file.write(private_key)
+        except Exception as e:
+            print(f"KeyPair.Create: An exception occurred: {type(e).__name__} - {e}")
+
+        return id
+    
+    @staticmethod
+    def Delete(id):
+        botoec2().delete_key_pair(
+            KeyName = id
+        )
+
+
+class cTag(cParent):
+    @staticmethod
+    def Create(id, Name, Value):
+        botoec2().create_tags(
+            Resources=[id],
+            Tags=[
+                {
+                    'Key': Name,
+                    'Value': Value
+                },
+            ]
+        )
+
+    @staticmethod
+    def Delete(id, Name):
+        botoec2().delete_tags(
+            Resources=[id],
+            Tags=[
+                {'Key': Name}
+            ]
+        )
+
+    @staticmethod
+    def CLIAdd(Name):
+        return f""
+
+    @staticmethod
+    def CLIDel(id, Name):
+        return f"aws ec2 delete-tags --resources {id} --tags Key={Name}"
+
+
+awsClasses = [
+    cReservation, cEC2, cInternetGateway, cInternetGatewayAttachment, cNATGateway,
+    cSecurityGroupRule, cSecurityGroup, cIpPermission, cSubnet, cNetworkAcl, cNetworkAclEntry, cRouteTable,
+    cRouteTableAssociation, cRoute, cVpc, cNetworkInterface, cS3, cElasticIP, cKeyPair, 
+]
+
+awsConst = {
+    'EC2.UserData.Apache' : ""\
+                    + "#!/bin/bash\n"\
+                    + "yum update -y\n"\
+                    + "yum install httpd -y\n"\
+                    + "systemctl start httpd\n"\
+                    + "systemctl enable httpd\n",
+    'EC2.InstanceType.t2.micro' : 't2.micro',
+    'EC2.ImageId.Linux' : 'ami-0669b163befffbdfc',
+}

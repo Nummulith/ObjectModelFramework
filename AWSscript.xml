@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<AWS>
+	<Reservation/>
+	<EC2/>
+	<InternetGateway/>
+	<InternetGatewayAttachment/>
+	<NATGateway/>
+	<SecurityGroupRule/>
+	<SecurityGroup/>
+	<IpPermission/>
+	<Subnet/>
+	<NetworkAcl/>
+	<NetworkAclEntry/>
+	<RouteTable/>
+	<RouteTableAssociation/>
+	<Route/>
+	<Vpc/>
+	<NetworkInterface/>
+	<S3/>
+	<ElasticIP/>
+	<KeyPair/>
+</AWS>

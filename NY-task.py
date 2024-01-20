@@ -50,7 +50,7 @@ class AWS_Window(QDialog):
 
     def pyAddCall(self, args):
         try:
-            AddId = self.Class.Add(self.AddParams)
+            AddId = self.Class.Create(self.AddParams)
             self.Id.setText(AddId)
         except Exception as e:
             print(f"Error: {str(e)}")        
@@ -183,16 +183,16 @@ class MyWidget(QWidget):
             return check_box.isChecked()
         
 
-    def addTag(self, resource_id, name, value):
-        self.boto3ec2.create_tags(
-            Resources=[resource_id],
-            Tags=[
-                {
-                    'Key': name,
-                    'Value': value
-                },
-            ]
-        )
+    # def addTag(self, resource_id, name, value):
+    #     self.boto3ec2.create_tags(
+    #         Resources=[resource_id],
+    #         Tags=[
+    #             {
+    #                 'Key': name,
+    #                 'Value': value
+    #             },
+    #         ]
+    #     )
 
 
     def Cls_Clicked(self, field):
@@ -209,18 +209,21 @@ class MyWidget(QWidget):
 
         try:
             if pref == "VPC":
-                response = self.boto3ec2.create_vpc(CidrBlock='10.3.0.0/16')
-                vpc_id = response['Vpc']['VpcId']
+                #response = self.boto3ec2.create_vpc(CidrBlock='10.3.0.0/16')
+                #vpc_id = response['Vpc']['VpcId']
+                #self.addTag(vpc_id, "Name", "vpc-Pavel-Eresko")
 
-                self.addTag(vpc_id, "Name", "vpc-Pavel-Eresko")
+                cVpc.Create("vpc-Pavel-Eresko", '10.3.0.0/16')
 
                 self.Val(field, vpc_id)
 
             elif pref == "IGW":
-                response = self.boto3ec2.create_internet_gateway()
-                internet_gateway_id = response['InternetGateway']['InternetGatewayId']
+                internet_gateway_id = cInternetGateway.Create("Pavel-Eresko")
 
-                self.addTag(internet_gateway_id, "Name", "igw-Pavel-Eresko")
+                #response = self.boto3ec2.create_internet_gateway()
+                #internet_gateway_id = response['InternetGateway']['InternetGatewayId']
+
+                #self.addTag(internet_gateway_id, "Name", "igw-Pavel-Eresko")
 
                 self.Val(field, internet_gateway_id)
 
@@ -233,20 +236,14 @@ class MyWidget(QWidget):
                 self.Val(field, True)
 
             elif pref == "SN":
-                response = self.boto3ec2.create_subnet(
-                    VpcId = self.Val("VPC"),
-                    CidrBlock = self.Val(field.replace("SN_", "CIDR_")),
-    #                AvailabilityZone='us-east-1a'
+                subnet_id = cSubnet.Create(
+                    "Pavel-Eresko-" + field.replace("SN_", ""),
+                    self.Val("VPC"),
+                    self.Val(field.replace("SN_", "CIDR_"))
                 )
-
-                subnet_id = response["Subnet"]["SubnetId"]
-
-                self.addTag(subnet_id, "Name", "subnet-Pavel-Eresko-" + field.replace("SN_", ""))
-
                 self.Val(field, subnet_id)
 
             elif pref == "RTB":
-
                 response = self.boto3ec2.create_route_table(
                     VpcId = self.Val("VPC")
                 )
@@ -257,16 +254,13 @@ class MyWidget(QWidget):
 
                 self.Val(field, route_table_id)
 
-
             elif pref == "RTBSN":
-
                 response = self.boto3ec2.associate_route_table(
                     SubnetId = self.Val(field.replace("RTBSN_", "SN_")),
                     RouteTableId = self.Val(field.replace("RTBSN_", "RTB_"))
                 )
                 
                 self.Val(field, True)
-
 
             elif pref == "RT":
                 if field == "RT_Public":
@@ -297,7 +291,6 @@ class MyWidget(QWidget):
                 self.addTag(eip_allocation_id, "Name", "eipassoc-Pavel-Eresko-NAT")
                 self.Val(field, eip_allocation_id)
 
-
             elif pref == "NAT":
                 response = self.boto3ec2.create_nat_gateway(
                     SubnetId = self.Val("SN_Public"),
@@ -310,91 +303,43 @@ class MyWidget(QWidget):
 
                 self.Val(field, nat_gateway_id)
 
-
             elif pref == "KEY":
                 key_name = self.Val(field)
 
-                response = self.boto3ec2.create_key_pair(KeyName=key_name)
-                private_key = response['KeyMaterial']
-                    
-                with open(f'{key_name}.pem', 'w') as key_file:
-                    key_file.write(private_key)
-
+                cKeyPair.Create(key_name)
 
             elif pref == "EC2":
 
-                user_data = ""\
-                    + "#!/bin/bash\n"\
-                    + "yum update -y\n"\
-                    + "yum install httpd -y\n"\
-                    + "systemctl start httpd\n"\
-                    + "systemctl enable httpd\n"
-                
+                Name = "i-Pavel-Eresko-" + field.replace("EC2_", "")
+                ImageId = awsConst["EC2.ImageId.Linux"]
+                InstanceType = awsConst["EC2.InstanceType.t2.micro"]
+                KeyName = self.Val("KEY")
+                SubnetId = self.Val(field.replace("EC2_", "SN_"))
+                Groups = [self.Val("SG")]  # Идентификаторы Security Group
+                AssociatePublicIpAddress = True
+                PrivateIpAddress = ("10.3.0.10" if field == "EC2_Public" else "10.3.1.10")
+                UserData = awsConst["EC2.UserData.Apache"]
 
-                response = self.boto3ec2.run_instances(
-                    ImageId = 'ami-0669b163befffbdfc',
-                    InstanceType = 't2.micro',
-#                    SubnetId = self.Val(field.replace("EC2_", "SN_")),
-                    KeyName  = self.Val("KEY"),
-                    NetworkInterfaces=[
-                        {
-                            'SubnetId': self.Val(field.replace("EC2_", "SN_")),
-                            'DeviceIndex': 0,
-                            'AssociatePublicIpAddress': True,
-                            'PrivateIpAddress': ("10.3.0.10" if field == "EC2_Public" else "10.3.1.10"),
-                            'Groups': [self.Val("SG")]  # Идентификаторы Security Group
-                        }
-                    ],
-                    UserData=user_data,
-                    MinCount = 1,
-                    MaxCount = 1
+                instance_id = cEC2.Create(
+                    Name=Name,
+                    ImageId=ImageId,
+                    InstanceType=InstanceType,
+                    KeyName=KeyName,
+                    SubnetId=SubnetId,
+                    Groups=Groups,
+                    AssociatePublicIpAddress=AssociatePublicIpAddress,
+                    PrivateIpAddress=PrivateIpAddress,
+                    UserData=UserData
                 )
-                instance_id = response['Instances'][0]['InstanceId']
-
-                self.addTag(instance_id, "Name", "i-Pavel-Eresko-" + field.replace("EC2_", ""))
 
                 self.Val(field, instance_id)
 
 
             elif pref == "SG":
-
-                response = self.boto3ec2.create_security_group(
-                    GroupName = "SSH-HTTP",
-                    Description = "security group by Pavel Eresko",
-                    VpcId = self.Val("VPC")
-                )
-                security_group_id = response['GroupId']
-
-                self.addTag(security_group_id, "Name", "sg-Pavel-Eresko-" + field.replace("SG_", ""))
-
-                self.Val(field, security_group_id)
-
-                response = self.boto3ec2.authorize_security_group_ingress( # SSH (22)
-                    GroupId=security_group_id,
-                    IpPermissions=[
-                        {
-                            'IpProtocol': 'tcp',
-                            'FromPort': 22,
-                            'ToPort': 22,
-                            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
-                        }
-                    ]
-                )
-                SRId = response["SecurityGroupRules"][0]["SecurityGroupRuleId"]
-
-                response = self.boto3ec2.authorize_security_group_ingress( # HTTP (80)
-                    GroupId=security_group_id,
-                    IpPermissions=[
-                        {
-                            'IpProtocol': 'tcp',
-                            'FromPort': 80,
-                            'ToPort': 80,
-                            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
-                        }
-                    ]
-                )
-
-
+                sg = cSecurityGroup.Create("Pavel-Eresko-SSH-HTTP" + field.replace("SG_", ""), self.Val("VPC"), "security group by Pavel Eresko")
+                cSecurityGroupRule.Create(sg, 'tcp', 22, '0.0.0.0/0') # SSH (22)
+                cSecurityGroupRule.Create(sg, 'tcp', 80, '0.0.0.0/0') # HTTP (80)
+                self.Val(field, sg)
 
         except Exception as e:
             print(f"{e}")
@@ -405,11 +350,11 @@ class MyWidget(QWidget):
 
         try:
             if pref == "VPC":
-                response = self.boto3ec2.delete_vpc(VpcId = self.Val(field))
+                cVpc.Delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "IGW":
-                response = self.boto3ec2.delete_internet_gateway(InternetGatewayId = self.Val(field))
+                cInternetGateway.Delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "VPCIGW":
@@ -420,9 +365,7 @@ class MyWidget(QWidget):
                 self.Val(field, False)
 
             elif pref == "SN":
-                response = self.boto3ec2.delete_subnet(
-                    SubnetId = self.Val(field)
-                )
+                cSubnet.Delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "RTB":
@@ -457,22 +400,15 @@ class MyWidget(QWidget):
                 self.Val(field, False)
 
             elif pref == "KEY":
-                response = self.boto3ec2.delete_key_pair(
-                    KeyName = self.Val(field)
-                )
+                cKeyPair.Delete(self.Val(field))
 
             elif pref == "EC2":
-                response = self.boto3ec2.terminate_instances(
-                    InstanceIds=[self.Val(field)]
-                )
+                cEC2.Delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "SG":
-                response = self.boto3ec2.delete_security_group(
-                    GroupId=self.Val(field)
-                )
+                cSecurityGroup.Delete(self.Val(field))
                 self.Val(field, "")
-
 
         except Exception as e:
             print(f"{e}")
