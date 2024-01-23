@@ -15,7 +15,7 @@ import re
 
 import subprocess
 
-from AWSclasses import *
+from awsClasses import *
 
 def prettify(elem):
     rough_string = ET.tostring(elem, "utf-8")
@@ -29,7 +29,7 @@ def Prefix(field):
 class AWS_Window(QDialog):
     def __init__(self, parent, clss, id, AddParams, DelParams):
         super(AWS_Window, self).__init__(parent)
-        loadUi('AWSclasses.ui', self)
+        loadUi('awsFormClass.ui', self)
         self.MainWindow = parent
 
         self.Class  = clss
@@ -213,7 +213,7 @@ class MyWidget(QWidget):
                 #vpc_id = response['Vpc']['VpcId']
                 #self.addTag(vpc_id, "Name", "vpc-Pavel-Eresko")
 
-                cVpc.Create("vpc-Pavel-Eresko", '10.3.0.0/16')
+                vpc_id = cVpc.Create("vpc-Pavel-Eresko", '10.3.0.0/16')
 
                 self.Val(field, vpc_id)
 
@@ -228,10 +228,11 @@ class MyWidget(QWidget):
                 self.Val(field, internet_gateway_id)
 
             elif pref == "VPCIGW":
-                response = self.boto3ec2.attach_internet_gateway(
-                    InternetGatewayId=self.Val("IGW"),
-                    VpcId = self.Val("VPC")
-                )
+                cInternetGatewayAttachment.Create(self.Val("IGW"), self.Val("VPC"))
+                #response = self.boto3ec2.attach_internet_gateway(
+                #    InternetGatewayId=self.Val("IGW"),
+                #    VpcId = self.Val("VPC")
+                #)
 
                 self.Val(field, True)
 
@@ -244,64 +245,65 @@ class MyWidget(QWidget):
                 self.Val(field, subnet_id)
 
             elif pref == "RTB":
-                response = self.boto3ec2.create_route_table(
-                    VpcId = self.Val("VPC")
-                )
+                route_table_id = cRouteTable.Create("Pavel-Eresko-" + field.replace("RTB_", ""), self.Val("VPC"))
 
-                route_table_id = response['RouteTable']['RouteTableId']
+                # response = self.boto3ec2.create_route_table(
+                #     VpcId = self.Val("VPC")
+                # )
 
-                self.addTag(route_table_id, "Name", "rtb-Pavel-Eresko-" + field.replace("RTB_", ""))
+                # route_table_id = response['RouteTable']['RouteTableId']
+
+                # self.addTag(route_table_id, "Name", "rtb-Pavel-Eresko-" + field.replace("RTB_", ""))
 
                 self.Val(field, route_table_id)
 
             elif pref == "RTBSN":
-                response = self.boto3ec2.associate_route_table(
-                    SubnetId = self.Val(field.replace("RTBSN_", "SN_")),
-                    RouteTableId = self.Val(field.replace("RTBSN_", "RTB_"))
-                )
+                cRouteTableAssociation.Create(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
+#                response = self.boto3ec2.associate_route_table(
+#                    SubnetId = self.Val(field.replace("RTBSN_", "SN_")),
+#                    RouteTableId = self.Val(field.replace("RTBSN_", "RTB_"))
+#                )
                 
                 self.Val(field, True)
 
             elif pref == "RT":
-                if field == "RT_Public":
-                    GatewayId = self.Val("IGW")
+                GatewayId    = self.Val("IGW") if field == "RT_Public" else None
+                NatGatewayId = self.Val("NAT") if field != "RT_Public" else None
+                cRoute.Create(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0", GatewayId, NatGatewayId)
 
-                    response = self.boto3ec2.create_route(
-                        RouteTableId = self.Val(field.replace("RT_", "RTB_")),
-                        DestinationCidrBlock = "0.0.0.0/0",
-                        GatewayId = GatewayId
-                    )
+                #args = {
+                #    "RouteTableId": self.Val(field.replace("RT_", "RTB_")),
+                #    "DestinationCidrBlock": "0.0.0.0/0",
+                #}
+                #if field == "RT_Public":
+                #    args["GatewayId"] = self.Val("IGW")
+                #else:
+                #    args["NatGatewayId"] = self.Val("NAT")
 
-                else:
-                    NATId = self.Val("NAT")
-
-                    response = self.boto3ec2.create_route(
-                        RouteTableId = self.Val(field.replace("RT_", "RTB_")),
-                        DestinationCidrBlock = "0.0.0.0/0",
-                        NatGatewayId = NATId
-                    )
+                #self.boto3ec2.create_route(**args)
 
                 self.Val(field, True)
 
             elif pref == "EIP":
-                response = self.boto3ec2.allocate_address(
-                    Domain='vpc'
-                )
-                eip_allocation_id = response['AllocationId']
-                self.addTag(eip_allocation_id, "Name", "eipassoc-Pavel-Eresko-NAT")
-                self.Val(field, eip_allocation_id)
+                id = cElasticIP.Create("Pavel-Eresko-NAT")
+                #response = self.boto3ec2.allocate_address(Domain='vpc')
+                #eip_allocation_id = response['AllocationId']
+                #self.addTag(eip_allocation_id, "Name", "eipassoc-Pavel-Eresko-NAT")
+                self.Val(field, id)
 
             elif pref == "NAT":
-                response = self.boto3ec2.create_nat_gateway(
-                    SubnetId = self.Val("SN_Public"),
-                    AllocationId = self.Val("EIP")
-                )
+                id = cNATGateway("Pavel-Eresko", self.Val("SN_Public"), self.Val("EIP"))
 
-                nat_gateway_id = response['NatGateway']['NatGatewayId']
+                #response = self.boto3ec2.create_nat_gateway(
+                #    SubnetId = self.Val("SN_Public"),
+                #    AllocationId = self.Val("EIP")
+                #)
 
-                self.addTag(nat_gateway_id, "Name", "nat-Pavel-Eresko")
+                #nat_gateway_id = response['NatGateway']['NatGatewayId']
 
-                self.Val(field, nat_gateway_id)
+                #self.addTag(nat_gateway_id, "Name", "nat-Pavel-Eresko")
+
+                self.Val(field, id)
 
             elif pref == "KEY":
                 key_name = self.Val(field)
@@ -311,14 +313,14 @@ class MyWidget(QWidget):
             elif pref == "EC2":
 
                 Name = "i-Pavel-Eresko-" + field.replace("EC2_", "")
-                ImageId = awsConst["EC2.ImageId.Linux"]
-                InstanceType = awsConst["EC2.InstanceType.t2.micro"]
+                ImageId = Const["EC2.ImageId.Linux"]
+                InstanceType = Const["EC2.InstanceType.t2.micro"]
                 KeyName = self.Val("KEY")
                 SubnetId = self.Val(field.replace("EC2_", "SN_"))
                 Groups = [self.Val("SG")]  # Идентификаторы Security Group
                 AssociatePublicIpAddress = True
                 PrivateIpAddress = ("10.3.0.10" if field == "EC2_Public" else "10.3.1.10")
-                UserData = awsConst["EC2.UserData.Apache"]
+                UserData = Const["EC2.UserData.Apache"]
 
                 instance_id = cEC2.Create(
                     Name=Name,
@@ -358,10 +360,11 @@ class MyWidget(QWidget):
                 self.Val(field, "")
 
             elif pref == "VPCIGW":
-                response = self.boto3ec2.detach_internet_gateway(
-                        InternetGatewayId=self.Val("IGW"),
-                        VpcId = self.Val("VPC")
-                    )
+                cInternetGatewayAttachment.Delete(self.Val("IGW"), self.Val("VPC"))
+                #response = self.boto3ec2.detach_internet_gateway(
+                #        InternetGatewayId=self.Val("IGW"),
+                #        VpcId = self.Val("VPC")
+                #    )
                 self.Val(field, False)
 
             elif pref == "SN":
@@ -369,34 +372,34 @@ class MyWidget(QWidget):
                 self.Val(field, "")
 
             elif pref == "RTB":
-                response = self.boto3ec2.delete_route_table(
-                    RouteTableId = self.Val(field)
-                )                
+                cRouteTable.Delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "RTBSN":
+                cRouteTableAssociation.Delete(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
 
-                response = self.boto3ec2.describe_route_tables(
-                    RouteTableIds=[self.Val(field.replace("RTBSN_", "RTB_"))]
-                )
-                associations = response['RouteTables'][0].get('Associations', [])
+                #response = self.boto3ec2.describe_route_tables(
+                #    RouteTableIds=[self.Val(field.replace("RTBSN_", "RTB_"))]
+                #)
+                #associations = response['RouteTables'][0].get('Associations', [])
 
-                association_id = ""
-                for assoc in associations:
-                    if 'SubnetId' in assoc and assoc['SubnetId'] == self.Val(field.replace("RTBSN_", "SN_")):
-                        association_id = assoc['RouteTableAssociationId']
-                        break
+                #association_id = ""
+                #for assoc in associations:
+                #    if 'SubnetId' in assoc and assoc['SubnetId'] == self.Val(field.replace("RTBSN_", "SN_")):
+                #        association_id = assoc['RouteTableAssociationId']
+                #        break
 
-                response = self.boto3ec2.disassociate_route_table(
-                    AssociationId=association_id
-                )
+                #response = self.boto3ec2.disassociate_route_table(
+                #    AssociationId=association_id
+                #)
                 self.Val(field, False)
 
             elif pref == "RT":
-                response = self.boto3ec2.delete_route(
-                    RouteTableId = self.Val(field.replace("RT_", "RTB_")),
-                    DestinationCidrBlock = "0.0.0.0/0"
-                )
+                cRoute.Delete(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0")
+                #response = self.boto3ec2.delete_route(
+                #    RouteTableId = self.Val(field.replace("RT_", "RTB_")),
+                #    DestinationCidrBlock = "0.0.0.0/0"
+                #)
                 self.Val(field, False)
 
             elif pref == "KEY":
@@ -430,13 +433,13 @@ class MyWidget(QWidget):
                 val = "True" if val else "False"
             xml.set(field, val)
 
-        with open("NY-task.cfg", "w") as xml_file:
+        with open("awsPrefixForm.cfg", "w") as xml_file:
             xml_file.write(prettify(xml))
 
 
     def Load(self):
         try:
-            xml = ET.parse("NY-task.cfg").getroot()
+            xml = ET.parse("awsPrefixForm.cfg").getroot()
         except FileNotFoundError:
             return
         
@@ -448,7 +451,7 @@ class MyWidget(QWidget):
 
     def __init__(self):
         super(MyWidget, self).__init__()
-        loadUi('NY-task.ui', self)
+        loadUi('awsPrefixForm.ui', self)
 
         self.Fields = []
         for layout in self.findChildren(QtWidgets.QHBoxLayout):
@@ -456,7 +459,7 @@ class MyWidget(QWidget):
 
         self.Val("Region", 'eu-central-1')
 
-        self.boto3ec2 = boto3.client('ec2', region_name = self.Val("Region"))
+#        self.boto3ec2 = boto3.client('ec2', region_name = self.Val("Region"))
 
         self.Load()
 

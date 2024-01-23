@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QWidget, QVBoxLayout
 from PyQt5.QtSvg import QGraphicsSvgItem
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QDomDocument
 from PyQt5.QtGui import QWheelEvent
 
 class ZoomableSvgView(QGraphicsView):
@@ -12,7 +12,7 @@ class ZoomableSvgView(QGraphicsView):
         scene = QGraphicsScene(self)
 
         # Create a QGraphicsSvgItem and add it to the scene
-        self.svg_item = QGraphicsSvgItem("AWS-graph.svg")
+        self.svg_item = QGraphicsSvgItem("awsDraw.svg")
         scene.addItem(self.svg_item)
 
         # Set the scene for the view

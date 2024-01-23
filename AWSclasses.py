@@ -1,5 +1,8 @@
 import boto3
 
+from xml.dom import minidom
+import xml.etree.ElementTree as ET
+
 fType  = 0
 fId    = 1
 fOwner = 2
@@ -261,9 +264,9 @@ class cInternetGateway(cParent):
         botoec2().delete_internet_gateway(InternetGatewayId = id)
 
 
-
 class cInternetGatewayAttachment(cParent): 
-    Prefix = "igwa"
+    Prefix = "igw-attach"
+    SkipDeletionOnClear = True
     Icon = "Gateway"
     Draw = (True, False, False, False)
     Color = "#F488BB"
@@ -288,6 +291,15 @@ class cInternetGatewayAttachment(cParent):
     def GetOwner(self, Data):
         return self._Parent
 
+    @staticmethod
+    def Create(InternetGatewayId, VpcId):
+        resp = botoec2().attach_internet_gateway(InternetGatewayId=InternetGatewayId, VpcId=VpcId)
+        return None
+
+    @staticmethod
+    def Delete(InternetGatewayId, VpcId):
+        botoec2().detach_internet_gateway(InternetGatewayId=InternetGatewayId, VpcId=VpcId)
+
 
 class cNATGateway(cParent): 
     Prefix = "nat"
@@ -309,8 +321,23 @@ class cNATGateway(cParent):
     def GetView(self):
         return f"NAT"
 
+    @staticmethod
+    def Create(Name, SubnetId, AllocationId):
+        id = botoec2().create_nat_gateway(SubnetId = SubnetId, AllocationId = AllocationId)['NatGateway']['NatGatewayId']
 
-class cSecurityGroup(cParent): 
+        cTag.Create(id, "Name", f"{cNATGateway.Prefix}-{Name}")
+
+        waiter = botoec2().get_waiter('nat_gateway_available')
+        waiter.wait(NatGatewayIds=[id])
+    
+        return id
+    
+    @staticmethod
+    def Delete(id):
+        botoec2().delete_nat_gateway(NatGatewayId = id)
+
+
+class cSecurityGroup(cParent):
     Prefix = "sg"
 
     @staticmethod
@@ -535,7 +562,7 @@ class cNetworkAclEntry(cParent):
 
 
 class cRouteTable(cParent): 
-    Prefix = "rt"
+    Prefix = "rtb"
     Draw = (True, False, True, True)
     Icon = "RouteTable"
     Color = "#A9DFBF"
@@ -556,9 +583,20 @@ class cRouteTable(cParent):
     def GetObjects(parent, lst):
         return botoec2().describe_route_tables()['RouteTables']
 
+    @staticmethod
+    def Create(Name, VpcId):
+        id = botoec2().create_route_table(VpcId = VpcId)['RouteTable']['RouteTableId']
+        cTag.Create(id, "Name", f"{cRouteTable.Prefix}-{Name}")
+        return id
+
+    @staticmethod
+    def Delete(id):
+        botoec2().delete_route_table(RouteTableId = id)                
+    
 
 class cRouteTableAssociation(cParent):
-    Prefix = "rta"
+    Prefix = "rtba"
+    SkipDeletionOnClear = True
     Color = "#7CCF9C"
 
     @staticmethod
@@ -578,8 +616,34 @@ class cRouteTableAssociation(cParent):
     def GetView(self):
         return f"Assoc[{self._Index}]"
 
+    @staticmethod
+    def Create(SubnetId, RouteTableId):
+        resp = botoec2().associate_route_table(SubnetId = SubnetId, RouteTableId = RouteTableId)
+
+        return None
+
+    @staticmethod
+    def Delete(SubnetId, RouteTableId):
+        
+        response = botoec2().describe_route_tables(
+            RouteTableIds=[RouteTableId]
+        )
+        associations = response['RouteTables'][0].get('Associations', [])
+
+        association_id = ""
+        for assoc in associations:
+            if 'SubnetId' in assoc and assoc['SubnetId'] == SubnetId:
+                association_id = assoc['RouteTableAssociationId']
+                break
+
+        response = botoec2().disassociate_route_table(
+            AssociationId=association_id
+        )
+
+    
 
 class cRoute(cParent): 
+    SkipDeletionOnClear = True
     Prefix = "route"
     Draw = (True, True, True, False)
     Icon = "Route"
@@ -623,6 +687,30 @@ class cRoute(cParent):
             self.GatewayId = None
             setattr(self, "GatewayId_local", self._Parent.VpcId)
 
+    @staticmethod
+    def Create(RouteTableId, DestinationCidrBlock, GatewayId = None, NatGatewayId = None):
+        args = {
+            "RouteTableId": RouteTableId,
+            "DestinationCidrBlock": DestinationCidrBlock,
+        }
+
+        if GatewayId != None:
+            args["GatewayId"] = GatewayId
+        
+        if NatGatewayId != None:
+            args["NatGatewayId"] = NatGatewayId
+
+        resp = botoec2().create_route(**args)
+
+        return None
+    
+    @staticmethod
+    def Delete(RouteTableId, DestinationCidrBlock):
+        resp = botoec2().delete_route(
+            RouteTableId = RouteTableId,
+            DestinationCidrBlock = DestinationCidrBlock
+        )
+
 
 class cVpc(cParent): 
     Prefix = "vpc"
@@ -662,11 +750,6 @@ class cVpc(cParent):
     def Delete(id):
         botoec2().delete_vpc(VpcId = id)
     
-    @staticmethod
-    def Destroy(VpcId):
-        return None
-        botoec2().delete_vpc(VpcId = VpcId)
-
     @staticmethod
     def CLIAdd(Name, CidrBlock):
         return f"id000000001"
@@ -712,7 +795,18 @@ class cS3(cParent):
 
 
 class cElasticIP(cParent):
-    Prefix = "eip"
+    Prefix = "eipassoc"
+
+    @staticmethod
+    def Create(Name):
+        id = botoec2().allocate_address(Domain='vpc')['AllocationId']
+        cTag.Create(id, "Name", f"{cElasticIP.Prefix}-{Name}")
+        return id
+    
+    @staticmethod
+    def Delete(id):
+        botoec2().release_address(AllocationId=id)
+
 
 class cKeyPair(cParent):
     Prefix = "key"
@@ -732,8 +826,7 @@ class cKeyPair(cParent):
     @staticmethod
     def Create(Name):
         id = f"{cKeyPair.Prefix}-{Name}"
-        response = botoec2().create_key_pair(KeyName=id)
-        private_key = response['KeyMaterial']
+        private_key = botoec2().create_key_pair(KeyName=id)['KeyMaterial']
 
         try:
             with open(f'PrivateKeys\\{id}.pem', 'w') as key_file: key_file.write(private_key)
@@ -780,13 +873,28 @@ class cTag(cParent):
         return f"aws ec2 delete-tags --resources {id} --tags Key={Name}"
 
 
-awsClasses = [
-    cReservation, cEC2, cInternetGateway, cInternetGatewayAttachment, cNATGateway,
-    cSecurityGroupRule, cSecurityGroup, cIpPermission, cSubnet, cNetworkAcl, cNetworkAclEntry, cRouteTable,
-    cRouteTableAssociation, cRoute, cVpc, cNetworkInterface, cS3, cElasticIP, cKeyPair, 
-]
+awsClassesNW = [
+        cKeyPair,
+        cVpc, cSecurityGroup, cSecurityGroupRule, cIpPermission, 
+        cInternetGateway, cInternetGatewayAttachment,
+        cNetworkAcl, cNetworkAclEntry,
+    ]
 
-awsConst = {
+awsClassesSN = [
+        cSubnet,
+        cRouteTable, cRouteTableAssociation, cRoute,
+        cElasticIP, 
+        cNATGateway,
+    ]
+
+awsClassesObj = [
+        cReservation, cEC2, cNetworkInterface,
+        cS3, 
+    ]
+
+Classes = awsClassesNW + awsClassesSN + awsClassesObj
+
+Const = {
     'EC2.UserData.Apache' : ""\
                     + "#!/bin/bash\n"\
                     + "yum update -y\n"\
@@ -796,3 +904,129 @@ awsConst = {
     'EC2.InstanceType.t2.micro' : 't2.micro',
     'EC2.ImageId.Linux' : 'ami-0669b163befffbdfc',
 }
+
+class awsObjectList:
+    def __init__(self, aws, clss):
+        self.aws = aws
+        self.Class = clss
+        self.List = []
+
+    def __getitem__(self, key):
+        return self.List[key]
+
+    def __setitem__(self, key, value):
+        self.List[key] = value
+
+    def Count(self):
+        return len(self.List)
+
+    def View(self):
+        return self.Class.GetClassView()
+    
+    def Create(self, *args):
+        try:
+            id = self.Class.Create(*args)
+        except Exception as e:
+            print(f"{self.View()}.Create: An exception occurred: {type(e).__name__} - {e}")
+            return None
+
+        if id != None:
+            self.List.append(id)
+            self.aws.Save()
+
+        return id
+
+    def DeleteInner(self, args, ClearFlag = False):
+        if ClearFlag and hasattr(self.Class, "SkipDeletionOnClear") and self.Class.SkipDeletionOnClear:
+            pass
+        else:
+            try:
+                self.Class.Delete(*args)
+            except Exception as e:
+                print(f"{self.View()}.Delete: An exception occurred: {type(e).__name__} - {e}")
+                return
+
+        id = args[0]
+        if id in self.List:
+            self.List.remove(id)
+            self.aws.Save()
+    
+    def Delete(self, *args):
+        self.DeleteInner(args, False)
+
+    def Clear(self):
+        index = len(self.List) - 1
+        while index >= 0:
+            id = self.List[index]
+            args = (id,)
+            self.DeleteInner(args, True)
+            index -= 1
+
+
+    def Print(self):
+        if len(self.List) == 0 : return
+
+        print(f"  {self.View()}: {len(self.List)}")
+        for id in self.List:
+            print(id)
+
+class AWS:
+    def __init__(self, path):
+        self.Path = path
+
+        for clss in Classes:
+            wrapper = awsObjectList(self, clss)
+            name = wrapper.View()
+            setattr(self, name, wrapper)
+
+        self.Load()
+
+    def Clear(self, clssList = None):
+        if clssList == None:
+            clssList = Classes
+
+        for clss in reversed(clssList):
+            name = clss.GetClassView()
+            wrapper = getattr(self, name)
+            wrapper.Clear()
+    
+#            if clss == cSecurityGroup:
+#                break
+
+    def Print(self):
+        for clss in Classes:
+            name = clss.GetClassView()
+            wrapper = getattr(self, name)
+            wrapper.Print()
+
+    def prettify(self, elem):
+        rough_string = ET.tostring(elem, "utf-8")
+        reparsed = minidom.parseString(rough_string)
+        return reparsed.toprettyxml(indent="\t")
+
+
+    def Save(self):
+        root = ET.Element("AWS")
+
+        for clss in Classes:
+            name = clss.GetClassView()
+            wrapper = getattr(self, name)
+
+            category_element = ET.SubElement(root, name)
+            for identifier in wrapper.List:
+                id_element = ET.SubElement(category_element, f"id")
+                id_element.text = identifier
+
+
+        tree = self.prettify(root)
+        with open(self.Path, "w") as file:
+            file.write(tree)
+
+    def Load(self):
+        with open(self.Path, 'r') as file:
+            xml_string = file.read()
+        root = ET.fromstring(xml_string)
+
+        for element in root:
+            wrapper = getattr(self, element.tag)
+            wrapper.List = [child.text for child in element]

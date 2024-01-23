@@ -3,5 +3,4 @@ __pycache__/
 *.pem
 *.png
 test.py
-AWS-graph.png
 *.svg

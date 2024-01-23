@@ -6,17 +6,31 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>397</width>
+    <height>146</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>AWS Script</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>
     <widget class="QWidget" name="widget" native="true">
      <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QPushButton" name="bNYTask">
+        <property name="text">
+         <string>NY Task</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="bTest">
+        <property name="text">
+         <string>Test</string>
+        </property>
+       </widget>
+      </item>
       <item>
        <widget class="QPushButton" name="bDraw">
         <property name="text">
@@ -24,11 +38,15 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QPushButton" name="bClear">
+        <property name="text">
+         <string>Clear</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
-   </item>
-   <item>
-    <widget class="QGraphicsView" name="Graph"/>
    </item>
   </layout>
  </widget>
