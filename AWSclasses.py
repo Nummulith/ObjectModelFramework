@@ -19,6 +19,14 @@ def botoec2():
 def botos3():
     return boto3.client('s3' , region_name = region())
 
+def idpar(field, id):
+    params = {}
+
+    if id is not None:
+        params[field] = [id]
+    
+    return params
+
 class cParent:
     Icon = "AWS"
     Show = True
@@ -26,7 +34,7 @@ class cParent:
     Color = "#A9DFBF"
     Prefix = ""
 
-    def __init__(self, Data, parent, index, resp):
+    def __init__(self, aws, parent, index, resp):
         if parent != None:
             setattr(self, "_Parent", parent)
             setattr(self, "_Index" , index )
@@ -44,7 +52,8 @@ class cParent:
                 if field[0] == str:
                     continue
                 else:
-                    field[0].LoadObjects(Data, field[0], self, value)
+                    #field[0].LoadObjects(aws, field[0], self, value)
+                    aws[field[0]].Append(None, self, value)
             elif field == list:
                 continue
             #elif field == str or field == cEC2 or field == cReservation:
@@ -70,7 +79,7 @@ class cParent:
         
         return getattr(self, field)
 
-    def GetOwner(self, Data):
+    def GetOwner(self, aws):
 #       field = next(((key, value[0]) for key, value in self.Fields().items() if value[fOwner]), (None, None))
         field = next(self.FieldsOfAKind(fOwner), None)
         if field != None:
@@ -79,9 +88,9 @@ class cParent:
 
             clss = self.Fields()[field][fType]
 
-            if not id in Data[clss] : return None
+            if not id in aws[clss].Map : return None
 
-            owner = Data[clss][id]
+            owner = aws[clss].Map[id]
             return owner
 
         if hasattr(self, "_Parent"):
@@ -92,19 +101,9 @@ class cParent:
     def GetView(self):
         return f"{getattr(self, 'Tag_Name', type(self).__name__[1:])}"
 
-    @staticmethod
-    def LoadObjects(Data, Class, parent = None, lst = None):
-#        self.Objects = [self.Class(obj) for obj in self.GetObjects(parent)]
-        if not Class in Data:
-            Data[Class] = {}
-
-        els = Class.GetObjects(parent, lst)
-        for index, el in enumerate(els):
-            obj = Class(Data, parent, index, el)
-            Data[Class][obj.GetId()] = obj
 
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return lst
     
     @staticmethod
@@ -137,8 +136,9 @@ class cReservation(cParent):
                 }
     
     @staticmethod
-    def GetObjects(parent, lst):
-        return botoec2().describe_instances()['Reservations']
+    def GetObjects(id):
+        resp = botoec2().describe_instances(**idpar('ReservationIds', id))
+        return resp['Reservations']
 
 
 class cEC2(cParent): 
@@ -197,8 +197,10 @@ class cEC2(cParent):
 
     
     @staticmethod
-    def GetObjects(parent, lst):
-        return lst
+    def GetObjects(id):
+        resp = botoec2().describe_instances(**idpar('InstanceIds', id))
+        return resp['Reservations'][0]["Instances"]
+
 
     def GetExt(self):
         return f"{getattr(self, 'PlatformDetails', '-')}"
@@ -235,6 +237,7 @@ class cEC2(cParent):
         )
     
 
+
 class cInternetGateway(cParent): 
     Prefix = "igw"
     Icon = "Gateway"
@@ -250,8 +253,9 @@ class cInternetGateway(cParent):
                 } # +
     
     @staticmethod
-    def GetObjects(parent, lst):
-        return botoec2().describe_internet_gateways()['InternetGateways']
+    def GetObjects(id):
+        return botoec2().describe_internet_gateways(**idpar('InternetGatewayIds', id))['InternetGateways']
+
 
     @staticmethod
     def Create(Name):
@@ -282,13 +286,13 @@ class cInternetGatewayAttachment(cParent):
         return f"Attach[{self._Index}]"
 
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return lst
     
     def GetId(self):
         return f"{self._Parent.GetId()}-{self._Index}"
 
-    def GetOwner(self, Data):
+    def GetOwner(self, aws):
         return self._Parent
 
     @staticmethod
@@ -315,7 +319,7 @@ class cNATGateway(cParent):
                 }
     
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return botoec2().describe_nat_gateways()['NatGateways']
     
     def GetView(self):
@@ -353,7 +357,7 @@ class cSecurityGroup(cParent):
                 }
     
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return botoec2().describe_security_groups()['SecurityGroups']
 
     def GetView(self):
@@ -488,7 +492,7 @@ class cSubnet(cParent):
 
 
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return botoec2().describe_subnets()['Subnets']
     
     def GetExt(self):
@@ -531,7 +535,7 @@ class cNetworkAcl(cParent):
                     # 'Associations': [{'NetworkAclAssociationId': 'aclassoc-0c867a11b811c5be1', 'NetworkAclId': 'acl-0334606b00fe7551c', 'SubnetId': 'subnet-06678d33e23eba72f'}]
     
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return botoec2().describe_network_acls()['NetworkAcls']
 
 
@@ -551,7 +555,7 @@ class cNetworkAclEntry(cParent):
                 }
     
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return lst
     
     def GetView(self):
@@ -580,7 +584,7 @@ class cRouteTable(cParent):
                 }
     
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return botoec2().describe_route_tables()['RouteTables']
 
     @staticmethod
@@ -610,7 +614,7 @@ class cRouteTableAssociation(cParent):
                 } # +
 
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return lst
 
     def GetView(self):
@@ -619,7 +623,6 @@ class cRouteTableAssociation(cParent):
     @staticmethod
     def Create(SubnetId, RouteTableId):
         resp = botoec2().associate_route_table(SubnetId = SubnetId, RouteTableId = RouteTableId)
-
         return None
 
     @staticmethod
@@ -664,13 +667,13 @@ class cRoute(cParent):
                 } # +
 
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return lst
     
     def GetId(self):
         return f"{self._Parent.GetId()}-{self._Index}"
 
-    def GetOwner(self, Data):
+    def GetOwner(self, aws):
         return self._Parent
 
     def GetView(self):
@@ -679,9 +682,9 @@ class cRoute(cParent):
     def GetExt(self):
         return f"{getattr(self, 'DestinationCidrBlock', '-')}"
 
-    def __init__(self, Data, parent, index, resp):
+    def __init__(self, aws, parent, index, resp):
 
-        super().__init__(Data, parent, index, resp)
+        super().__init__(aws, parent, index, resp)
 
         if hasattr(self, "GatewayId") and self.GatewayId == "local":
             self.GatewayId = None
@@ -701,7 +704,6 @@ class cRoute(cParent):
             args["NatGatewayId"] = NatGatewayId
 
         resp = botoec2().create_route(**args)
-
         return None
     
     @staticmethod
@@ -734,7 +736,7 @@ class cVpc(cParent):
                 }
     
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return botoec2().describe_vpcs()['Vpcs']
     
     def GetExt(self):
@@ -770,7 +772,7 @@ class cNetworkInterface(cParent):
                 }
     
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return botoec2().describe_network_interfaces()['NetworkInterfaces']
 
     @staticmethod
@@ -790,7 +792,7 @@ class cS3(cParent):
                 }
     
     @staticmethod
-    def GetObjects(parent, lst):
+    def GetObjects(id):
         return botos3().list_buckets()['Buckets']
 
 
@@ -909,20 +911,39 @@ class awsObjectList:
     def __init__(self, aws, clss):
         self.aws = aws
         self.Class = clss
-        self.List = []
+        self.Map = {}
 
     def __getitem__(self, key):
-        return self.List[key]
+        return self.Map[key]
 
     def __setitem__(self, key, value):
-        self.List[key] = value
+        self.Map[key] = value
 
     def Count(self):
-        return len(self.List)
+        return len(self.Map)
 
     def View(self):
         return self.Class.GetClassView()
     
+    def Append(self, id = None, parent = None, resp = None):
+#       self.Objects = [self.Class(obj) for obj in self.GetObjects(parent)]
+#       if not Class in Data:
+#           Data[Class] = {}
+#       if not hasattr(aws, Class.GetClassView()):
+#           aws.setattr(wrapper)
+            
+        if resp == None:
+            resp = self.Class.GetObjects(id)
+
+        for index, el in enumerate(resp):
+            obj = self.Class(self.aws, parent, index, el)
+    #            Data[Class][obj.GetId()] = obj
+            self.Map[obj.GetId()] = obj
+#                self.List.append(id)
+
+        self.aws.Save()
+
+
     def Create(self, *args):
         try:
             id = self.Class.Create(*args)
@@ -930,9 +951,7 @@ class awsObjectList:
             print(f"{self.View()}.Create: An exception occurred: {type(e).__name__} - {e}")
             return None
 
-        if id != None:
-            self.List.append(id)
-            self.aws.Save()
+        self.Append(id)
 
         return id
 
@@ -947,28 +966,28 @@ class awsObjectList:
                 return
 
         id = args[0]
-        if id in self.List:
-            self.List.remove(id)
+        if id in self.Map:
+#           self.Map.remove(id)
+            del self.Map[id]
             self.aws.Save()
-    
+
     def Delete(self, *args):
         self.DeleteInner(args, False)
 
     def Clear(self):
-        index = len(self.List) - 1
+        keys_to_delete = list(self.Map.keys())
+        index = len(keys_to_delete) - 1
         while index >= 0:
-            id = self.List[index]
-            args = (id,)
-            self.DeleteInner(args, True)
+            id = keys_to_delete[index]
+            self.DeleteInner((id,), True)
             index -= 1
 
-
     def Print(self):
-        if len(self.List) == 0 : return
+        if len(self.Map) == 0 : return
 
-        print(f"  {self.View()}: {len(self.List)}")
-        for id in self.List:
-            print(id)
+        print(f"  {self.View()}: {len(self.Map)}")
+        for id, obj in self.Map:
+            print(f"{id}: {obj}")
 
 class AWS:
     def __init__(self, path):
@@ -980,6 +999,14 @@ class AWS:
             setattr(self, name, wrapper)
 
         self.Load()
+
+    def __getitem__(self, clss):
+        key = clss.GetClassView()
+        return getattr(self, key)
+
+    def __setitem__(self, clss, wrap):
+        key = clss.GetClassView()
+        setattr(self, key, wrap)
 
     def Clear(self, clssList = None):
         if clssList == None:
@@ -1013,9 +1040,9 @@ class AWS:
             wrapper = getattr(self, name)
 
             category_element = ET.SubElement(root, name)
-            for identifier in wrapper.List:
+            for id, obj in wrapper.Map.items():
                 id_element = ET.SubElement(category_element, f"id")
-                id_element.text = identifier
+                id_element.text = id
 
 
         tree = self.prettify(root)
@@ -1029,4 +1056,7 @@ class AWS:
 
         for element in root:
             wrapper = getattr(self, element.tag)
-            wrapper.List = [child.text for child in element]
+#           wrapper.List = [child.text for child in element]
+            for child in element:
+                id = child.text
+                wrapper.Append(id)

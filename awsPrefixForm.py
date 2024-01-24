@@ -317,7 +317,7 @@ class MyWidget(QWidget):
                 InstanceType = Const["EC2.InstanceType.t2.micro"]
                 KeyName = self.Val("KEY")
                 SubnetId = self.Val(field.replace("EC2_", "SN_"))
-                Groups = [self.Val("SG")]  # Идентификаторы Security Group
+                Groups = [self.Val("SG")]
                 AssociatePublicIpAddress = True
                 PrivateIpAddress = ("10.3.0.10" if field == "EC2_Public" else "10.3.1.10")
                 UserData = Const["EC2.UserData.Apache"]

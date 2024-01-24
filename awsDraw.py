@@ -3,8 +3,8 @@ from graphviz import Digraph
 from awsClasses import *
 
 class cRoot(cParent):
-    def __init__(self, Data):
-        super().__init__(Data, None, 0, {"Id": "root-" + 17*"0"})
+    def __init__(self):
+        super().__init__(None, None, 0, {"Id": "root-" + 17*"0"})
 
     @staticmethod
     def Fields():
@@ -82,11 +82,16 @@ def ClusterLabel(obj):
         </TABLE>
     >'''
 
-def DrawRec(Data, par):
-    for clss, list in Data.items():
+def DrawRec(aws, par):
+#   for clss, list in Data.items():
+    for clss in Classes:
+        wrap = aws[clss]
+
         if not clss.Show: continue
 
-        for id, obj in list.items():
+#       for id, obj in list.items():
+        for id, obj in wrap.Map.items():
+
             if par == None:
                 if hasattr(obj, "_Owner") : continue
             else:
@@ -108,7 +113,7 @@ def DrawRec(Data, par):
             if len(obj.items) == 0:
                 par._Digraph.node(name=obj.GetId(), shape='plaintext', label=NodeLabel(obj))
             else:
-                DrawRec(Data, obj)
+                DrawRec(aws, obj)
 
             #print(f"{par}.{par.GetId()} -> {obj}.{obj.GetId()} ")
     
@@ -122,25 +127,33 @@ def DrawRec(Data, par):
 
 def Draw():
     
-    Data = {}
+    aws = AWS("awsDraw.xml")
 
-    root = cRoot(Data)
-    cParent.LoadObjects(Data, cInternetGateway)
-    cParent.LoadObjects(Data, cVpc        )
-    cParent.LoadObjects(Data, cSubnet     )
-    cParent.LoadObjects(Data, cReservation)
-    cParent.LoadObjects(Data, cNATGateway )
-    cParent.LoadObjects(Data, cNetworkAcl )
-    cParent.LoadObjects(Data, cRouteTable )
-    cParent.LoadObjects(Data, cSecurityGroup)
-    cParent.LoadObjects(Data, cNetworkInterface)
-#        cParent.LoadObjects(Data, cS3)
+    aws[cReservation     ].Append()
+    aws[cInternetGateway ].Append()
+    aws[cVpc             ].Append()
+    aws[cSubnet          ].Append()
+    aws[cNATGateway      ].Append()
+    aws[cNetworkAcl      ].Append()
+    aws[cRouteTable      ].Append()
+    aws[cSecurityGroup   ].Append()
+    aws[cNetworkInterface].Append()
+    aws[cS3              ].Append()
 
-    
+    root = cRoot()
 
-    for clss, lst in Data.items():
-        for id, obj in lst.items():
-            owner = obj.GetOwner(Data)
+#   for clss, lst in Data.items():
+    for clss in Classes:
+        wrap = aws[clss]
+
+#       if not clss in Data:
+#           continue
+
+#        lst = Data[clss]
+
+#       for id, obj in lst.items():
+        for id, obj in wrap.Map.items():
+            owner = obj.GetOwner(aws)
             if owner == None:
                 owner = root
 
@@ -160,11 +173,15 @@ def Draw():
 
     root._Digraph = dot
 
-    DrawRec(Data, root)
+    DrawRec(aws, root)
 
 
-    for clss, lst in Data.items():
-        for id, obj in lst.items():
+#    for clss, lst in Data.items():
+    for clss in Classes:
+        wrap = aws[clss]
+
+#        for id, obj in lst.items():
+        for id, obj in wrap.Map.items():
             objid = obj.GetId()
 
             for field in obj.FieldsOfAKind(fIn):
