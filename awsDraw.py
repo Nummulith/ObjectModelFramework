@@ -4,7 +4,7 @@ from awsClasses import *
 
 class cRoot(cParent):
     def __init__(self):
-        super().__init__(None, None, 0, {"Id": "root-" + 17*"0"})
+        super().__init__(None, None, {"Id": "root-" + 17*"0"})
 
     @staticmethod
     def Fields():
@@ -99,7 +99,7 @@ def DrawRec(aws, par):
                 : continue
                     #and obj != par \
 
-            if not hasattr(par, "_Digraph"):
+            if not hasattr(par, "_Digraph") or par._Digraph == None:
                 name = "cluster_" + obj.GetId()[-17:]
                 par._Context = par._Owner._Digraph.subgraph(name=name)
                 par._Digraph = par._Context.__enter__()
@@ -125,21 +125,7 @@ def DrawRec(aws, par):
         par._Digraph = None
 
 
-def Draw():
-    
-    aws = AWS("awsDraw.xml")
-
-    aws[cReservation     ].Append()
-    aws[cInternetGateway ].Append()
-    aws[cVpc             ].Append()
-    aws[cSubnet          ].Append()
-    aws[cNATGateway      ].Append()
-    aws[cNetworkAcl      ].Append()
-    aws[cRouteTable      ].Append()
-    aws[cSecurityGroup   ].Append()
-    aws[cNetworkInterface].Append()
-    aws[cS3              ].Append()
-
+def Draw(aws):
     root = cRoot()
 
 #   for clss, lst in Data.items():
@@ -160,8 +146,8 @@ def Draw():
             # if obj.ParentField != None:
             #     parcl = clss.Fields()[obj.ParentField][fType]
             #     if hasattr(obj, obj.ParentField):
-            #         if obj.ParentField == "_Parent":
-            #             owner = obj._Parent
+            #         if obj.ParentField == "ParentId":
+            #             owner = obj.ParentId
             #         else:
             #             parid = getattr(obj, obj.ParentField)
             #             owner = Data[parcl][parid]

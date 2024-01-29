@@ -1,4 +1,5 @@
 import boto3
+from botocore.exceptions import ClientError
 
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
@@ -8,6 +9,8 @@ fId    = 1
 fOwner = 2
 fIn    = 3
 fOut   = 4
+
+IdDv = "|"
 
 def region():
     return "eu-central-1"
@@ -27,6 +30,28 @@ def idpar(field, id):
     
     return params
 
+def GetObjectsByIndex(id, parClass, ListField, FilterField):
+    sg_id = None; ip_n = None
+    if id != None:
+        sg_id, _, ip_n = id.rpartition(IdDv)
+
+    pars = parClass.GetObjects(sg_id)
+
+    res = []
+    for par in pars:
+        index = -1
+        for permission in par[ListField]:
+            index += 1
+
+            if ip_n != None and ip_n != "" and ip_n != "*":
+                if ip_n != (str(index) if FilterField == int else permission[FilterField]):
+                    continue
+
+            res.append(permission)
+
+    return res
+
+
 class cParent:
     Icon = "AWS"
     Show = True
@@ -34,10 +59,13 @@ class cParent:
     Color = "#A9DFBF"
     Prefix = ""
 
-    def __init__(self, aws, parent, index, resp):
-        if parent != None:
-            setattr(self, "_Parent", parent)
-            setattr(self, "_Index" , index )
+    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
+        if IdQuery != None:
+            par_id, _, cur_id = IdQuery.rpartition(IdDv)
+            if par_id != "":
+                setattr(self, "ParentId", par_id)
+            if hasattr(self, "Index") and cur_id != "" and cur_id != "*":
+                setattr(self, "Index", int(cur_id))
 
         fields = type(self).Fields()
         for key, cfg in fields.items():
@@ -52,8 +80,7 @@ class cParent:
                 if field[0] == str:
                     continue
                 else:
-                    #field[0].LoadObjects(aws, field[0], self, value)
-                    aws[field[0]].Append(None, self, value)
+                    aws[field[0]].Fetch(f"{self.GetId()}{IdDv}*", value, DoAutoSave)
             elif field == list:
                 continue
             #elif field == str or field == cEC2 or field == cReservation:
@@ -75,7 +102,7 @@ class cParent:
         field = next(self.FieldsOfAKind(fId), None)
 
         if field == None:
-            return f"{self._Parent.GetId()}-{self._Index}"
+            return f"{self.ParentId}{IdDv}{self.Index}"
         
         return getattr(self, field)
 
@@ -93,8 +120,12 @@ class cParent:
             owner = aws[clss].Map[id]
             return owner
 
-        if hasattr(self, "_Parent"):
-            return self._Parent
+        if hasattr(self, "ParentId"):
+            if not self.ParentId in aws[self.ParentClass].Map:
+                return None
+            
+            owner = aws[self.ParentClass].Map[self.ParentId]
+            return owner
 
         return None
 
@@ -104,7 +135,8 @@ class cParent:
 
     @staticmethod
     def GetObjects(id):
-        return lst
+        return None
+
     
     @staticmethod
     def Fields():
@@ -199,8 +231,11 @@ class cEC2(cParent):
     @staticmethod
     def GetObjects(id):
         resp = botoec2().describe_instances(**idpar('InstanceIds', id))
-        return resp['Reservations'][0]["Instances"]
-
+        # return resp['Reservations'][0]["Instances"]
+        res = []
+        for Reservation in resp['Reservations']:
+            res = res + Reservation["Instances"]
+        return res
 
     def GetExt(self):
         return f"{getattr(self, 'PlatformDetails', '-')}"
@@ -254,7 +289,8 @@ class cInternetGateway(cParent):
     
     @staticmethod
     def GetObjects(id):
-        return botoec2().describe_internet_gateways(**idpar('InternetGatewayIds', id))['InternetGateways']
+        resp = botoec2().describe_internet_gateways(**idpar('InternetGatewayIds', id))
+        return resp['InternetGateways']
 
 
     @staticmethod
@@ -265,15 +301,19 @@ class cInternetGateway(cParent):
 
     @staticmethod
     def Delete(id):
-        botoec2().delete_internet_gateway(InternetGatewayId = id)
+        botoec2().delete_internet_gateway(
+            InternetGatewayId = id
+        )
 
 
 class cInternetGatewayAttachment(cParent): 
     Prefix = "igw-attach"
-    SkipDeletionOnClear = True
+#    SkipDeletionOnClear = True
+    ParentClass = cInternetGateway
     Icon = "Gateway"
     Draw = (True, False, False, False)
     Color = "#F488BB"
+#   Index = None
 
     @staticmethod
     def Fields():
@@ -283,26 +323,29 @@ class cInternetGatewayAttachment(cParent):
                 }
     
     def GetView(self):
-        return f"Attach[{self._Index}]"
+        return f"{self.ParentId}-{self.VpcId}"
 
     @staticmethod
     def GetObjects(id):
-        return lst
+        return GetObjectsByIndex(id, cInternetGateway, "Attachments", "VpcId")
     
     def GetId(self):
-        return f"{self._Parent.GetId()}-{self._Index}"
+        return f"{self.ParentId}{IdDv}{self.VpcId}"
 
-    def GetOwner(self, aws):
-        return self._Parent
+#    def GetOwner(self, aws):
+#        return self.ParentId
 
     @staticmethod
     def Create(InternetGatewayId, VpcId):
         resp = botoec2().attach_internet_gateway(InternetGatewayId=InternetGatewayId, VpcId=VpcId)
-        return None
+        return f"{InternetGatewayId}{IdDv}{VpcId}"
 
     @staticmethod
-    def Delete(InternetGatewayId, VpcId):
-        botoec2().detach_internet_gateway(InternetGatewayId=InternetGatewayId, VpcId=VpcId)
+    def Delete(id):
+        InternetGatewayId, _, VpcId = id.rpartition(IdDv)
+        botoec2().detach_internet_gateway(
+            InternetGatewayId=InternetGatewayId, VpcId=VpcId
+        )
 
 
 class cNATGateway(cParent): 
@@ -320,7 +363,7 @@ class cNATGateway(cParent):
     
     @staticmethod
     def GetObjects(id):
-        return botoec2().describe_nat_gateways()['NatGateways']
+        return botoec2().describe_nat_gateways(**idpar('NatGatewayIds', id))['NatGateways']
     
     def GetView(self):
         return f"NAT"
@@ -338,7 +381,9 @@ class cNATGateway(cParent):
     
     @staticmethod
     def Delete(id):
-        botoec2().delete_nat_gateway(NatGatewayId = id)
+        botoec2().delete_nat_gateway(
+            NatGatewayId = id
+        )
 
 
 class cSecurityGroup(cParent):
@@ -352,13 +397,13 @@ class cSecurityGroup(cParent):
                     'Description': (str ,False,False,False,False),
                     "VpcId"      : (cVpc,False,True,False,False),
                     'OwnerId'    : (str ,False,False,False,False),
-                    "IpPermissions" : ([cIpPermission],False,False,False,False),
-#'IpPermissionsEgress': [{'IpProtocol': '-1', 'IpRanges': [...], 'Ipv6Ranges': [...], 'PrefixListIds': [...], 'UserIdGroupPairs': [...]}]
+#                    "IpPermissions"       : ([cSecurityGroupRule],False,False,False,False),
+#                    "IpPermissionsEgress" : ([cSecurityGroupRule],False,False,False,False),
                 }
     
     @staticmethod
     def GetObjects(id):
-        return botoec2().describe_security_groups()['SecurityGroups']
+        return botoec2().describe_security_groups(**idpar('GroupIds', id))['SecurityGroups']
 
     def GetView(self):
         return f"{self.GroupName}"
@@ -410,8 +455,25 @@ class cSecurityGroup(cParent):
 
 class cSecurityGroupRule(cParent):
     Prefix = "sgr"
-    SkipDeletionOnClear = True
+#    SkipDeletionOnClear = True
+    ParentClass = cSecurityGroup
 
+    @staticmethod
+    def Fields():
+
+        return {
+
+                    'SecurityGroupRuleId': (cSecurityGroupRule, False,False ,False,False),
+                    'GroupId':      (cSecurityGroup, False,True ,False,False),
+                    'GroupOwnerId': (str, False,False ,False,False),
+                    'IsEgress':     (bool, False,False ,False,False),
+                    'IpProtocol':   (str, False,False ,False,False),
+                    'FromPort':     (int, False,False ,False,False),
+                    'ToPort':       (int, False,False ,False,False),
+                    'CidrIpv4':     (str, False,False ,False,False),
+#                    "IpRanges"   : (str, False,False,False,False),
+        }
+    
     @staticmethod
     def Create(GroupId, IpProtocol, FromToPort, CidrIp):
         id = botoec2().authorize_security_group_ingress(
@@ -422,33 +484,58 @@ class cSecurityGroupRule(cParent):
                     'FromPort': FromToPort,
                     'ToPort': FromToPort,
                     'IpRanges': [{'CidrIp': CidrIp}]
+#            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
+#            'Ipv6Ranges': []
+#            'PrefixListIds': []
+#            'UserIdGroupPairs': []
                 }
             ]
         )["SecurityGroupRules"][0]["SecurityGroupRuleId"]
 
-        return id
-
+        return f"{GroupId}{IdDv}{id}"
+        
     @staticmethod
-    def Delete(security_group_id, id):
-        botoec2().revoke_security_group_rule(security_group_id, id)(
-            GroupId=id
+    def Delete(id):
+        security_group_id, _, security_group_rule_id = id.rpartition(IdDv)
+        botoec2().revoke_security_group_ingress(
+            GroupId=security_group_id,
+            SecurityGroupRuleIds=[security_group_rule_id]
         )
 
-class cIpPermission(cParent): 
-    Prefix = "ipp"
+    def GetId(self):
+#        return f"{self.SecurityGroupRuleId}"
+        return f"{self.GroupId}{IdDv}{self.SecurityGroupRuleId}"
 
     @staticmethod
-    def Fields():
-        return {
-            'FromPort': (int,False,False,False,False),
-            'IpProtocol': (str,False,False,False,False),
-#            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
-#            'Ipv6Ranges': []
-#            'PrefixListIds': []
-            'ToPort': (int,False,False,False,False),
-#            'UserIdGroupPairs': []
-        }
-    
+    def GetObjects(id):
+#        return GetObjectsByIndex(id, cSecurityGroup, "SecurityGroupRules", ???)
+
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/describe_security_group_rules.html
+        # security-group-rule-id - The ID of the security group rule.
+        # group-id - The ID of the security group.
+
+        security_group_id, _, security_group_rule_id = id.rpartition(IdDv)
+
+        filters = []
+        if security_group_id:
+            filters.append({
+                'Name': 'group-id',
+                'Values': [security_group_id]
+            })
+
+        security_group_rule_ids = []
+        if security_group_rule_id:
+            security_group_rule_ids.append(security_group_rule_id)
+
+        resp = botoec2().describe_security_group_rules(
+            Filters=filters,
+            SecurityGroupRuleIds=security_group_rule_ids
+        )
+
+#       resp = botoec2().describe_security_group_rules(**idpar('SecurityGroupRuleIds', id))
+
+        return resp['SecurityGroupRules']
+
     def GetView(self):
         res = ""
         res = f"{res}{getattr(self, 'IpProtocol', '')}"
@@ -493,7 +580,7 @@ class cSubnet(cParent):
 
     @staticmethod
     def GetObjects(id):
-        return botoec2().describe_subnets()['Subnets']
+        return botoec2().describe_subnets(**idpar('SubnetIds', id))['Subnets']
     
     def GetExt(self):
         return f"{getattr(self, 'CidrBlock', '-')}"
@@ -536,11 +623,12 @@ class cNetworkAcl(cParent):
     
     @staticmethod
     def GetObjects(id):
-        return botoec2().describe_network_acls()['NetworkAcls']
+        return botoec2().describe_network_acls(**idpar('NetworkAclIds', id))['NetworkAcls']
 
 
 class cNetworkAclEntry(cParent): 
     Prefix = "nacle"
+    ParentClass = cNetworkAcl
     Draw = (True, True, False, False)
     Icon = "NetworkAccessControlList"
 
@@ -556,13 +644,16 @@ class cNetworkAclEntry(cParent):
     
     @staticmethod
     def GetObjects(id):
-        return lst
+        return None
     
     def GetView(self):
         return f"{self.RuleNumber}:{self.Protocol} {getattr(self, 'PortRange', '')}"
 
     def GetExt(self):
         return f"{self.RuleAction} - {getattr(self, 'CidrBlock', '*')}"
+    
+    def GetId(self):
+        return f"{self.RuleNumber}"
 
 
 class cRouteTable(cParent): 
@@ -585,7 +676,7 @@ class cRouteTable(cParent):
     
     @staticmethod
     def GetObjects(id):
-        return botoec2().describe_route_tables()['RouteTables']
+        return botoec2().describe_route_tables(**idpar('RouteTableIds', id))['RouteTables']
 
     @staticmethod
     def Create(Name, VpcId):
@@ -595,12 +686,14 @@ class cRouteTable(cParent):
 
     @staticmethod
     def Delete(id):
-        botoec2().delete_route_table(RouteTableId = id)                
-    
+        botoec2().delete_route_table(
+            RouteTableId = id
+        )
 
 class cRouteTableAssociation(cParent):
     Prefix = "rtba"
-    SkipDeletionOnClear = True
+#    SkipDeletionOnClear = True
+    ParentClass = cRouteTable
     Color = "#7CCF9C"
 
     @staticmethod
@@ -615,42 +708,47 @@ class cRouteTableAssociation(cParent):
 
     @staticmethod
     def GetObjects(id):
-        return lst
+        return GetObjectsByIndex(id, cRouteTable, "Associations", 'RouteTableAssociationId')
+
+    def GetId(self):
+        return f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
 
     def GetView(self):
-        return f"Assoc[{self._Index}]"
+        return f"Assoc[{self.RouteTableAssociationId}]"
 
     @staticmethod
-    def Create(SubnetId, RouteTableId):
+    def Create(RouteTableId, SubnetId):
         resp = botoec2().associate_route_table(SubnetId = SubnetId, RouteTableId = RouteTableId)
-        return None
+        return f"{RouteTableId}{IdDv}{resp["AssociationId"]}"
 
     @staticmethod
-    def Delete(SubnetId, RouteTableId):
+    def Delete(id):
         
-        response = botoec2().describe_route_tables(
-            RouteTableIds=[RouteTableId]
+        # response = botoec2().describe_route_tables(
+        #     RouteTableIds=[RouteTableId]
+        # )
+        # associations = response['RouteTables'][0].get('Associations', [])
+
+        # association_id = ""
+        # for assoc in associations:
+        #     if 'SubnetId' in assoc and assoc['SubnetId'] == SubnetId:
+        #         association_id = assoc['RouteTableAssociationId']
+        #         break
+
+        RouteTableId, _, AssociationId = id.rpartition(IdDv)
+        botoec2().disassociate_route_table(
+            AssociationId = AssociationId
         )
-        associations = response['RouteTables'][0].get('Associations', [])
 
-        association_id = ""
-        for assoc in associations:
-            if 'SubnetId' in assoc and assoc['SubnetId'] == SubnetId:
-                association_id = assoc['RouteTableAssociationId']
-                break
-
-        response = botoec2().disassociate_route_table(
-            AssociationId=association_id
-        )
-
-    
 
 class cRoute(cParent): 
-    SkipDeletionOnClear = True
+#    SkipDeletionOnClear = True
+    ParentClass = cRouteTable
     Prefix = "route"
     Draw = (True, True, True, False)
     Icon = "Route"
     Color = "#7CCF9C"
+    Index = None
 
     @staticmethod
     def Fields():
@@ -668,27 +766,27 @@ class cRoute(cParent):
 
     @staticmethod
     def GetObjects(id):
-        return lst
+        return GetObjectsByIndex(id, cRouteTable, "Routes", int)
     
     def GetId(self):
-        return f"{self._Parent.GetId()}-{self._Index}"
+        return f"{self.ParentId}{IdDv}{self.DestinationCidrBlock}"
 
-    def GetOwner(self, aws):
-        return self._Parent
+#    def GetOwner(self, aws):
+#        return self.ParentId
 
     def GetView(self):
-        return f"Route[{self._Index}]"
+        return f"Route[{self.Index}]"
 
     def GetExt(self):
         return f"{getattr(self, 'DestinationCidrBlock', '-')}"
 
-    def __init__(self, aws, parent, index, resp):
+    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
 
-        super().__init__(aws, parent, index, resp)
+        super().__init__(aws, IdQuery, resp, DoAutoSave)
 
         if hasattr(self, "GatewayId") and self.GatewayId == "local":
             self.GatewayId = None
-            setattr(self, "GatewayId_local", self._Parent.VpcId)
+            setattr(self, "GatewayId_local", resp["GatewayId"])
 
     @staticmethod
     def Create(RouteTableId, DestinationCidrBlock, GatewayId = None, NatGatewayId = None):
@@ -704,14 +802,23 @@ class cRoute(cParent):
             args["NatGatewayId"] = NatGatewayId
 
         resp = botoec2().create_route(**args)
-        return None
+
+        return f"{RouteTableId}{IdDv}{DestinationCidrBlock}"
     
     @staticmethod
-    def Delete(RouteTableId, DestinationCidrBlock):
-        resp = botoec2().delete_route(
-            RouteTableId = RouteTableId,
-            DestinationCidrBlock = DestinationCidrBlock
-        )
+    def Delete(id):
+        RouteTableId, _, DestinationCidrBlock = id.rpartition(IdDv)
+
+        try:
+            botoec2().delete_route(
+                RouteTableId = RouteTableId,
+                DestinationCidrBlock = DestinationCidrBlock
+            )
+        except ClientError as e:
+            if e.response['Error']['Message'][:25] == 'cannot remove local route':
+                pass  # it is kinda ok
+            else:
+                raise # all other is not
 
 
 class cVpc(cParent): 
@@ -737,7 +844,7 @@ class cVpc(cParent):
     
     @staticmethod
     def GetObjects(id):
-        return botoec2().describe_vpcs()['Vpcs']
+        return botoec2().describe_vpcs(**idpar('VpcIds', id))['Vpcs']
     
     def GetExt(self):
         return f"{getattr(self, 'CidrBlock', '-')}"
@@ -750,7 +857,9 @@ class cVpc(cParent):
     
     @staticmethod
     def Delete(id):
-        botoec2().delete_vpc(VpcId = id)
+        botoec2().delete_vpc(
+            VpcId = id
+        )
     
     @staticmethod
     def CLIAdd(Name, CidrBlock):
@@ -773,7 +882,7 @@ class cNetworkInterface(cParent):
     
     @staticmethod
     def GetObjects(id):
-        return botoec2().describe_network_interfaces()['NetworkInterfaces']
+        return botoec2().describe_network_interfaces(**idpar('NetworkInterfaceIds', id))['NetworkInterfaces']
 
     @staticmethod
     def CLIAdd(Name, CidrBlock, fdrgtd):
@@ -793,7 +902,13 @@ class cS3(cParent):
     
     @staticmethod
     def GetObjects(id):
-        return botos3().list_buckets()['Buckets']
+        if id == None:
+            response = botos3().list_buckets() # **idpar('NetworkInterfaceIds', id)
+            return response['Buckets']
+        else:
+            response = botos3().head_bucket(Bucket=id)
+            return [response]
+
 
 
 class cElasticIP(cParent):
@@ -807,14 +922,27 @@ class cElasticIP(cParent):
     
     @staticmethod
     def Delete(id):
-        botoec2().release_address(AllocationId=id)
+        botoec2().release_address(
+            AllocationId = id
+        )
 
 
 class cKeyPair(cParent):
     Prefix = "key"
     
+    @staticmethod
+    def Fields():
+        return {
+                    'KeyPairId': (cKeyPair,True,False,False,False),
+                    'KeyFingerprint': (str,False,False,False,False),
+                    'KeyName': (str,False,False,False,False),
+                    'KeyType': (str,False,False,False,False),
+                    'Tags': ({"Key" : "Value"},False,False,False,False),
+                    'CreateTime': (str,False,False,False,False),
+                }
+    
     def Destroy(id):
-        botoec2().delete_key_pair(KeyName = id)
+        botoec2().delete_key_pair(KeyPairId = id)
 
     @staticmethod
     def CLIAdd(Name):
@@ -823,6 +951,11 @@ class cKeyPair(cParent):
     @staticmethod
     def CLIDel(Name):
         return f"aws ec2 delete-key-pair --key-name {Name}"
+
+    @staticmethod
+    def GetObjects(id):
+        response = botoec2().describe_key_pairs(**idpar('KeyPairIds', id))
+        return response['KeyPairs']
 
 
     @staticmethod
@@ -877,14 +1010,14 @@ class cTag(cParent):
 
 awsClassesNW = [
         cKeyPair,
-        cVpc, cSecurityGroup, cSecurityGroupRule, cIpPermission, 
+        cVpc, cSecurityGroup, cSecurityGroupRule,
         cInternetGateway, cInternetGatewayAttachment,
         cNetworkAcl, cNetworkAclEntry,
     ]
 
 awsClassesSN = [
         cSubnet,
-        cRouteTable, cRouteTableAssociation, cRoute,
+        cRouteTable, cRoute, cRouteTableAssociation,
         cElasticIP, 
         cNATGateway,
     ]
@@ -925,23 +1058,39 @@ class awsObjectList:
     def View(self):
         return self.Class.GetClassView()
     
-    def Append(self, id = None, parent = None, resp = None):
+    def Fetch(self, IdQuery = None, resp = None, DoAutoSave = True):
 #       self.Objects = [self.Class(obj) for obj in self.GetObjects(parent)]
 #       if not Class in Data:
 #           Data[Class] = {}
 #       if not hasattr(aws, Class.GetClassView()):
 #           aws.setattr(wrapper)
+        sg_id = ""; ip_n = "*"
+        if IdQuery != None:
+            sg_id, _, ip_n = IdQuery.rpartition(IdDv)
             
         if resp == None:
-            resp = self.Class.GetObjects(id)
+            try:
+                resp = self.Class.GetObjects(IdQuery)
+            except ClientError as e:
+                if e.response['Error']['Code'][-9:] == '.NotFound':
+                    return
+                else:
+                    raise
 
-        for index, el in enumerate(resp):
-            obj = self.Class(self.aws, parent, index, el)
-    #            Data[Class][obj.GetId()] = obj
+        Index = -1
+        for el in resp:
+            Index += 1
+            ip_nn = ip_n
+            if ip_nn == "*":
+                ip_nn = int(Index)
+
+            obj = self.Class(self.aws, f"{sg_id}{IdDv}{ip_nn}", el, DoAutoSave)
+#           Data[Class][obj.GetId()] = obj
             self.Map[obj.GetId()] = obj
 #                self.List.append(id)
 
-        self.aws.Save()
+        if DoAutoSave:
+            self.aws.AutoSave()
 
 
     def Create(self, *args):
@@ -951,25 +1100,25 @@ class awsObjectList:
             print(f"{self.View()}.Create: An exception occurred: {type(e).__name__} - {e}")
             return None
 
-        self.Append(id)
+        self.Fetch(id)
 
         return id
 
     def DeleteInner(self, args, ClearFlag = False):
-        if ClearFlag and hasattr(self.Class, "SkipDeletionOnClear") and self.Class.SkipDeletionOnClear:
-            pass
-        else:
-            try:
-                self.Class.Delete(*args)
-            except Exception as e:
-                print(f"{self.View()}.Delete: An exception occurred: {type(e).__name__} - {e}")
-                return
+#        if ClearFlag and hasattr(self.Class, "SkipDeletionOnClear") and self.Class.SkipDeletionOnClear:
+#            pass
+#        else:
+        try:
+            self.Class.Delete(*args)
+        except Exception as e:
+            print(f"{self.View()}.Delete: An exception occurred: {type(e).__name__} - {e}")
+            return
 
         id = args[0]
         if id in self.Map:
 #           self.Map.remove(id)
             del self.Map[id]
-            self.aws.Save()
+            self.aws.AutoSave()
 
     def Delete(self, *args):
         self.DeleteInner(args, False)
@@ -990,15 +1139,17 @@ class awsObjectList:
             print(f"{id}: {obj}")
 
 class AWS:
-    def __init__(self, path):
+    def __init__(self, path, DoAutoLoad = True, DoAutoSave = True):
         self.Path = path
+        self.DoAutoLoad = DoAutoLoad
+        self.DoAutoSave = DoAutoSave
 
         for clss in Classes:
             wrapper = awsObjectList(self, clss)
             name = wrapper.View()
             setattr(self, name, wrapper)
 
-        self.Load()
+        self.AutoLoad()
 
     def __getitem__(self, clss):
         key = clss.GetClassView()
@@ -1032,23 +1183,6 @@ class AWS:
         return reparsed.toprettyxml(indent="\t")
 
 
-    def Save(self):
-        root = ET.Element("AWS")
-
-        for clss in Classes:
-            name = clss.GetClassView()
-            wrapper = getattr(self, name)
-
-            category_element = ET.SubElement(root, name)
-            for id, obj in wrapper.Map.items():
-                id_element = ET.SubElement(category_element, f"id")
-                id_element.text = id
-
-
-        tree = self.prettify(root)
-        with open(self.Path, "w") as file:
-            file.write(tree)
-
     def Load(self):
         with open(self.Path, 'r') as file:
             xml_string = file.read()
@@ -1059,4 +1193,45 @@ class AWS:
 #           wrapper.List = [child.text for child in element]
             for child in element:
                 id = child.text
-                wrapper.Append(id)
+                wrapper.Fetch(id, None, False)
+
+    def AutoLoad(self):
+        if self.DoAutoLoad:
+            self.Load()
+
+    def Save(self):
+        root = ET.Element("AWS")
+
+        for clss in Classes:
+            name = clss.GetClassView()
+            wrapper = getattr(self, name)
+
+            category_element = ET.SubElement(root, name)
+            for id, obj in wrapper.Map.items():
+                id_element = ET.SubElement(category_element, f"id")
+                id_element.text = str(id)
+
+
+        tree = self.prettify(root)
+        with open(self.Path, "w") as file:
+            file.write(tree)
+
+    def AutoSave(self):
+        if self.DoAutoSave:
+            self.Save()
+
+
+    def Fetch(self):
+        self[cVpc              ].Fetch()
+        self[cSubnet           ].Fetch()
+        self[cSecurityGroup    ].Fetch()
+        self[cSecurityGroupRule].Fetch()
+
+        self[cRouteTable      ].Fetch()
+        self[cInternetGateway ].Fetch()
+        self[cNATGateway      ].Fetch()
+        self[cNetworkAcl      ].Fetch()
+        self[cNetworkInterface].Fetch()
+
+#        self[cReservation     ].Fetch()
+#        self[cS3              ].Fetch()
