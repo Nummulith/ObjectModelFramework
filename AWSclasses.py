@@ -30,6 +30,17 @@ def idpar(field, id):
     
     return params
 
+def Wait(waiter_name, resource_param, resource_id):
+    waiter = botoec2().get_waiter(waiter_name)
+
+    waiter.wait(
+        **{f"{resource_param}": [resource_id]},
+        WaiterConfig={
+            'Delay': 3,
+            'MaxAttempts': 100
+        }
+    )
+
 def GetObjectsByIndex(id, parClass, ListField, FilterField):
     sg_id = None; ip_n = None
     if id != None:
@@ -75,7 +86,6 @@ class cParent:
             field = fields[key][fType]
             if type(field) == list:
                 if len(field) == 0:
-                    #setattr(self, key, value)
                     continue
                 if field[0] == str:
                     continue
@@ -83,14 +93,12 @@ class cParent:
                     aws[field[0]].Fetch(f"{self.GetId()}{IdDv}*", value, DoAutoSave)
             elif field == list:
                 continue
-            #elif field == str or field == cEC2 or field == cReservation:
             elif type(field) == dict:
                 tkkey, tkval = next(iter(field.items()))
                 for pair in value:
                     setattr(self, "Tag_" + pair[tkkey], pair[tkval])
                 continue
             else:
-                #print(f"{key} = {value}")
                 setattr(self, key, value)
         
         self.items = []
@@ -107,7 +115,6 @@ class cParent:
         return getattr(self, field)
 
     def GetOwner(self, aws):
-#       field = next(((key, value[0]) for key, value in self.Fields().items() if value[fOwner]), (None, None))
         field = next(self.FieldsOfAKind(fOwner), None)
         if field != None:
             id = getattr(self, field, None)
@@ -231,7 +238,6 @@ class cEC2(cParent):
     @staticmethod
     def GetObjects(id):
         resp = botoec2().describe_instances(**idpar('InstanceIds', id))
-        # return resp['Reservations'][0]["Instances"]
         res = []
         for Reservation in resp['Reservations']:
             res = res + Reservation["Instances"]
@@ -241,12 +247,16 @@ class cEC2(cParent):
         return f"{getattr(self, 'PlatformDetails', '-')}"
 
     @staticmethod
-    def Create(Name, ImageId, InstanceType, KeyName, SubnetId, Groups=[], PrivateIpAddress=None, UserData=""):
+    def Create(Name, ImageId, InstanceType, KeyPairId, SubnetId, Groups=[], PrivateIpAddress=None, UserData=""):
+
+#       KeyName = boto3.resource('ec2').KeyPair(KeyPairId).key_name # does not work
+        resp = botoec2().describe_key_pairs(KeyPairIds=[KeyPairId])
+        KeyName = resp['KeyPairs'][0]['KeyName']
+            
         id = botoec2().run_instances(
             ImageId = ImageId,
             InstanceType = InstanceType,
-#           SubnetId = SubnetId,
-            KeyName  = KeyName,
+            KeyName = KeyName,
             NetworkInterfaces=[
                 {
                     'SubnetId': SubnetId,
@@ -270,7 +280,8 @@ class cEC2(cParent):
         botoec2().terminate_instances(
             InstanceIds=[id]
         )
-    
+
+        Wait('instance_terminated', "InstanceIds", id)
 
 
 class cInternetGateway(cParent): 
@@ -308,12 +319,10 @@ class cInternetGateway(cParent):
 
 class cInternetGatewayAttachment(cParent): 
     Prefix = "igw-attach"
-#    SkipDeletionOnClear = True
     ParentClass = cInternetGateway
     Icon = "Gateway"
     Draw = (True, False, False, False)
     Color = "#F488BB"
-#   Index = None
 
     @staticmethod
     def Fields():
@@ -331,9 +340,6 @@ class cInternetGatewayAttachment(cParent):
     
     def GetId(self):
         return f"{self.ParentId}{IdDv}{self.VpcId}"
-
-#    def GetOwner(self, aws):
-#        return self.ParentId
 
     @staticmethod
     def Create(InternetGatewayId, VpcId):
@@ -374,16 +380,15 @@ class cNATGateway(cParent):
 
         cTag.Create(id, "Name", f"{cNATGateway.Prefix}-{Name}")
 
-        waiter = botoec2().get_waiter('nat_gateway_available')
-        waiter.wait(NatGatewayIds=[id])
-    
+        Wait('nat_gateway_available', "NatGatewayIds", id)
+
         return id
     
     @staticmethod
     def Delete(id):
-        botoec2().delete_nat_gateway(
-            NatGatewayId = id
-        )
+        botoec2().delete_nat_gateway(NatGatewayId = id)
+
+        Wait('nat_gateway_deleted', "NatGatewayIds", id)
 
 
 class cSecurityGroup(cParent):
@@ -420,31 +425,6 @@ class cSecurityGroup(cParent):
 
         cTag.Create(id, "Name", sgName)
 
-
-        # SRId = botoec2().authorize_security_group_ingress( # SSH (22)
-        #     GroupId=id,
-        #     IpPermissions=[
-        #         {
-        #             'IpProtocol': 'tcp',
-        #             'FromPort': 22,
-        #             'ToPort': 22,
-        #             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
-        #         }
-        #     ]
-        # )["SecurityGroupRules"][0]["SecurityGroupRuleId"]
-
-        # SRId = botoec2().authorize_security_group_ingress( # HTTP (80)
-        #     GroupId=id,
-        #     IpPermissions=[
-        #         {
-        #             'IpProtocol': 'tcp',
-        #             'FromPort': 80,
-        #             'ToPort': 80,
-        #             'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
-        #         }
-        #     ]
-        # )["SecurityGroupRules"][0]["SecurityGroupRuleId"]
-
         return id
     
     @staticmethod
@@ -455,7 +435,6 @@ class cSecurityGroup(cParent):
 
 class cSecurityGroupRule(cParent):
     Prefix = "sgr"
-#    SkipDeletionOnClear = True
     ParentClass = cSecurityGroup
 
     @staticmethod
@@ -484,7 +463,6 @@ class cSecurityGroupRule(cParent):
                     'FromPort': FromToPort,
                     'ToPort': FromToPort,
                     'IpRanges': [{'CidrIp': CidrIp}]
-#            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]
 #            'Ipv6Ranges': []
 #            'PrefixListIds': []
 #            'UserIdGroupPairs': []
@@ -503,37 +481,33 @@ class cSecurityGroupRule(cParent):
         )
 
     def GetId(self):
-#        return f"{self.SecurityGroupRuleId}"
         return f"{self.GroupId}{IdDv}{self.SecurityGroupRuleId}"
 
     @staticmethod
     def GetObjects(id):
-#        return GetObjectsByIndex(id, cSecurityGroup, "SecurityGroupRules", ???)
-
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/describe_security_group_rules.html
         # security-group-rule-id - The ID of the security group rule.
         # group-id - The ID of the security group.
 
-        security_group_id, _, security_group_rule_id = id.rpartition(IdDv)
+        par_id = None; cur_id = None
+        if id != None:
+            par_id, _, cur_id = id.rpartition(IdDv)
 
         filters = []
-        if security_group_id:
+        if par_id:
             filters.append({
                 'Name': 'group-id',
-                'Values': [security_group_id]
+                'Values': [par_id]
             })
 
-        security_group_rule_ids = []
-        if security_group_rule_id:
-            security_group_rule_ids.append(security_group_rule_id)
+        cur_ids = []
+        if cur_id:
+            cur_ids.append(cur_id)
 
         resp = botoec2().describe_security_group_rules(
             Filters=filters,
-            SecurityGroupRuleIds=security_group_rule_ids
+            SecurityGroupRuleIds=cur_ids
         )
-
-#       resp = botoec2().describe_security_group_rules(**idpar('SecurityGroupRuleIds', id))
-
         return resp['SecurityGroupRules']
 
     def GetView(self):
@@ -616,10 +590,11 @@ class cNetworkAcl(cParent):
                     'IsDefault': (bool,False,False,False,False),
                     'VpcId': (cVpc,False,True,False,False),
                     'OwnerId': (str,False,True,False,False),
-                    'Entries': ([cNetworkAclEntry],False,True,False,False),  #),[{'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}]
+                    'Entries': ([cNetworkAclEntry],False,True,False,False),
                     'Tags' : ({"Key" : "Value"},False,False,False,False),
-                }
+                    #),[{'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}]
                     # 'Associations': [{'NetworkAclAssociationId': 'aclassoc-0c867a11b811c5be1', 'NetworkAclId': 'acl-0334606b00fe7551c', 'SubnetId': 'subnet-06678d33e23eba72f'}]
+                }
     
     @staticmethod
     def GetObjects(id):
@@ -681,6 +656,7 @@ class cRouteTable(cParent):
     @staticmethod
     def Create(Name, VpcId):
         id = botoec2().create_route_table(VpcId = VpcId)['RouteTable']['RouteTableId']
+
         cTag.Create(id, "Name", f"{cRouteTable.Prefix}-{Name}")
         return id
 
@@ -692,7 +668,6 @@ class cRouteTable(cParent):
 
 class cRouteTableAssociation(cParent):
     Prefix = "rtba"
-#    SkipDeletionOnClear = True
     ParentClass = cRouteTable
     Color = "#7CCF9C"
 
@@ -723,18 +698,6 @@ class cRouteTableAssociation(cParent):
 
     @staticmethod
     def Delete(id):
-        
-        # response = botoec2().describe_route_tables(
-        #     RouteTableIds=[RouteTableId]
-        # )
-        # associations = response['RouteTables'][0].get('Associations', [])
-
-        # association_id = ""
-        # for assoc in associations:
-        #     if 'SubnetId' in assoc and assoc['SubnetId'] == SubnetId:
-        #         association_id = assoc['RouteTableAssociationId']
-        #         break
-
         RouteTableId, _, AssociationId = id.rpartition(IdDv)
         botoec2().disassociate_route_table(
             AssociationId = AssociationId
@@ -742,7 +705,6 @@ class cRouteTableAssociation(cParent):
 
 
 class cRoute(cParent): 
-#    SkipDeletionOnClear = True
     ParentClass = cRouteTable
     Prefix = "route"
     Draw = (True, True, True, False)
@@ -770,9 +732,6 @@ class cRoute(cParent):
     
     def GetId(self):
         return f"{self.ParentId}{IdDv}{self.DestinationCidrBlock}"
-
-#    def GetOwner(self, aws):
-#        return self.ParentId
 
     def GetView(self):
         return f"Route[{self.Index}]"
@@ -903,7 +862,7 @@ class cS3(cParent):
     @staticmethod
     def GetObjects(id):
         if id == None:
-            response = botos3().list_buckets() # **idpar('NetworkInterfaceIds', id)
+            response = botos3().list_buckets()
             return response['Buckets']
         else:
             response = botos3().head_bucket(Bucket=id)
@@ -915,6 +874,17 @@ class cElasticIP(cParent):
     Prefix = "eipassoc"
 
     @staticmethod
+    def Fields():
+        return {
+                    'AllocationId': (cElasticIP,True,False,False,False),
+                    'PublicIp': (str,False,False,False,False),
+                    'Domain': (str,False,False,False,False),
+                    'Tags': ({"Key" : "Value"},False,False,False,False),
+                    'PublicIpv4Pool': (str,False,False,False,False),
+                    'NetworkBorderGroup': (str,False,False,False,False),
+                }
+    
+    @staticmethod
     def Create(Name):
         id = botoec2().allocate_address(Domain='vpc')['AllocationId']
         cTag.Create(id, "Name", f"{cElasticIP.Prefix}-{Name}")
@@ -925,6 +895,11 @@ class cElasticIP(cParent):
         botoec2().release_address(
             AllocationId = id
         )
+
+    @staticmethod
+    def GetObjects(id):
+        resp = botoec2().describe_addresses(**idpar('AllocationIds', id))
+        return resp['Addresses']
 
 
 class cKeyPair(cParent):
@@ -960,21 +935,22 @@ class cKeyPair(cParent):
 
     @staticmethod
     def Create(Name):
-        id = f"{cKeyPair.Prefix}-{Name}"
-        private_key = botoec2().create_key_pair(KeyName=id)['KeyMaterial']
+        KeyName = f"{cKeyPair.Prefix}-{Name}"
+        resp = botoec2().create_key_pair(KeyName=KeyName)
 
+        private_key = resp['KeyMaterial']
         try:
-            with open(f'PrivateKeys\\{id}.pem', 'w') as key_file: key_file.write(private_key)
+            with open(f'PrivateKeys\\{KeyName}.pem', 'w') as key_file: key_file.write(private_key)
         except Exception as e:
             print(f"KeyPair.Create: An exception occurred: {type(e).__name__} - {e}")
+
+        id = resp['KeyPairId']
 
         return id
     
     @staticmethod
     def Delete(id):
-        botoec2().delete_key_pair(
-            KeyName = id
-        )
+        botoec2().delete_key_pair(KeyPairId = id)
 
 
 class cTag(cParent):
@@ -1059,15 +1035,6 @@ class awsObjectList:
         return self.Class.GetClassView()
     
     def Fetch(self, IdQuery = None, resp = None, DoAutoSave = True):
-#       self.Objects = [self.Class(obj) for obj in self.GetObjects(parent)]
-#       if not Class in Data:
-#           Data[Class] = {}
-#       if not hasattr(aws, Class.GetClassView()):
-#           aws.setattr(wrapper)
-        sg_id = ""; ip_n = "*"
-        if IdQuery != None:
-            sg_id, _, ip_n = IdQuery.rpartition(IdDv)
-            
         if resp == None:
             try:
                 resp = self.Class.GetObjects(IdQuery)
@@ -1077,6 +1044,10 @@ class awsObjectList:
                 else:
                     raise
 
+        sg_id = ""; ip_n = "*"
+        if IdQuery != None:
+            sg_id, _, ip_n = IdQuery.rpartition(IdDv)
+            
         Index = -1
         for el in resp:
             Index += 1
@@ -1085,9 +1056,7 @@ class awsObjectList:
                 ip_nn = int(Index)
 
             obj = self.Class(self.aws, f"{sg_id}{IdDv}{ip_nn}", el, DoAutoSave)
-#           Data[Class][obj.GetId()] = obj
             self.Map[obj.GetId()] = obj
-#                self.List.append(id)
 
         if DoAutoSave:
             self.aws.AutoSave()
@@ -1105,9 +1074,6 @@ class awsObjectList:
         return id
 
     def DeleteInner(self, args, ClearFlag = False):
-#        if ClearFlag and hasattr(self.Class, "SkipDeletionOnClear") and self.Class.SkipDeletionOnClear:
-#            pass
-#        else:
         try:
             self.Class.Delete(*args)
         except Exception as e:
@@ -1116,7 +1082,6 @@ class awsObjectList:
 
         id = args[0]
         if id in self.Map:
-#           self.Map.remove(id)
             del self.Map[id]
             self.aws.AutoSave()
 
@@ -1168,9 +1133,6 @@ class AWS:
             wrapper = getattr(self, name)
             wrapper.Clear()
     
-#            if clss == cSecurityGroup:
-#                break
-
     def Print(self):
         for clss in Classes:
             name = clss.GetClassView()
@@ -1190,7 +1152,6 @@ class AWS:
 
         for element in root:
             wrapper = getattr(self, element.tag)
-#           wrapper.List = [child.text for child in element]
             for child in element:
                 id = child.text
                 wrapper.Fetch(id, None, False)

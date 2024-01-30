@@ -83,13 +83,11 @@ def ClusterLabel(obj):
     >'''
 
 def DrawRec(aws, par):
-#   for clss, list in Data.items():
     for clss in Classes:
         wrap = aws[clss]
 
         if not clss.Show: continue
 
-#       for id, obj in list.items():
         for id, obj in wrap.Map.items():
 
             if par == None:
@@ -97,14 +95,12 @@ def DrawRec(aws, par):
             else:
                 if (not hasattr(obj, "_Owner") or obj._Owner != par) \
                 : continue
-                    #and obj != par \
 
             if not hasattr(par, "_Digraph") or par._Digraph == None:
                 name = "cluster_" + obj.GetId()[-17:]
                 par._Context = par._Owner._Digraph.subgraph(name=name)
                 par._Digraph = par._Context.__enter__()
-#                    par._Digraph.attr(label='cluster\n' + par.GetId()) # + par.GetId()
-                par._Digraph.attr(label=ClusterLabel(par)) # + par.GetId()
+                par._Digraph.attr(label=ClusterLabel(par))
                 par._Digraph.attr(style = 'filled', fillcolor = type(par).Color)
 
                 par._Digraph.node(name=par.GetId(), shape='point', width='0.1')
@@ -128,29 +124,13 @@ def DrawRec(aws, par):
 def Draw(aws):
     root = cRoot()
 
-#   for clss, lst in Data.items():
     for clss in Classes:
         wrap = aws[clss]
 
-#       if not clss in Data:
-#           continue
-
-#        lst = Data[clss]
-
-#       for id, obj in lst.items():
         for id, obj in wrap.Map.items():
             owner = obj.GetOwner(aws)
             if owner == None:
                 owner = root
-
-            # if obj.ParentField != None:
-            #     parcl = clss.Fields()[obj.ParentField][fType]
-            #     if hasattr(obj, obj.ParentField):
-            #         if obj.ParentField == "ParentId":
-            #             owner = obj.ParentId
-            #         else:
-            #             parid = getattr(obj, obj.ParentField)
-            #             owner = Data[parcl][parid]
 
             obj._Owner = owner
             owner.items.append(obj)
@@ -162,11 +142,9 @@ def Draw(aws):
     DrawRec(aws, root)
 
 
-#    for clss, lst in Data.items():
     for clss in Classes:
         wrap = aws[clss]
 
-#        for id, obj in lst.items():
         for id, obj in wrap.Map.items():
             objid = obj.GetId()
 
@@ -180,17 +158,11 @@ def Draw(aws):
                 if corr == None: continue
                 dot.edge(corr, objid, label = field + "<")
 
-#        for bod in dot.body:
-#            print(bod)
 
-    # Сохраняем диаграмму в файл
     dot.render('awsDraw', format='png', cleanup=True)
     dot.render('awsDraw', format='svg', cleanup=True)
 
     #pixmap = QPixmap("awsDraw.png")
     #pixmap_item = QGraphicsPixmapItem(pixmap)
     #Graph.scene().addItem(pixmap_item)
-
     #Graph.fitInView(Graph.scene().sceneRect()) # Autoscaling
-
-#        close()
