@@ -4,38 +4,22 @@ from PyQt5.uic import loadUi
 from awsDraw import Draw
 from awsClasses import AWS, Const, Classes, awsClassesNW, awsClassesSN, awsClassesObj
 
-FilePath = "AWSScript.xml"
+FilePath = "awsScript.xml"
+Name = "Pavel-Eresko"
 
-def Clear():
+def Current():
     aws = AWS(FilePath)
-    aws.Save()
-    aws.Clear()
+    # aws.SNS.Create(Name)
+    key = aws.KeyPair.Create(Name)
 
-def Print():
-    aws = AWS(FilePath)
-    aws.Print()
-
-def DrawScript():
-    aws = AWS(FilePath, False, False)
-    aws.Load()
-    aws.Save()
-    Draw(aws)
-
-def Test():
-    NYTask()
+def CurrentFull():
+    Current()
     DrawScript()
     Clear()
 
-def DrawAll():
-    aws = AWS("awsFull.xml", False, False)
-    aws.Fetch()
-    aws.Save()
-    Draw(aws)
 
 def NYTask():
     aws = AWS(FilePath)
-
-    Name = "Pavel-Eresko"
 
     key = aws.KeyPair.Create(Name)
 
@@ -85,6 +69,33 @@ def NYTask():
         Const["EC2.UserData.Apache"],
     )
 
+def NYTaskFull():
+    NYTask()
+    DrawScript()
+    Clear()
+
+
+def PrintScript():
+    aws = AWS(FilePath)
+    aws.Print()
+
+def DrawScript():
+    aws = AWS(FilePath, False, False)
+    aws.Load()
+    aws.Save()
+    Draw(aws)
+
+def ClearScript():
+    aws = AWS(FilePath)
+    aws.Save()
+    aws.Clear()
+
+def DrawAll():
+    aws = AWS("awsFull.xml", False, False)
+    aws.Fetch()
+    aws.Save()
+    Draw(aws)
+
 
 class MyWidget(QWidget):
     def __init__(self):
@@ -94,11 +105,15 @@ class MyWidget(QWidget):
         # <widget class="QGraphicsView" name="Graph">
         # self.Graph.setScene(QGraphicsScene(self))
 
-        self.bClear  .clicked.connect(Clear  )
-        self.bNYTask .clicked.connect(NYTask )
-        self.bDrawAll.clicked.connect(DrawAll)
-        self.bDraw   .clicked.connect(DrawScript)
-        self.bTest   .clicked.connect(Test   )
+        self.bCurrent    .clicked.connect(Current)
+        self.bCurrentFull.clicked.connect(CurrentFull)
+
+        self.bNYTask     .clicked.connect(NYTask)
+        self.bNYTaskFull .clicked.connect(NYTaskFull)
+
+        self.bDraw       .clicked.connect(DrawScript)
+        self.bClear      .clicked.connect(ClearScript)
+        self.bDrawAll    .clicked.connect(DrawAll)
 
 if __name__ == '__main__':
     app = QApplication([])
