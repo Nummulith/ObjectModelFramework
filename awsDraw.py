@@ -15,29 +15,38 @@ def NodeLabel(obj):
     color = type(obj).Color
 
     res = ""
-    if draw[0]: res = res + f'''
-            <TR>
-                <TD BGCOLOR="{color}" PORT="p0"><B>{obj.GetView()}</B></TD>
-            </TR>
+    if draw & dView: res = res + f'''
+        <TR>
+            <TD BGCOLOR="{color}" PORT="p0"><B>{obj.GetView()}</B></TD>
+        </TR>
     '''
-    if draw[1]: res = res + f'''
-                <TR>
-                    <TD BGCOLOR="white" PORT="p1"><B>{obj.GetExt()}</B></TD>
-                </TR>
+    if draw & dExt : res = res + f'''
+        <TR>
+            <TD BGCOLOR="white" PORT="p1"><B>{obj.GetExt()}</B></TD>
+        </TR>
     '''
-    if draw[2]: res = res + f'''
-            <TR>
-                <TD BGCOLOR="white" PORT="p2"><IMG SRC="icons/{type(obj).Icon}.png"/></TD>
-            </TR>
+    if draw & dIcon: res = res + f'''
+        <TR>
+            <TD BGCOLOR="white" PORT="p2"><IMG SRC="icons/{type(obj).Icon}.png"/></TD>
+        </TR>
     '''
-    if draw[3]: res = res + f'''
-            <TR>
-                <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="7.0">{obj.GetClassView()}</FONT></TD>
-            </TR>
-            <TR>
-                <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="7.0">{obj.GetId()[-17:]}</FONT></TD>
-            </TR>
+    res = res + f'''
+        <TR>
+            <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="7.0">{obj.GetClassView()}</FONT></TD>
+        </TR>
     '''
+    if draw & dId  : res = res + f'''
+        <TR>
+            <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="7.0">{obj.GetId()[-17:]}</FONT></TD>
+        </TR>
+    '''
+    if res == "":
+        res = res + f'''
+        <TR>
+            <TD BGCOLOR="{color}" PORT="p0"><B>{obj.GetId()}</B></TD>
+        </TR>
+    '''
+
     return f'''<
         <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
         {res}
@@ -48,31 +57,45 @@ def ClusterLabel(obj):
     draw = obj.Draw
 
     res0 = ""
-    if draw[2]: res0 = res0 + f'''
-                <TD ROWSPAN="3"><IMG SRC="icons/{type(obj).Icon}.png"/></TD>
+    if draw & dIcon: res0 = res0 + f'''
+        <TD ROWSPAN="3"><IMG SRC="icons/{type(obj).Icon}.png"/></TD>
     '''
-    if draw[0]: res0 = res0 + f'''
-                <TD><B>{obj.GetView()}</B></TD>
+        
+    if draw & dView: res0 = res0 + f'''
+        <TD><B>{obj.GetView()}</B></TD>
     '''
-    res0 = f'''
-            <TR>
-                {res0}
-            </TR>
+        
+    if res0 != "":
+        res0 = f'''
+    <TR>
+        {res0}
+    </TR>
     '''
 
     res1 = ""
-    if draw[1]: res1 = res1 + f'''
-            <TR>
-                <TD><FONT POINT-SIZE="7.0">{obj.GetExt()}</FONT></TD>
-            </TR>
+    if draw & dExt: res1 = res1 + f'''
+    <TR>
+        <TD><FONT POINT-SIZE="7.0">{obj.GetExt()}</FONT></TD>
+    </TR>
     '''
-    if draw[3]: res1 = res1 + f'''
-            <TR>
-                <TD><FONT POINT-SIZE="7.0">{obj.GetClassView()}</FONT></TD>
-            </TR>
-            <TR>
-                <TD><FONT POINT-SIZE="7.0">{obj.GetId()[-17:]}</FONT></TD>
-            </TR>
+        
+    res1 = res1 + f'''
+        <TR>
+            <TD><FONT POINT-SIZE="7.0">{obj.GetClassView()}</FONT></TD>
+        </TR>
+        '''
+
+    if draw & dId: res1 = res1 + f'''
+        <TR>
+            <TD><FONT POINT-SIZE="7.0">{obj.GetId()[-17:]}</FONT></TD>
+        </TR>
+        '''
+
+    if res0 == "" and res1 == "":
+        res0 = res0 + f'''
+        <TR>
+            <TD PORT="p0"><B>{obj.GetId()}</B></TD>
+        </TR>
     '''
 
     return f'''<
@@ -100,14 +123,18 @@ def DrawRec(aws, par):
                 name = "cluster_" + obj.GetId()[-17:]
                 par._Context = par._Owner._Digraph.subgraph(name=name)
                 par._Digraph = par._Context.__enter__()
-                par._Digraph.attr(label=ClusterLabel(par))
+                label = ClusterLabel(par)
+#                print(f"> {id} -> {label}")
+                par._Digraph.attr(label=label)
                 par._Digraph.attr(style = 'filled', fillcolor = type(par).Color)
 
                 par._Digraph.node(name=par.GetId(), shape='point', width='0.1')
             
             
             if len(obj.items) == 0:
-                par._Digraph.node(name=obj.GetId(), shape='plaintext', label=NodeLabel(obj))
+                label = NodeLabel(obj)
+#                print(f"> {id} -> {label}")
+                par._Digraph.node(name=obj.GetId(), shape='plaintext', label=label)
             else:
                 DrawRec(aws, obj)
 
@@ -148,12 +175,12 @@ def Draw(aws):
         for id, obj in wrap.Map.items():
             objid = obj.GetId()
 
-            for field in obj.FieldsOfAKind(fIn):
+            for field in obj.FieldsOfAKind(fOut):
                 corr = getattr(obj, field, None)
                 if corr == None: continue
                 dot.edge(objid, corr, label = field)
 
-            for field in obj.FieldsOfAKind(fOut):
+            for field in obj.FieldsOfAKind(fIn):
                 corr = getattr(obj, field, None)
                 if corr == None: continue
                 dot.edge(corr, objid, label = field + "<")

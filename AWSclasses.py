@@ -7,8 +7,17 @@ import xml.etree.ElementTree as ET
 fType  = 0
 fId    = 1
 fOwner = 2
-fIn    = 3
-fOut   = 4
+fOut   = 3
+fIn    = 4
+
+#Draw
+dView = 1 #0
+dExt  = 2 #1
+dIcon = 4 #2
+dId   = 8 #3
+
+dAll  = dView + dExt + dIcon + dId
+dDef  = dAll - dExt
 
 IdDv = "|"
 
@@ -21,6 +30,9 @@ def botoec2():
 
 def botos3():
     return boto3.client('s3' , region_name = region())
+
+def Id17(id):
+    return id[-17:]
 
 def idpar(field, id):
     params = {}
@@ -41,32 +53,10 @@ def Wait(waiter_name, resource_param, resource_id):
         }
     )
 
-def GetObjectsByIndex(id, parClass, ListField, FilterField):
-    sg_id = None; ip_n = None
-    if id != None:
-        sg_id, _, ip_n = id.rpartition(IdDv)
-
-    pars = parClass.GetObjects(sg_id)
-
-    res = []
-    for par in pars:
-        index = -1
-        for permission in par[ListField]:
-            index += 1
-
-            if ip_n != None and ip_n != "" and ip_n != "*":
-                if ip_n != (str(index) if FilterField == int else permission[FilterField]):
-                    continue
-
-            res.append(permission)
-
-    return res
-
-
 class cParent:
     Icon = "AWS"
     Show = True
-    Draw = (True, False, True, True)
+    Draw = dDef
     Color = "#A9DFBF"
     Prefix = ""
 
@@ -110,7 +100,7 @@ class cParent:
         field = next(self.FieldsOfAKind(fId), None)
 
         if field == None:
-            return f"{self.ParentId}{IdDv}{self.Index}"
+            return f"{self.ParentId}{IdDv}{getattr(self, "Index", '0')}"
         
         return getattr(self, field)
 
@@ -137,7 +127,29 @@ class cParent:
         return None
 
     def GetView(self):
-        return f"{getattr(self, 'Tag_Name', type(self).__name__[1:])}"
+        return f"{getattr(self, 'Tag_Name', self.GetId())}"
+
+    @classmethod
+    def GetObjectsByIndex(clss, id, ListField, FilterField):
+        sg_id = None; ip_n = None
+        if id != None:
+            sg_id, _, ip_n = id.rpartition(IdDv)
+
+        pars = clss.ParentClass.GetObjects(sg_id)
+
+        res = []
+        for par in pars:
+            index = -1
+            for permission in par[ListField]:
+                index += 1
+
+                if ip_n != None and ip_n != "" and ip_n != "*":
+                    if ip_n != (str(index) if FilterField == int else permission[FilterField]):
+                        continue
+
+                res.append(permission)
+
+        return res
 
 
     @staticmethod
@@ -182,7 +194,7 @@ class cReservation(cParent):
 
 class cEC2(cParent): 
     Prefix = "i"
-    Draw = (True, True, True, True)
+    Draw = dAll
     Icon = "EC2"
     Color = "#FFC18A"
 
@@ -196,43 +208,45 @@ class cEC2(cParent):
                     "SubnetId" : (cSubnet,False,True,False,False),
                     'PlatformDetails' : (str,False,False,False,False),
                     'Tags' : ({"Key" : "Value"},False,False,False,False),
-                    'VpcId': (cVpc,False,False,False,False) 
+                    'VpcId': (cVpc,False,False,False,False) ,
+                    'KeyName': (str,False,False,False,False),
+                    'KeyPairId': (cKeyPair,False,False,False,True),
+                    'AmiLaunchIndex': (int,False,False,False,False),
+                    'ImageId': (str,False,False,False,False),
+                    'Architecture': (str,False,False,False,False),
+                    'Hypervisor': (str,False,False,False,False),
+                    'ClientToken': (str,False,False,False,False),
+                    'PublicDnsName': (str,False,False,False,False),
+                    'CurrentInstanceBootMode': (str,False,False,False,False),
+                    'EbsOptimized': (bool,False,False,False,False),
+                    'UsageOperation': (str,False,False,False,False),
+                    'PrivateDnsName': (str,False,False,False,False),
+                    'StateTransitionReason': (str,False,False,False,False),
+                    'EnaSupport': (bool,False,False,False,False),
+                    'RootDeviceName': (str,False,False,False,False),
+                    'RootDeviceType': (str,False,False,False,False),
+                    'SourceDestCheck': (bool,False,False,False,False),
+                    'VirtualizationType': (str,False,False,False,False),
+                    'BootMode': (str,False,False,False,False),
                 }
     
-# 'AmiLaunchIndex': 0
-# 'ImageId': 'ami-0669b163befffbdfc'
-# 'KeyName': 'key-antony'
+# 'SecurityGroups': [{'GroupName': 'secgrup-antony', 'GroupId': 'sg-0e050b1cd54e6fcc8'}]
+
 # 'LaunchTime': datetime.datetime(2023, 12, 14, 15, 31, 2, tzinfo=tzutc())
 # 'Monitoring': {'State': 'disabled'}
 # 'Placement': {'AvailabilityZone': 'eu-central-1b', 'GroupName': '', 'Tenancy': 'default'}
-# 'PrivateDnsName': 'ip-10-222-2-11.eu-central-1.compute.internal'
 # 'ProductCodes': []
-# 'PublicDnsName': ''
 # 'State': {'Code': 16, 'Name': 'running'}
-# 'StateTransitionReason': ''
-# 'Architecture': 'x86_64'
 # 'BlockDeviceMappings': [{'DeviceName': '/dev/xvda', 'Ebs': {...}}]
-# 'ClientToken': '5db5facc-d068-410c-a526-29dba78f8184'
-# 'EbsOptimized': False
-# 'EnaSupport': True
-# 'Hypervisor': 'xen'
 # 'NetworkInterfaces': [{'Attachment': {...}, 'Description': '', 'Groups': [...], 'Ipv6Addresses': [...], 'MacAddress': '06:02:cb:61:9c:7b', 'NetworkInterfaceId': 'eni-06ef5645d896ee146', 'OwnerId': '047989593255', 'PrivateIpAddress': '10.222.2.11', 'PrivateIpAddresses': [...], ...}]
-# 'RootDeviceName': '/dev/xvda'
-# 'RootDeviceType': 'ebs'
-# 'SecurityGroups': [{'GroupName': 'secgrup-antony', 'GroupId': 'sg-0e050b1cd54e6fcc8'}]
-# 'SourceDestCheck': True
-# 'VirtualizationType': 'hvm'
 # 'CpuOptions': {'CoreCount': 1, 'ThreadsPerCore': 1}
 # 'CapacityReservationSpecification': {'CapacityReservationPreference': 'open'}
 # 'HibernationOptions': {'Configured': False}
 # 'MetadataOptions': {'State': 'applied', 'HttpTokens': 'required', 'HttpPutResponseHopLimit': 2, 'HttpEndpoint': 'enabled', 'HttpProtocolIpv6': 'disabled', 'InstanceMetadataTags': 'disabled'}
 # 'EnclaveOptions': {'Enabled': False}
-# 'BootMode': 'uefi-preferred'
-# 'UsageOperation': 'RunInstances'
 # 'UsageOperationUpdateTime': datetime.datetime(2023, 12, 14, 15, 31, 2, tzinfo=tzutc())
 # 'PrivateDnsNameOptions': {'HostnameType': 'ip-name', 'EnableResourceNameDnsARecord': False, 'EnableResourceNameDn...AAAARecord': False}
 # 'MaintenanceOptions': {'AutoRecovery': 'default'}
-# 'CurrentInstanceBootMode': 'legacy-bios'
 
     
     @staticmethod
@@ -248,15 +262,10 @@ class cEC2(cParent):
 
     @staticmethod
     def Create(Name, ImageId, InstanceType, KeyPairId, SubnetId, Groups=[], PrivateIpAddress=None, UserData=""):
-
-#       KeyName = boto3.resource('ec2').KeyPair(KeyPairId).key_name # does not work
-        resp = botoec2().describe_key_pairs(KeyPairIds=[KeyPairId])
-        KeyName = resp['KeyPairs'][0]['KeyName']
-            
         id = botoec2().run_instances(
             ImageId = ImageId,
             InstanceType = InstanceType,
-            KeyName = KeyName,
+            KeyName = cKeyPair.IdToName(KeyPairId),
             NetworkInterfaces=[
                 {
                     'SubnetId': SubnetId,
@@ -283,6 +292,10 @@ class cEC2(cParent):
 
         Wait('instance_terminated', "InstanceIds", id)
 
+    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
+        super().__init__(aws, IdQuery, resp, DoAutoSave)
+
+        setattr(self, "KeyPairId", cKeyPair.NameToId(self.KeyName))
 
 class cInternetGateway(cParent): 
     Prefix = "igw"
@@ -321,7 +334,7 @@ class cInternetGatewayAttachment(cParent):
     Prefix = "igw-attach"
     ParentClass = cInternetGateway
     Icon = "Gateway"
-    Draw = (True, False, False, False)
+    Draw = dView
     Color = "#F488BB"
 
     @staticmethod
@@ -332,11 +345,11 @@ class cInternetGatewayAttachment(cParent):
                 }
     
     def GetView(self):
-        return f"{self.ParentId}-{self.VpcId}"
+        return f"{Id17(self.VpcId)}"
 
     @staticmethod
     def GetObjects(id):
-        return GetObjectsByIndex(id, cInternetGateway, "Attachments", "VpcId")
+        return cInternetGatewayAttachment.GetObjectsByIndex(id, "Attachments", "VpcId")
     
     def GetId(self):
         return f"{self.ParentId}{IdDv}{self.VpcId}"
@@ -357,19 +370,24 @@ class cInternetGatewayAttachment(cParent):
 class cNATGateway(cParent): 
     Prefix = "nat"
     Icon = "NATGateway"
-    Draw = (True, False, True, True)
 
     @staticmethod
     def Fields():
         return {
-                    "NatGatewayId" : (cNATGateway, True ,False,False,False),
-                    "SubnetId"     : (cSubnet    , False,True ,False,False),
-                    "State"        : (str        , False,False,False,False),
+                    "NatGatewayId"        : (cNATGateway, True ,False,False,False),
+                    "SubnetId"            : (cSubnet    , False,True ,False,False),
+                    "State"               : (str        , False,False,False,False),
+                    "VpcId"               : (cVpc       , False,False,False,True ),
+                    "ConnectivityType"    : (str        , False,False,False,False),
+                    'Tags'                : ({"Key" : "Value"},False,False,False,False),
+                    "NatGatewayAddresses" : ([cAssociation], False,False,False,True),
+# 'CreateTime': datetime.datetime(2024, 1, 30, 16, 38, 41, tzinfo=tzutc())
                 }
     
     @staticmethod
     def GetObjects(id):
-        return botoec2().describe_nat_gateways(**idpar('NatGatewayIds', id))['NatGateways']
+        resp = botoec2().describe_nat_gateways(**idpar('NatGatewayIds', id))
+        return resp['NatGateways']
     
     def GetView(self):
         return f"NAT"
@@ -390,6 +408,52 @@ class cNATGateway(cParent):
 
         Wait('nat_gateway_deleted', "NatGatewayIds", id)
 
+
+class cAssociation(cParent): 
+    ParentClass = cNATGateway
+
+    @staticmethod
+    def Fields():
+        return {
+                    'AssociationId'      : (cAssociation,True,False,False,False),
+                    "AllocationId"       : (cElasticIP ,False,False,False,True),
+                    "NetworkInterfaceId" : (cNetworkInterface ,False,False,False,False), # !!!!!!!!!!
+                    'PrivateIp'          : (str ,False,False,False,False),
+                    'PublicIp'           : (str ,False,False,False,False),
+                    'IsPrimary'          : (bool ,False,False,False,False),
+                    'Status'             : (str ,False,False,False,False),
+                    'Tags' : ({"Key" : "Value"},False,False,False,False),
+# 'Domain': 'vpc'
+# 'NetworkInterfaceOwnerId': '047989593255'
+# 'PrivateIpAddress': '10.3.1.21'
+# 'PublicIpv4Pool': 'amazon'
+# 'NetworkBorderGroup': 'eu-central-1'
+                }
+    
+    @staticmethod
+    def GetObjects(id):
+#        return cAssociation.GetObjectsByIndex(id, "NATGatewayAddresses", "VpcId")
+        
+        filters = []
+        if id:
+            filters.append({
+                'Name': 'association-id',
+                'Values': [id]
+            })
+
+        resp = botoec2().describe_addresses(Filters=filters)
+        
+        return resp["Addresses"]
+
+    @staticmethod
+    def Create(allocation_id, instance_id):
+        resp = botoec2().associate_address(AllocationId=allocation_id, InstanceId=instance_id)
+        return f"{resp["AssociationId"]}"
+
+    @staticmethod
+    def Delete(id):
+        RouteTableId, _, AssociationId = id.rpartition(IdDv)
+        botoec2().disassociate_address(AssociationId = AssociationId)
 
 class cSecurityGroup(cParent):
     Prefix = "sg"
@@ -524,7 +588,7 @@ class cSecurityGroupRule(cParent):
 
 class cSubnet(cParent): 
     Prefix = "subnet"
-    Draw = (True, True, True, True)
+    Draw = dAll
     Color = '#D4E6F1'
 
     @staticmethod
@@ -604,7 +668,7 @@ class cNetworkAcl(cParent):
 class cNetworkAclEntry(cParent): 
     Prefix = "nacle"
     ParentClass = cNetworkAcl
-    Draw = (True, True, False, False)
+    Draw = dView + dExt
     Icon = "NetworkAccessControlList"
 
     @staticmethod
@@ -633,7 +697,6 @@ class cNetworkAclEntry(cParent):
 
 class cRouteTable(cParent): 
     Prefix = "rtb"
-    Draw = (True, False, True, True)
     Icon = "RouteTable"
     Color = "#A9DFBF"
 
@@ -669,6 +732,7 @@ class cRouteTable(cParent):
 class cRouteTableAssociation(cParent):
     Prefix = "rtba"
     ParentClass = cRouteTable
+    Draw = dExt
     Color = "#7CCF9C"
 
     @staticmethod
@@ -683,13 +747,17 @@ class cRouteTableAssociation(cParent):
 
     @staticmethod
     def GetObjects(id):
-        return GetObjectsByIndex(id, cRouteTable, "Associations", 'RouteTableAssociationId')
+        return cRouteTableAssociation.GetObjectsByIndex(id, "Associations", 'RouteTableAssociationId')
 
     def GetId(self):
         return f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
 
+    def GetExt(self):
+        return f"{Id17(self.SubnetId)}"
+    
     def GetView(self):
-        return f"Assoc[{self.RouteTableAssociationId}]"
+        return f"Route[{self.Index}]"
+    
 
     @staticmethod
     def Create(RouteTableId, SubnetId):
@@ -707,7 +775,7 @@ class cRouteTableAssociation(cParent):
 class cRoute(cParent): 
     ParentClass = cRouteTable
     Prefix = "route"
-    Draw = (True, True, True, False)
+    Draw = dAll-dId
     Icon = "Route"
     Color = "#7CCF9C"
     Index = None
@@ -715,26 +783,26 @@ class cRoute(cParent):
     @staticmethod
     def Fields():
         return {
-                    "DestinationCidrBlock" : (str,False,False,False,False),
-                    "GatewayId" : (cInternetGateway,False,False,True,False),
-                    "InstanceId" : (cEC2,False,False,True,False),
-                    "NatGatewayId" : (cNATGateway,False,False,True,False),
-                    "NetworkInterfaceId" : (cNetworkInterface,False,False,True,False),
-                    'Origin': (str,False,False,False,False),
-                    'State': (str,False,False,False,False),
+                    "DestinationCidrBlock" : (str              ,False,False,False,False),
+                    "GatewayId"            : (cInternetGateway ,False,False,True ,False),
+                    "InstanceId"           : (cEC2             ,False,False,True ,False),
+                    "NatGatewayId"         : (cNATGateway      ,False,False,True ,False),
+                    "NetworkInterfaceId"   : (cNetworkInterface,False,False,True ,False),
+                    'Origin'               : (str              ,False,False,False,False),
+                    'State'                : (str              ,False,False,False,False),
 
-                    "GatewayId_local" : (cVpc,False,False,True,False),
+                    "GatewayId_local" : (cVpc,False,False,False,True),
                 } # +
 
     @staticmethod
     def GetObjects(id):
-        return GetObjectsByIndex(id, cRouteTable, "Routes", int)
+        return cRoute.GetObjectsByIndex(id, "Routes", int)
     
     def GetId(self):
         return f"{self.ParentId}{IdDv}{self.DestinationCidrBlock}"
 
     def GetView(self):
-        return f"Route[{self.Index}]"
+        return f"{self.Index}"
 
     def GetExt(self):
         return f"{getattr(self, 'DestinationCidrBlock', '-')}"
@@ -745,7 +813,7 @@ class cRoute(cParent):
 
         if hasattr(self, "GatewayId") and self.GatewayId == "local":
             self.GatewayId = None
-            setattr(self, "GatewayId_local", resp["GatewayId"])
+            setattr(self, "GatewayId_local", cRouteTable.GetObjects(self.ParentId)[0]["VpcId"])
 
     @staticmethod
     def Create(RouteTableId, DestinationCidrBlock, GatewayId = None, NatGatewayId = None):
@@ -782,7 +850,7 @@ class cRoute(cParent):
 
 class cVpc(cParent): 
     Prefix = "vpc"
-    Draw = (True, True, True, True)
+    Draw = dAll
     Icon = "VPC"
     Color = '#E3D5FF'
 
@@ -952,7 +1020,22 @@ class cKeyPair(cParent):
     def Delete(id):
         botoec2().delete_key_pair(KeyPairId = id)
 
+    @staticmethod
+    def IdToName(KeyPairId):
+    #   KeyName = boto3.resource('ec2').KeyPair(KeyPairId).key_name # does not work
+        resp = botoec2().describe_key_pairs(KeyPairIds=[KeyPairId])
+        KeyName = resp['KeyPairs'][0]['KeyName']
+        return KeyName
+    
+    @staticmethod
+    def NameToId(Name):
+        resp = botoec2().describe_key_pairs(KeyNames=[Name])
+        KeyPairId = resp['KeyPairs'][0]['KeyPairId']
+        return KeyPairId
 
+    def GetView(self):
+        return f"{self.KeyName}"
+    
 class cTag(cParent):
     @staticmethod
     def Create(id, Name, Value):
@@ -995,7 +1078,7 @@ awsClassesSN = [
         cSubnet,
         cRouteTable, cRoute, cRouteTableAssociation,
         cElasticIP, 
-        cNATGateway,
+        cNATGateway, cAssociation, 
     ]
 
 awsClassesObj = [
@@ -1194,5 +1277,5 @@ class AWS:
         self[cNetworkAcl      ].Fetch()
         self[cNetworkInterface].Fetch()
 
-#        self[cReservation     ].Fetch()
-#        self[cS3              ].Fetch()
+        self[cReservation     ].Fetch()
+#       self[cS3              ].Fetch()

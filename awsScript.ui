@@ -24,13 +24,6 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="bTest">
-       <property name="text">
-        <string>Test</string>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QPushButton" name="bDraw">
        <property name="text">
         <string>Draw</string>
@@ -41,6 +34,13 @@
       <widget class="QPushButton" name="bClear">
        <property name="text">
         <string>Clear</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="bTest">
+       <property name="text">
+        <string>Full Run</string>
        </property>
       </widget>
      </item>

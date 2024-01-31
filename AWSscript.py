@@ -49,8 +49,8 @@ def NYTask():
     aws.InternetGatewayAttachment.Create(igw, vpc)
 
 
-    # subnet 0
-    Name0 = Name + "-Public"
+    # Private subnet
+    Name0 = Name + "-Private"
     snPublic = aws.Subnet.Create(Name0, vpc, '10.3.0.0/24')
 
     rtbPublic  = aws.RouteTable.Create(Name0, vpc)
@@ -66,8 +66,8 @@ def NYTask():
     )
 
 
-    # subnet 1
-    Name1 = Name + "-Private"
+    # Public subnet
+    Name1 = Name + "-Public"
     snPrivate = aws.Subnet.Create(Name1, vpc, '10.3.1.0/24')
 
     eip = aws.ElasticIP.Create(Name1)
