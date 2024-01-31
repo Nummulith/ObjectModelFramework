@@ -100,7 +100,7 @@ class cParent:
         field = next(self.FieldsOfAKind(fId), None)
 
         if field == None:
-            return f"{self.ParentId}{IdDv}{getattr(self, "Index", '0')}"
+            return f"{self.ParentId}{IdDv}{getattr(self, 'Index', '0')}"
         
         return getattr(self, field)
 
@@ -448,7 +448,7 @@ class cAssociation(cParent):
     @staticmethod
     def Create(allocation_id, instance_id):
         resp = botoec2().associate_address(AllocationId=allocation_id, InstanceId=instance_id)
-        return f"{resp["AssociationId"]}"
+        return f"{resp['AssociationId']}"
 
     @staticmethod
     def Delete(id):
@@ -762,7 +762,7 @@ class cRouteTableAssociation(cParent):
     @staticmethod
     def Create(RouteTableId, SubnetId):
         resp = botoec2().associate_route_table(SubnetId = SubnetId, RouteTableId = RouteTableId)
-        return f"{RouteTableId}{IdDv}{resp["AssociationId"]}"
+        return f"{RouteTableId}{IdDv}{resp['AssociationId']}"
 
     @staticmethod
     def Delete(id):
