@@ -131,7 +131,7 @@ def DrawRec(aws, par):
                 par._Digraph.node(name=par.GetId(), shape='point', width='0.1')
             
             
-            if len(obj.items) == 0:
+            if len(obj.DrawItems) == 0:
                 label = NodeLabel(obj)
 #                print(f"> {id} -> {label}")
                 par._Digraph.node(name=obj.GetId(), shape='plaintext', label=label)
@@ -156,11 +156,10 @@ def Draw(aws):
 
         for id, obj in wrap.Map.items():
             owner = obj.GetOwner(aws)
-            if owner == None:
-                owner = root
+            if owner == None: owner = root
 
             obj._Owner = owner
-            owner.items.append(obj)
+            owner.DrawItems.append(obj)
 
     dot = Digraph('AWS_Structure') #, format='png'
 

@@ -7,20 +7,45 @@ from awsClasses import AWS, Const, Classes, awsClassesNW, awsClassesSN, awsClass
 FilePath = "awsScript.xml"
 Name = "Pavel-Eresko"
 
+
+def CurrentScript(aws):
+    # aws.SNS.Create(Name)
+    # key = aws.KeyPair.Create(Name)
+    #aws.User.Fetch()
+    #aws.Group.Fetch()
+    #aws.Role.Fetch()
+    #aws.Function.Fetch()
+
+    # Lambda = "demo0"
+
+    # with open("./Lambda.py", 'r') as file: Code = file.read()
+    # aws.Function.Create(Lambda, Code)
+
+    # payload = {
+    #     "key1": "value1",
+    #     "key2": "value2"
+    # }
+    # res = aws.Function.Class.Invoke(Lambda, payload)
+    # print(res)
+
+#    res = aws.Role.Class.Query('list_item/AssumeRolePolicyDocument/Statement/list_item/Principal/Service')
+    res = aws.Subnet.Class.Query('root/list_item')
+    
+    for item in res:
+        print(item)
+
 def Current():
     aws = AWS(FilePath)
-    # aws.SNS.Create(Name)
-    key = aws.KeyPair.Create(Name)
+    CurrentScript(aws)
 
 def CurrentFull():
-    Current()
-    DrawScript()
-    Clear()
-
-
-def NYTask():
     aws = AWS(FilePath)
+    CurrentScript(aws)
+    Draw(aws)
+    aws.Clear()
 
+
+def NYTaskScript(aws):
     key = aws.KeyPair.Create(Name)
 
     vpc = aws.Vpc.Create(Name, '10.3.0.0/16')
@@ -69,15 +94,16 @@ def NYTask():
         Const["EC2.UserData.Apache"],
     )
 
-def NYTaskFull():
-    NYTask()
-    DrawScript()
-    Clear()
-
-
-def PrintScript():
+def NYTask():
     aws = AWS(FilePath)
-    aws.Print()
+    NYTaskScript(aws)
+
+def NYTaskFull():
+    aws = AWS(FilePath)
+    NYTask(aws)
+    Draw(aws)
+    aws.Clear()
+
 
 def DrawScript():
     aws = AWS(FilePath, False, False)
@@ -87,8 +113,9 @@ def DrawScript():
 
 def ClearScript():
     aws = AWS(FilePath)
-    aws.Save()
+    aws.Save() #
     aws.Clear()
+
 
 def DrawAll():
     aws = AWS("awsFull.xml", False, False)

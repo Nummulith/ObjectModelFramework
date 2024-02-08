@@ -7,6 +7,10 @@ import xml.etree.ElementTree as ET
 # import inspect
 # import sys
 
+import io
+import zipfile
+import json
+import stat
 import os
 
 fType  = 0
@@ -36,11 +40,23 @@ def bt(client):
 def Id17(id):
     return id[-17:]
 
-def idpar(field, id):
+pPar = 0
+pFilter = 1
+pString = 2
+
+def idpar(field, id, ParType = pPar):
     params = {}
 
     if id is not None:
-        params[field] = [id]
+        if ParType == pPar:
+            params[field] = [id]
+        elif ParType == pFilter:
+            params["Filters"] = [{
+                'Name': field,
+                'Values': [id]
+            }]
+        elif ParType == pString:
+            params["Filter"] = f'{field}="{id}"'
     
     return params
 
@@ -54,6 +70,13 @@ def Wait(waiter_name, resource_param, resource_id):
             'MaxAttempts': 100
         }
     )
+
+def prettify(elem):
+    rough_string = ET.tostring(elem, "utf-8")
+    reparsed = minidom.parseString(rough_string)
+    return reparsed.toprettyxml(indent="\t")
+
+
 
 class cParent:
     Icon = "AWS"
@@ -71,10 +94,12 @@ class cParent:
                 setattr(self, "Index", int(cur_id))
 
         fields = type(self).Fields()
-        for key, cfg in fields.items():
-            if not key in resp:
-                continue
-            value = resp[key]
+#       for key, cfg in fields.items():
+        for key, value in resp.items():
+            if key in fields:
+                cfg = resp[key]
+            else:
+                cfg = type(value)
 
             fieldtype = cfg[fType] if isinstance(cfg, tuple) else cfg
             
@@ -95,7 +120,7 @@ class cParent:
             else:
                 setattr(self, key, value)
         
-        self.items = []
+        self.DrawItems = []
 
     def FieldsOfAKind(self, kind):
         return (key for key, value in self.Fields().items() if isinstance(value, tuple) and value[1] == kind)
@@ -104,7 +129,7 @@ class cParent:
         field = next(self.FieldsOfAKind(fId), None)
 
         if field == None:
-            return f"{self.ParentId}{IdDv}{getattr(self, 'Index', '0')}"
+            return f"{getattr(self, 'ParentId', '?')}{IdDv}{getattr(self, 'Index', '?')}"
         
         return getattr(self, field)
 
@@ -155,9 +180,22 @@ class cParent:
 
         return res
 
+    @classmethod
+    def Query(clss, query):
+        data_structure = clss.GetObjects()
+
+        xml_tree = structure_to_xml(data_structure)
+
+        with open("Query.xml", "w", encoding="utf-8") as file: file.write(prettify(xml_tree.getroot()))
+
+#        result = xml_tree.findall(query)
+        result = PlainQuery(xml_tree, query)
+
+        return result
+
 
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return None
 
     
@@ -191,7 +229,7 @@ class cReservation(cParent):
                 }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         resp = bt('ec2').describe_instances(**idpar('ReservationIds', id))
         return resp['Reservations']
 
@@ -206,32 +244,10 @@ class cEC2(cParent):
     def Fields():
         return {
                     "InstanceId" : (cEC2, fId),
-                    "InstanceType" : str,
-                    "PublicIpAddress" : str,
-                    "PrivateIpAddress" : str,
                     "SubnetId" : (cSubnet, fOwner),
-                    'PlatformDetails' : str,
                     'Tags' : ({"Key" : "Value"}),
-                    'VpcId': (cVpc) ,
-                    'KeyName': str,
+                    'VpcId': cVpc,
                     'KeyPairId': (cKeyPair, fIn),
-                    'AmiLaunchIndex': (int),
-                    'ImageId': str,
-                    'Architecture': str,
-                    'Hypervisor': str,
-                    'ClientToken': str,
-                    'PublicDnsName': str,
-                    'CurrentInstanceBootMode': str,
-                    'EbsOptimized': bool,
-                    'UsageOperation': str,
-                    'PrivateDnsName': str,
-                    'StateTransitionReason': str,
-                    'EnaSupport': bool,
-                    'RootDeviceName': str,
-                    'RootDeviceType': str,
-                    'SourceDestCheck': bool,
-                    'VirtualizationType': str,
-                    'BootMode': str,
                 }
     
 # 'SecurityGroups': [{'GroupName': 'secgrup-antony', 'GroupId': 'sg-0e050b1cd54e6fcc8'}]
@@ -254,7 +270,7 @@ class cEC2(cParent):
 
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         resp = bt('ec2').describe_instances(**idpar('InstanceIds', id))
         res = []
         for Reservation in resp['Reservations']:
@@ -310,13 +326,12 @@ class cInternetGateway(cParent):
     def Fields():
         return {
                     "InternetGatewayId" : (cInternetGateway, fId),
-                    'OwnerId' : str,
                     'Attachments' : ([cInternetGatewayAttachment]),
                     'Tags' : ({"Key" : "Value"}),
-                } # +
+                }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         resp = bt('ec2').describe_internet_gateways(**idpar('InternetGatewayIds', id))
         return resp['InternetGateways']
 
@@ -345,14 +360,13 @@ class cInternetGatewayAttachment(cParent):
     def Fields():
         return {
                     "VpcId" : (cVpc, fIn),
-                    'State' : str,
                 }
     
     def GetView(self):
         return f"{Id17(self.VpcId)}"
 
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return cInternetGatewayAttachment.GetObjectsByIndex(id, "Attachments", "VpcId")
     
     def GetId(self):
@@ -380,16 +394,14 @@ class cNATGateway(cParent):
         return {
                     "NatGatewayId"        : (cNATGateway, fId),
                     "SubnetId"            : (cSubnet    , fOwner),
-                    "State"               : str,
                     "VpcId"               : (cVpc       , fIn),
-                    "ConnectivityType"    : str,
                     'Tags'                : ({"Key" : "Value"}),
                     "NatGatewayAddresses" : ([cAssociation], fIn),
-# 'CreateTime': datetime.datetime(2024, 1, 30, 16, 38, 41, tzinfo=tzutc())
+                    # 'CreateTime': datetime.datetime(2024, 1, 30, 16, 38, 41, tzinfo=tzutc())
                 }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         resp = bt('ec2').describe_nat_gateways(**idpar('NatGatewayIds', id))
         return resp['NatGateways']
     
@@ -422,20 +434,11 @@ class cAssociation(cParent):
                     'AssociationId'      : (cAssociation, fId),
                     "AllocationId"       : (cElasticIP, fIn),
                     "NetworkInterfaceId" : (cNetworkInterface ), # !!!!!!!!!!
-                    'PrivateIp'          : (str ),
-                    'PublicIp'           : (str ),
-                    'IsPrimary'          : (bool ),
-                    'Status'             : (str ),
                     'Tags'               : ({"Key" : "Value"}),
-# 'Domain': 'vpc'
-# 'NetworkInterfaceOwnerId': '047989593255'
-# 'PrivateIpAddress': '10.3.1.21'
-# 'PublicIpv4Pool': 'amazon'
-# 'NetworkBorderGroup': 'eu-central-1'
                 }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
 #        return cAssociation.GetObjectsByIndex(id, "NATGatewayAddresses", "VpcId")
         
         filters = []
@@ -466,16 +469,13 @@ class cSecurityGroup(cParent):
     def Fields():
         return {
                     "GroupId"    : (str , fId),
-                    "GroupName"  : (str ),
-                    'Description': (str ),
                     "VpcId"      : (cVpc, fOwner),
-                    'OwnerId'    : (str ),
 #                    "IpPermissions"       : ([cSecurityGroupRule]),
 #                    "IpPermissionsEgress" : ([cSecurityGroupRule]),
                 }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return bt('ec2').describe_security_groups(**idpar('GroupIds', id))['SecurityGroups']
 
     def GetView(self):
@@ -509,17 +509,9 @@ class cSecurityGroupRule(cParent):
     def Fields():
 
         return {
-
                     'SecurityGroupRuleId': cSecurityGroupRule,
-                    'GroupId':      (cSecurityGroup, ),
-                    'GroupOwnerId': str,
-                    'IsEgress':     bool,
-                    'IpProtocol':   str,
-                    'FromPort':     int,
-                    'ToPort':       int,
-                    'CidrIpv4':     str,
-#                    "IpRanges"   : str,
-        }
+                    'GroupId': cSecurityGroup,
+                }
     
     @staticmethod
     def Create(GroupId, IpProtocol, FromToPort, CidrIp):
@@ -552,7 +544,7 @@ class cSecurityGroupRule(cParent):
         return f"{self.GroupId}{IdDv}{self.SecurityGroupRuleId}"
 
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/describe_security_group_rules.html
         # security-group-rule-id - The ID of the security group rule.
         # group-id - The ID of the security group.
@@ -599,29 +591,15 @@ class cSubnet(cParent):
     def Fields():
         return {
                     "SubnetId" : (cSubnet, fId),
-                    "CidrBlock" : str,
                     "VpcId" : (cVpc, fOwner),
-                    "AvailabilityZone" : str, ##!!!!!!!!!!!!!!!
-                    'AvailabilityZoneId' : str, ##!!!!!!!!!!!!!!!
                     'Tags' : ({"Key" : "Value"}),
                 }
-    
-# 'AvailableIpAddressCount': 251
-# 'DefaultForAz': False
-# 'MapPublicIpOnLaunch': False
-# 'MapCustomerOwnedIpOnLaunch': False
-# 'State': 'available'
-# 'OwnerId': '047989593255'
-# 'AssignIpv6AddressOnCreation': False
 # 'Ipv6CidrBlockAssociationSet': []
-# 'SubnetArn': 'arn:aws:ec2:eu-central-1:047989593255:subnet/subnet-06678d33e23eba72f'
-# 'EnableDns64': False
-# 'Ipv6Native': False
 # 'PrivateDnsNameOptionsOnLaunch': {'HostnameType': 'ip-name', 'EnableResourceNameDnsARecord': False, 'EnableResourceNameDn...AAAARecord': False}
 
 
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return bt('ec2').describe_subnets(**idpar('SubnetIds', id))['Subnets']
     
     def GetExt(self):
@@ -655,7 +633,6 @@ class cNetworkAcl(cParent):
     def Fields():
         return {
                     "NetworkAclId" : (cNetworkAcl, fId),
-                    'IsDefault': bool,
                     'VpcId': (cVpc, fOwner),
                     'OwnerId': (str, fOwner),
                     'Entries': ([cNetworkAclEntry], fOwner),
@@ -665,7 +642,7 @@ class cNetworkAcl(cParent):
                 }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return bt('ec2').describe_network_acls(**idpar('NetworkAclIds', id))['NetworkAcls']
 
 
@@ -675,18 +652,13 @@ class cNetworkAclEntry(cParent):
     Draw = dView + dExt
     Icon = "NetworkAccessControlList"
 
-    @staticmethod
-    def Fields():
-        return {
-                    "RuleNumber" : int,
-                    "Protocol"   : str,
-                    "PortRange"  : str,
-                    "RuleAction" : str,
-                    "CidrBlock"  : str,
-                }
+    #@staticmethod
+    # def Fields():
+    #     return {
+    #             }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return None
     
     def GetView(self):
@@ -717,7 +689,7 @@ class cRouteTable(cParent):
                 }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return bt('ec2').describe_route_tables(**idpar('RouteTableIds', id))['RouteTables']
 
     @staticmethod
@@ -746,11 +718,10 @@ class cRouteTableAssociation(cParent):
                     'RouteTableId': (cRouteTable, fOwner),
                     'SubnetId': (cSubnet, fIn),
                     'AssociationState': str, #!!!
-                    'Main': bool,
                 } # +
 
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return cRouteTableAssociation.GetObjectsByIndex(id, "Associations", 'RouteTableAssociationId')
 
     def GetId(self):
@@ -787,19 +758,16 @@ class cRoute(cParent):
     @staticmethod
     def Fields():
         return {
-                    "DestinationCidrBlock" : (str              ),
                     "GatewayId"            : (cInternetGateway , fOut),
                     "InstanceId"           : (cEC2             , fOut),
                     "NatGatewayId"         : (cNATGateway      , fOut),
                     "NetworkInterfaceId"   : (cNetworkInterface, fOut),
-                    'Origin'               : (str              ),
-                    'State'                : (str              ),
 
                     "GatewayId_local"      : (cVpc             , fIn),
                 } # +
 
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return cRoute.GetObjectsByIndex(id, "Routes", int)
     
     def GetId(self):
@@ -863,18 +831,12 @@ class cVpc(cParent):
         return {
                     "VpcId"           : (cVpc, fId),
                     "NetworkAclId"    : (cNetworkAcl),
-                    'CidrBlock'       : str,
-                    'DhcpOptionsId'   : str, #'dopt-0de83e37b426fcfda'
-                    'State'           : str,
-                    'OwnerId'         : str, #'047989593255'
-                    'InstanceTenancy' : str,
-#                    'CidrBlockAssociationSet' : [{'AssociationId': 'vpc-cidr-assoc-070bb...bcc9c9695b', 'CidrBlock': '10.222.0.0/16', 'CidrBlockState': {...}}],
-                    'IsDefault'       : bool,
                     'Tags'            : ({"Key" : "Value"})
+#                    'CidrBlockAssociationSet' : [{'AssociationId': 'vpc-cidr-assoc-070bb...bcc9c9695b', 'CidrBlock': '10.222.0.0/16', 'CidrBlockState': {...}}],
                 }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return bt('ec2').describe_vpcs(**idpar('VpcIds', id))['Vpcs']
     
     def GetExt(self):
@@ -904,15 +866,14 @@ class cNetworkInterface(cParent):
     def Fields():
         return {
                     "NetworkInterfaceId" : (cNetworkInterface, fId),
-                    "Status"             : str,
-                    "Attachment"         : str, #    print("Attachment ID:", network_interface['Attachment']['AttachmentId'])
-                    "VpcId"              : (cVpc),
+                    "VpcId"              : cVpc,
                     "SubnetId"           : (cSubnet, fOwner),
-                    "PrivateIpAddresses" : str, # print("Private IP Addresses:", [private_ip['PrivateIpAddress'] for private_ip in network_interface['PrivateIpAddresses']])
+#                    "PrivateIpAddresses" : str, # print("Private IP Addresses:", [private_ip['PrivateIpAddress'] for private_ip in network_interface['PrivateIpAddresses']])
+#                    "Attachment"         : str, #    print("Attachment ID:", network_interface['Attachment']['AttachmentId'])
                 }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         return bt('ec2').describe_network_interfaces(**idpar('NetworkInterfaceIds', id))['NetworkInterfaces']
 
     @staticmethod
@@ -932,12 +893,12 @@ class cS3(cParent):
                 }
     
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         if id == None:
-            response = bt('st').list_buckets()
+            response = bt('s3').list_buckets()
             return response['Buckets']
         else:
-            response = bt('st').head_bucket(Bucket=id)
+            response = bt('s3').head_bucket(Bucket=id)
             return [response]
 
 
@@ -949,11 +910,7 @@ class cElasticIP(cParent):
     def Fields():
         return {
                     'AllocationId': (cElasticIP, fId),
-                    'PublicIp': str,
-                    'Domain': str,
                     'Tags': ({"Key" : "Value"}),
-                    'PublicIpv4Pool': str,
-                    'NetworkBorderGroup': str,
                 }
     
     @staticmethod
@@ -969,7 +926,7 @@ class cElasticIP(cParent):
         )
 
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         resp = bt('ec2').describe_addresses(**idpar('AllocationIds', id))
         return resp['Addresses']
 
@@ -981,11 +938,7 @@ class cKeyPair(cParent):
     def Fields():
         return {
                     'KeyPairId': (cKeyPair, fId),
-                    'KeyFingerprint': str,
-                    'KeyName': str,
-                    'KeyType': str,
                     'Tags': ({"Key" : "Value"}),
-                    'CreateTime': str,
                 }
     
     def Destroy(id):
@@ -1000,7 +953,7 @@ class cKeyPair(cParent):
         return f"aws ec2 delete-key-pair --key-name {Name}"
 
     @staticmethod
-    def GetObjects(id):
+    def GetObjects(id=None):
         response = bt('ec2').describe_key_pairs(**idpar('KeyPairIds', id))
         return response['KeyPairs']
 
@@ -1047,7 +1000,155 @@ class cSNS(cParent):
         resp = bt('sns').create_topic(Name=Name)
         return resp['TopicArn']
 
+
+class cUser(cParent):
+    @staticmethod
+    def GetObjects(id=None):
+        if id == None:
+            response = bt('iam').list_users()
+            return response['Users']
+        
+        else:
+            response = bt('iam').get_user(UserName=id)
+            return [response['User']]
+
+    def GetId(self):
+        return f"{self.UserName}"
+
+
+class cGroup(cParent):
+    @staticmethod
+    def GetObjects(id=None):
+        if id == None:
+            response = bt('iam').list_groups()
+            return response['Groups']
+        
+        else:
+            response = bt('iam').get_group(GroupName=id)
+            return [response['Group']]
+
+    def GetId(self):
+        return f"{self.GroupName}"
+
+def structure_to_xml(data, element = None):
+    isroot = element == None
+    if isroot:
+        element = ET.Element('root')
+
+    if isinstance(data, list):
+        for item in data:
+            sub_element = ET.SubElement(element, "list_item")
+            structure_to_xml(item, sub_element)
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            sub_element = ET.SubElement(element, key)
+            structure_to_xml(value, sub_element)
+    else:
+        element.text = str(data)
+
+    if isroot:
+        return ET.ElementTree(element)
+
+    return element
+
+def PlainQuery(tree, path, pref = "/", res = [], parfields = None):
+    this, _, next = path.partition("/")
+    result = tree.findall(pref + this)
+
+    for item in result:
+        fields = {} if parfields == None else parfields.copy()
+        
+        for child in item:
+            fields[child.tag] = child.text
+
+        if next:
+            PlainQuery(item, next, "./", res, fields)
+        else:
+            res.append(fields)
     
+    return res
+
+
+class cRole(cParent):
+    @staticmethod
+    def GetObjects(id = None):
+        if id == None:
+            response = bt('iam').list_roles()
+            return response['Roles']
+        
+        else:
+            response = bt('iam').get_role(RoleName=id)
+            return [response['Role']]
+
+    def GetId(self):
+        return f"{self.RoleName}"
+
+
+    
+class cFunction(cParent):
+    @staticmethod
+    def Fields():
+        return {
+                    'FunctionName': (cFunction, fId),
+                    'Tags': ({"Key" : "Value"}),
+                }
+
+    @staticmethod
+    def GetObjects(id=None):
+        if id == None:
+            response = bt('lambda').list_functions()
+            return response['Functions']
+        else:
+            response = bt('lambda').get_function(FunctionName=id)
+            return [response["Configuration"]]
+        
+    @staticmethod
+    def Create(Name, Code):
+        handler = 'lambda_function.lambda_handler'  # Формат: 'имя_вашего_файла.имя_вашей_функции'
+        runtime = 'python3.12'
+#        role_arn = 'arn:aws:iam::your_account_id:role/YourRoleName'  # Замените на реальный ARN вашей IAM-роли
+        role_arn = 'arn:aws:iam::047989593255:role/lambda-s3-role'
+
+        data_bytes = Code.encode()
+        with io.BytesIO() as zip_buffer:
+            with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
+                zip_file.writestr('lambda_function.py', data_bytes)
+
+                file_info = zip_file.getinfo('lambda_function.py')
+#                file_info.external_attr = (file_info.external_attr | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+                unix_st_mode = stat.S_IFLNK | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH
+#                file_info.external_attr = file_info.external_attr | unix_st_mode
+                file_info.external_attr = unix_st_mode << 16 
+
+            zipped_data = zip_buffer.getvalue()
+
+        # Создайте функцию
+        response = bt('lambda').create_function(
+            FunctionName=Name,
+            Runtime=runtime,
+            Role=role_arn,
+            Handler=handler,
+            Code={'ZipFile': zipped_data},
+            Timeout=30,  # Максимальное время выполнения функции в секундах
+            MemorySize=128,  # Размер памяти, выделенной функции в МБ
+        )        
+        return response['FunctionName']
+    
+    def Delete(id):
+        bt('lambda').delete_function(FunctionName=id)
+
+    def Invoke(id, payload):
+        response = bt('lambda').invoke(
+            FunctionName=id,
+            InvocationType='RequestResponse',  # Или 'Event' для асинхронного вызова
+            Payload=str(payload).replace("'",'"')
+        )
+
+        result = response['Payload'].read().decode('utf-8')
+        result = json.loads(result)
+        return result
+
+
 class cTag(cParent):
     @staticmethod
     def Create(id, Name, Value):
@@ -1094,9 +1195,11 @@ awsClassesSN = [
     ]
 
 awsClassesObj = [
+        cUser, cGroup, cRole,
         cReservation, cEC2, cNetworkInterface,
-        cS3, 
+        cS3,
         cSNS,
+        cFunction,
     ]
 
 Classes = awsClassesNW + awsClassesSN + awsClassesObj
@@ -1245,11 +1348,6 @@ class AWS:
             wrapper = getattr(self, name)
             wrapper.Print()
 
-    def prettify(self, elem):
-        rough_string = ET.tostring(elem, "utf-8")
-        reparsed = minidom.parseString(rough_string)
-        return reparsed.toprettyxml(indent="\t")
-
 
     def Load(self):
         if not os.path.exists(self.Path): return
@@ -1281,7 +1379,7 @@ class AWS:
                 id_element.text = str(id)
 
 
-        tree = self.prettify(root)
+        tree = prettify(root)
         with open(self.Path, "w") as file:
             file.write(tree)
 

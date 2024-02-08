@@ -1,18 +1,56 @@
-from graphviz import Digraph
+import xml.etree.ElementTree as ET
 
-dot = Digraph('cluster_example', format='png')
+def PlainQuery(tree, path, pref = ".//", res = [], parfields = None):
+    this, _, next = path.partition("/")
 
-# Создаем кластер снизу
-with dot.subgraph():
-    dot.node('bottom_text', label='<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4"><TR><TD ALIGN="CENTER">Bottom Text</TD></TR></TABLE>>', shape='plaintext')
+    xpath_query = pref + this
+
+    result = tree.findall(xpath_query)
+
+    for item in result:
+        fields = {} if parfields == None else parfields.copy()
+        
+        for child in item:
+            fields[child.tag] = child.text
+
+        if next:
+            PlainQuery(item, next, "./", res, fields)
+        else:
+            res.append(fields)
+    
+    return res
 
 
-# Создаем кластер сверху
-with dot.subgraph(name='cluster_top') as top_cluster:
-    top_cluster.node('top_text', label='Top Text', shape='plaintext')
 
-# Связываем кластеры
-dot.edge('top_text', 'bottom_text')
+# Ваш XML-документ
+xml_data = '''
+<root>
+    <list_item>
+        <Description>Provides AWS Backup permission (одинаковое описание для двух строк)</Description>
+        <RoleInfo>
+            <RoleName>AWSBackupDefaultServiceRole0</RoleName>
+            <Service>backup.amazonaws.com</Service>
+        </RoleInfo>
+        <RoleInfo>
+            <RoleName>AWSBackupDefaultServiceRole1</RoleName>
+            <Service>backup.amazonaws.com</Service>
+        </RoleInfo>
+    </list_item>
+    <list_item>
+        <Description>Provides Cloud9 SSM access</Description>
+        <RoleInfo>
+            <RoleName>AWSCloud9SSMAccessRole</RoleName>
+            <Service>cloud9.amazonaws.com</Service>
+        </RoleInfo>
+    </list_item>
+</root>
+'''
 
-# Сохраняем граф в файл
-dot.render(filename='cluster_example', format='png', cleanup=True)
+# Преобразование XML-строки в объект ElementTree
+root = ET.fromstring(xml_data)
+tree = ET.ElementTree(root)
+
+res = PlainQuery(tree, "list_item/RoleInfo")
+print(res)
+
+pass
