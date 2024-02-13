@@ -189,9 +189,16 @@ class cParent:
         with open("Query.xml", "w", encoding="utf-8") as file: file.write(prettify(xml_tree.getroot()))
 
 #        result = xml_tree.findall(query)
-        result = PlainQuery(xml_tree, query)
+        reslist = PlainQuery(xml_tree, query)
 
-        return result
+        resdict = {}
+        for idx, d in enumerate(reslist):
+            for key, value in d.items():
+                if key not in resdict:
+                    resdict[key] = [None] * len(reslist)
+                resdict[key][idx] = value
+
+        return resdict
 
 
     @staticmethod
