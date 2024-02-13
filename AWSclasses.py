@@ -94,10 +94,14 @@ class cParent:
                 setattr(self, "Index", int(cur_id))
 
         fields = type(self).Fields()
+
+        key = next(self.FieldsOfAKind(fId), None) # Id
+        if key != None: setattr(self, key, resp[key])
+
 #       for key, cfg in fields.items():
         for key, value in resp.items():
             if key in fields:
-                cfg = resp[key]
+                cfg = fields[key]
             else:
                 cfg = type(value)
 
@@ -128,7 +132,7 @@ class cParent:
     def GetId(self):
         field = next(self.FieldsOfAKind(fId), None)
 
-        if field == None:
+        if field == None or not hasattr(self, field):
             return f"{getattr(self, 'ParentId', '?')}{IdDv}{getattr(self, 'Index', '?')}"
         
         return getattr(self, field)
@@ -322,7 +326,8 @@ class cEC2(cParent):
     def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
         super().__init__(aws, IdQuery, resp, DoAutoSave)
 
-        setattr(self, "KeyPairId", cKeyPair.NameToId(self.KeyName))
+        if hasattr(self, "KeyName"):
+            setattr(self, "KeyPairId", cKeyPair.NameToId(self.KeyName))
 
 class cInternetGateway(cParent): 
     Prefix = "igw"
@@ -514,10 +519,9 @@ class cSecurityGroupRule(cParent):
 
     @staticmethod
     def Fields():
-
         return {
                     'SecurityGroupRuleId': cSecurityGroupRule,
-                    'GroupId': cSecurityGroup,
+                    'GroupId': (cSecurityGroup, fOwner),
                 }
     
     @staticmethod
@@ -735,7 +739,9 @@ class cRouteTableAssociation(cParent):
         return f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
 
     def GetExt(self):
-        return f"{Id17(self.SubnetId)}"
+        if hasattr(self, "SubnetId"):
+            return f"{Id17(self.SubnetId)}"
+        return "-"
     
     def GetView(self):
         return f"Route[{self.Index}]"

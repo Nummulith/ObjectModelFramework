@@ -147,7 +147,6 @@ def DrawRec(aws, par):
     if hasattr(par, "_Digraph"):
         par._Digraph = None
 
-
 def Draw(aws):
     root = cRoot()
 
@@ -166,7 +165,6 @@ def Draw(aws):
     root._Digraph = dot
 
     DrawRec(aws, root)
-
 
     for clss in Classes:
         wrap = aws[clss]
