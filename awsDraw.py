@@ -2,14 +2,6 @@ from graphviz import Digraph
 
 from awsClasses import *
 
-class cRoot(cParent):
-    def __init__(self):
-        super().__init__(None, None, {"Id": "root-" + 17*"0"})
-
-    @staticmethod
-    def Fields():
-        return {"Id" : (cRoot,True,False,False,False)}
-
 def NodeLabel(obj):
     draw  = type(obj).Draw
     color = type(obj).Color
@@ -199,90 +191,49 @@ class Drawing:
         #dot.render('awsDraw1', format='svg', cleanup=True)
 
 
-def DrawRec(aws, drawing, parent, grandDigraph):
-    parId = parent.GetId()
-    parContext = None
-    parDigraph = None
-
-    for clss in Classes:
-        wrap = aws[clss]
-
-        if not clss.Show: continue
-
-        for id, obj in wrap.Map.items():
-
-            if parent == None:
-                if hasattr(obj, "_Owner") : continue
-            else:
-                if (not hasattr(obj, "_Owner") or obj._Owner != parent) : continue
-
-            drawing.AddParent(id, parId)
-
-            if parContext == None:
-                parContext = grandDigraph.subgraph(name = "cluster_" + parId)
-                parDigraph = parContext.__enter__()
-
-                parDigraph.attr(label = ClusterLabel(parent))
-                parDigraph.attr(style = 'filled', fillcolor = type(parent).Color)
-
-                parDigraph.node(name=parId, shape='point', width='0.1')
-                
-                drawing.AddItem(parId,
-                    cluster = ItemView(ClusterLabel(parent), style = 'filled', fillcolor = type(parent).Color),
-                    point   = ItemView("", shape='point', width='0.1')
-                )
-
-            if len(obj.DrawItems) == 0:
-                parDigraph.node(name=id, shape='plaintext', label = NodeLabel(obj))
-
-                drawing.AddItem(id, ItemView(NodeLabel(obj), shape='plaintext'))
-
-            else:
-                DrawRec(aws, drawing, obj, parDigraph)
-
-    if parContext != None:
-        parContext.__exit__(None, None, None)
-
-
-
 def Draw(aws):
     drawing = Drawing()
 
-    root = cRoot()
+    hasowned = {}
+    owners = {}
 
     for clss in Classes:
         wrap = aws[clss]
 
         for id, obj in wrap.Map.items():
             owner = obj.GetOwner(aws)
-            if owner == None: owner = root
-
-            obj._Owner = owner
-            owner.DrawItems.append(obj)
-
-    dot = Digraph('AWS_Structure')
-    DrawRec(aws, drawing, root, dot)
+            if owner != None:
+                owners[obj] = owner
+                hasowned[owner] = True
 
     for clss in Classes:
         wrap = aws[clss]
+        if not clss.Show: continue
 
         for id, obj in wrap.Map.items():
-            objid = obj.GetId()
+
+            if not obj in hasowned:
+                drawing.AddItem(id, ItemView(NodeLabel(obj), shape='plaintext'))
+
+            else:
+                drawing.AddItem(id,
+                    cluster = ItemView(ClusterLabel(obj), style = 'filled', fillcolor = type(obj).Color),
+                    point   = ItemView("", shape='point', width='0.1')
+                )
+
+            par = owners[obj] if obj in owners else None
+            if par != None:
+                drawing.AddParent(id, par.GetId())
 
             for field in obj.FieldsOfAKind(fOut):
                 corr = getattr(obj, field, None)
                 if corr == None: continue
-                dot.edge(objid, corr, label = field)
-                drawing.AddLink(objid, corr, field)
+                drawing.AddLink(id, corr, field)
 
             for field in obj.FieldsOfAKind(fIn):
                 corr = getattr(obj, field, None)
                 if corr == None: continue
-                dot.edge(corr, objid, label = field + "<")
-                drawing.AddLink(corr, objid, field + "<")
-
-    dot.render('awsDraw', format='png', cleanup=True)
-    #dot.render('awsDraw', format='svg', cleanup=True)
+                drawing.AddLink(corr, id, field + "<")
 
 
     drawing.print()

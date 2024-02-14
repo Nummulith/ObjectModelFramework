@@ -4,9 +4,6 @@ from botocore.exceptions import ClientError
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
 
-# import inspect
-# import sys
-
 import io
 import zipfile
 import json
@@ -77,7 +74,6 @@ def prettify(elem):
     return reparsed.toprettyxml(indent="\t")
 
 
-
 class cParent:
     Icon = "AWS"
     Show = True
@@ -98,7 +94,6 @@ class cParent:
         key = next(self.FieldsOfAKind(fId), None) # Id
         if key != None: setattr(self, key, resp[key])
 
-#       for key, cfg in fields.items():
         for key, value in resp.items():
             if key in fields:
                 cfg = fields[key]
@@ -124,8 +119,6 @@ class cParent:
             else:
                 setattr(self, key, value)
         
-        self.DrawItems = []
-
     def FieldsOfAKind(self, kind):
         return (key for key, value in self.Fields().items() if isinstance(value, tuple) and value[1] == kind)
 
@@ -192,7 +185,6 @@ class cParent:
 
         with open("Query.xml", "w", encoding="utf-8") as file: file.write(prettify(xml_tree.getroot()))
 
-#        result = xml_tree.findall(query)
         reslist = PlainQuery(xml_tree, query)
 
         resdict = {}
@@ -451,8 +443,6 @@ class cAssociation(cParent):
     
     @staticmethod
     def GetObjects(id=None):
-#        return cAssociation.GetObjectsByIndex(id, "NATGatewayAddresses", "VpcId")
-        
         filters = []
         if id:
             filters.append({
@@ -663,11 +653,6 @@ class cNetworkAclEntry(cParent):
     Draw = dView + dExt
     Icon = "NetworkAccessControlList"
 
-    #@staticmethod
-    # def Fields():
-    #     return {
-    #             }
-    
     @staticmethod
     def GetObjects(id=None):
         return None
@@ -873,7 +858,6 @@ class cVpc(cParent):
 
 class cNetworkInterface(cParent): 
     Prefix = "ni"
-#    Icon = "network.VPCElasticNetworkInterface"
 
     @staticmethod
     def Fields():
@@ -1117,9 +1101,8 @@ class cFunction(cParent):
         
     @staticmethod
     def Create(Name, Code):
-        handler = 'lambda_function.lambda_handler'  # Формат: 'имя_вашего_файла.имя_вашей_функции'
+        handler = 'lambda_function.lambda_handler'
         runtime = 'python3.12'
-#        role_arn = 'arn:aws:iam::your_account_id:role/YourRoleName'  # Замените на реальный ARN вашей IAM-роли
         role_arn = 'arn:aws:iam::047989593255:role/lambda-s3-role'
 
         data_bytes = Code.encode()
@@ -1128,22 +1111,19 @@ class cFunction(cParent):
                 zip_file.writestr('lambda_function.py', data_bytes)
 
                 file_info = zip_file.getinfo('lambda_function.py')
-#                file_info.external_attr = (file_info.external_attr | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
                 unix_st_mode = stat.S_IFLNK | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH
-#                file_info.external_attr = file_info.external_attr | unix_st_mode
                 file_info.external_attr = unix_st_mode << 16 
 
             zipped_data = zip_buffer.getvalue()
 
-        # Создайте функцию
         response = bt('lambda').create_function(
             FunctionName=Name,
             Runtime=runtime,
             Role=role_arn,
             Handler=handler,
             Code={'ZipFile': zipped_data},
-            Timeout=30,  # Максимальное время выполнения функции в секундах
-            MemorySize=128,  # Размер памяти, выделенной функции в МБ
+            Timeout=30,
+            MemorySize=128,
         )        
         return response['FunctionName']
     
