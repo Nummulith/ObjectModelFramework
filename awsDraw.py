@@ -105,7 +105,22 @@ def ClusterLabel(obj):
         </TABLE>
     >'''
 
-def DrawRec(aws, par):
+class Drawing:
+    def __init__(self):
+        self.Links = {}
+        self.Parents = {}
+        self.Lists = {}
+
+    def AddLink  (self, id, link, label = ""): self.Links [id] = {"link": link, "label": label}
+    def AddParent(self, id, parent): self.Parents[id] = parent
+    def AddList  (self, id, list  ): self.Lists  [id] = list
+
+    def print(self):
+        print(f"Links  : {self.Links  }")
+        print(f"Parents: {self.Parents}")
+        print(f"Lists  : {self.Lists  }")
+
+def DrawRec(aws, par, drawing):
     for clss in Classes:
         wrap = aws[clss]
 
@@ -116,27 +131,21 @@ def DrawRec(aws, par):
             if par == None:
                 if hasattr(obj, "_Owner") : continue
             else:
-                if (not hasattr(obj, "_Owner") or obj._Owner != par) \
-                : continue
+                if (not hasattr(obj, "_Owner") or obj._Owner != par) : continue
 
             if not hasattr(par, "_Digraph") or par._Digraph == None:
                 name = "cluster_" + obj.GetId()[-17:]
                 par._Context = par._Owner._Digraph.subgraph(name=name)
                 par._Digraph = par._Context.__enter__()
-                label = ClusterLabel(par)
-#                print(f"> {id} -> {label}")
-                par._Digraph.attr(label=label)
+                par._Digraph.attr(label = ClusterLabel(par))
                 par._Digraph.attr(style = 'filled', fillcolor = type(par).Color)
 
                 par._Digraph.node(name=par.GetId(), shape='point', width='0.1')
             
-            
             if len(obj.DrawItems) == 0:
-                label = NodeLabel(obj)
-#                print(f"> {id} -> {label}")
-                par._Digraph.node(name=obj.GetId(), shape='plaintext', label=label)
+                par._Digraph.node(name=obj.GetId(), shape='plaintext', label = NodeLabel(obj))
             else:
-                DrawRec(aws, obj)
+                DrawRec(aws, obj, drawing)
 
             #print(f"{par}.{par.GetId()} -> {obj}.{obj.GetId()} ")
     
@@ -148,6 +157,8 @@ def DrawRec(aws, par):
         par._Digraph = None
 
 def Draw(aws):
+    drawing = Drawing()
+
     root = cRoot()
 
     for clss in Classes:
@@ -164,7 +175,7 @@ def Draw(aws):
 
     root._Digraph = dot
 
-    DrawRec(aws, root)
+    DrawRec(aws, root, drawing)
 
     for clss in Classes:
         wrap = aws[clss]
@@ -176,15 +187,19 @@ def Draw(aws):
                 corr = getattr(obj, field, None)
                 if corr == None: continue
                 dot.edge(objid, corr, label = field)
+                drawing.AddLink(objid, corr, field)
 
             for field in obj.FieldsOfAKind(fIn):
                 corr = getattr(obj, field, None)
                 if corr == None: continue
                 dot.edge(corr, objid, label = field + "<")
+                drawing.AddLink(corr, objid, field + "<")
 
 
     dot.render('awsDraw', format='png', cleanup=True)
     dot.render('awsDraw', format='svg', cleanup=True)
+
+    drawing.print()
 
     #pixmap = QPixmap("awsDraw.png")
     #pixmap_item = QGraphicsPixmapItem(pixmap)
