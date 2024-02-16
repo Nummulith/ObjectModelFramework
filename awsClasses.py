@@ -212,7 +212,7 @@ class cReservation(cParent):
     
     @staticmethod
     def GetObjects(id=None):
-        resp = bt('ec2').describe_instances(**idpar('ReservationIds', id))
+        resp = bt('ec2').describe_instances(**idpar('reservation-id', id, pFilter))
         return resp['Reservations']
 
 
