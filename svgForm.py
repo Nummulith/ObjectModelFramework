@@ -12,7 +12,7 @@ class ZoomableSvgView(QGraphicsView):
         scene = QGraphicsScene(self)
 
         # Create a QGraphicsSvgItem and add it to the scene
-        self.svg_item = QGraphicsSvgItem("awsDraw.svg")
+        self.svg_item = QGraphicsSvgItem("Drawing.svg")
         scene.addItem(self.svg_item)
 
         # Set the scene for the view

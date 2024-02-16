@@ -16,6 +16,7 @@ import re
 import subprocess
 
 from awsClasses import *
+from ObjectModel import AWS
 
 def prettify(elem):
     rough_string = ET.tostring(elem, "utf-8")
@@ -313,14 +314,14 @@ class MyWidget(QWidget):
             elif pref == "EC2":
 
                 Name = "i-Pavel-Eresko-" + field.replace("EC2_", "")
-                ImageId = Const["EC2.ImageId.Linux"]
-                InstanceType = Const["EC2.InstanceType.t2.micro"]
+                ImageId = AWS.Const["EC2.ImageId.Linux"]
+                InstanceType = AWS.Const["EC2.InstanceType"]
                 KeyName = self.Val("KEY")
                 SubnetId = self.Val(field.replace("EC2_", "SN_"))
                 Groups = [self.Val("SG")]
                 AssociatePublicIpAddress = True
                 PrivateIpAddress = ("10.3.0.10" if field == "EC2_Public" else "10.3.1.10")
-                UserData = Const["EC2.UserData.Apache"]
+                UserData = AWS.Const["EC2.UserData.Apache"]
 
                 instance_id = cEC2.Create(
                     Name=Name,
