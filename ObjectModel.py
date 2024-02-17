@@ -9,10 +9,15 @@ from xml.dom import minidom
 IdDv = "|"
 
 fType  = 0
-fId    = 1
-fOwner = 2
-fOut   = 3
-fIn    = 4
+fOwner = 1
+fLName = 2
+fLItem = 3
+fId    = 4
+fView  = 5
+fExt   = 6
+fIcon  = 7
+fOut   = 8
+fIn    = 9
 
 #Draw
 dView = 1 #0
@@ -27,6 +32,152 @@ def prettify(elem):
     rough_string = ET.tostring(elem, "utf-8")
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="\t")
+
+class cParent:
+    Icon = "AWS"
+    Show = True
+    Draw = dDef
+    Color = "#A9DFBF"
+    Prefix = ""
+
+    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
+        if IdQuery != None:
+            par_id, _, cur_id = IdQuery.rpartition(IdDv)
+            if par_id != "":
+                setattr(self, "ParentId", par_id)
+            if hasattr(self, "Index") and cur_id != "" and cur_id != "*":
+                setattr(self, "Index", int(cur_id))
+
+        fields = type(self).Fields()
+
+        key = next(self.FieldsOfAKind(fId), None) # process Id first
+        if key != None and key in resp:
+            setattr(self, key, resp[key])
+
+        for key, value in resp.items():
+            if key in fields:
+                cfg = fields[key]
+            else:
+                cfg = type(value)
+
+            fieldtype = cfg[fType] if isinstance(cfg, tuple) else cfg
+            
+            if type(fieldtype) == list:
+                if len(fieldtype) == 0:
+                    continue
+                if fieldtype[0] == str:
+                    continue
+                else:
+                    aws[fieldtype[0]].Fetch(f"{self.GetId()}{IdDv}*", value, DoAutoSave)
+            elif fieldtype == list:
+                continue
+            elif type(fieldtype) == dict:
+                tkkey, tkval = next(iter(fieldtype.items()))
+                for pair in value:
+                    setattr(self, "Tag_" + pair[tkkey], pair[tkval])
+                continue
+            else:
+                setattr(self, key, value)
+        
+    def FieldsOfAKind(self, kind):
+        return (key for key, value in self.Fields().items() if isinstance(value, tuple) and value[1] == kind)
+
+    def GetId(self):
+        field = next(self.FieldsOfAKind(fId), None)
+
+        if field == None or not hasattr(self, field):
+            return f"{getattr(self, 'ParentId', '?')}{IdDv}{getattr(self, 'Index', '?')}"
+        
+        return getattr(self, field)
+
+    def GetOwner(self, aws):
+        field = next(self.FieldsOfAKind(fOwner), None)
+        if field != None:
+            id = getattr(self, field, None)
+            if id == None: return None
+
+            clss = self.Fields()[field][fType]
+
+            if not id in aws[clss].Map : return None
+
+            owner = aws[clss].Map[id]
+            return owner
+
+        # if hasattr(self, "ParentId"):
+        #     if not self.ParentId in aws[self.ParentClass].Map:
+        #         return None
+            
+        #     owner = aws[self.ParentClass].Map[self.ParentId]
+        #     return owner
+
+        return None
+
+    def GetView(self):
+        return f"{getattr(self, 'Tag_Name', self.GetId())}"
+
+    @classmethod
+    def GetObjectsByIndex(clss, id, ListField, FilterField):
+        sg_id = None; ip_n = None
+        if id != None:
+            sg_id, _, ip_n = id.rpartition(IdDv)
+
+        pars = clss.ParentClass.GetObjects(sg_id)
+
+        res = []
+        for par in pars:
+            index = -1
+            for permission in par[ListField]:
+                index += 1
+
+                if ip_n != None and ip_n != "" and ip_n != "*":
+                    if ip_n != (str(index) if FilterField == int else permission[FilterField]):
+                        continue
+
+                res.append(permission)
+
+        return res
+
+    @classmethod
+    def Query(clss, query):
+        data_structure = clss.GetObjects()
+
+        xml_tree = structure_to_xml(data_structure)
+
+        with open("Query.xml", "w", encoding="utf-8") as file: file.write(prettify(xml_tree.getroot()))
+
+        reslist = PlainQuery(xml_tree, query)
+
+        resdict = {}
+        for idx, d in enumerate(reslist):
+            for key, value in d.items():
+                if key not in resdict:
+                    resdict[key] = [None] * len(reslist)
+                resdict[key][idx] = value
+
+        return resdict
+
+
+    @staticmethod
+    def GetObjects(id=None):
+        return None
+
+    
+    @staticmethod
+    def Fields():
+        return {}
+
+    @staticmethod
+    def CLIAdd(args = None):
+        return "<?>"
+
+    @staticmethod
+    def CLIDel(args = None):
+        return "<?>"
+
+    @classmethod
+    def GetClassView(cls):
+        return cls.__name__[1:]
+
 
 class ObjectList:
     def __init__(self, model, clss):

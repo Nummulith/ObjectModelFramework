@@ -17,14 +17,14 @@ class MyWidget(QWidget):
         self.bDelete     .clicked.connect(self.Delete)
 
         self.leProfile.setText("TS") # TS, DCI
-        self.leClasses.setText("Subnet")
         self.leFile   .setText("awsScript")
+        self.leClasses.setText("RouteTable")
         self.leExample.setText("RDS")
 
     def GetAWS(self, DoAutoLoad = True, DoAutoSave = True):
         return AWS(
             self.leProfile.text(),
-            self.leFile.text(),
+            self.leFile   .text(),
             DoAutoLoad,
             DoAutoSave
         )

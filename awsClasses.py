@@ -53,149 +53,36 @@ def Wait(waiter_name, resource_param, resource_id):
     )
 
 
-class cParent:
-    Icon = "AWS"
-    Show = True
-    Draw = dDef
-    Color = "#A9DFBF"
-    Prefix = ""
-
-    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
-        if IdQuery != None:
-            par_id, _, cur_id = IdQuery.rpartition(IdDv)
-            if par_id != "":
-                setattr(self, "ParentId", par_id)
-            if hasattr(self, "Index") and cur_id != "" and cur_id != "*":
-                setattr(self, "Index", int(cur_id))
-
-        fields = type(self).Fields()
-
-        key = next(self.FieldsOfAKind(fId), None) # Id
-        if key != None: setattr(self, key, resp[key])
-
-        for key, value in resp.items():
-            if key in fields:
-                cfg = fields[key]
-            else:
-                cfg = type(value)
-
-            fieldtype = cfg[fType] if isinstance(cfg, tuple) else cfg
-            
-            if type(fieldtype) == list:
-                if len(fieldtype) == 0:
-                    continue
-                if fieldtype[0] == str:
-                    continue
-                else:
-                    aws[fieldtype[0]].Fetch(f"{self.GetId()}{IdDv}*", value, DoAutoSave)
-            elif fieldtype == list:
-                continue
-            elif type(fieldtype) == dict:
-                tkkey, tkval = next(iter(fieldtype.items()))
-                for pair in value:
-                    setattr(self, "Tag_" + pair[tkkey], pair[tkval])
-                continue
-            else:
-                setattr(self, key, value)
-        
-    def FieldsOfAKind(self, kind):
-        return (key for key, value in self.Fields().items() if isinstance(value, tuple) and value[1] == kind)
-
-    def GetId(self):
-        field = next(self.FieldsOfAKind(fId), None)
-
-        if field == None or not hasattr(self, field):
-            return f"{getattr(self, 'ParentId', '?')}{IdDv}{getattr(self, 'Index', '?')}"
-        
-        return getattr(self, field)
-
-    def GetOwner(self, aws):
-        field = next(self.FieldsOfAKind(fOwner), None)
-        if field != None:
-            id = getattr(self, field, None)
-            if id == None: return None
-
-            clss = self.Fields()[field][fType]
-
-            if not id in aws[clss].Map : return None
-
-            owner = aws[clss].Map[id]
-            return owner
-
-        if hasattr(self, "ParentId"):
-            if not self.ParentId in aws[self.ParentClass].Map:
-                return None
-            
-            owner = aws[self.ParentClass].Map[self.ParentId]
-            return owner
-
-        return None
-
-    def GetView(self):
-        return f"{getattr(self, 'Tag_Name', self.GetId())}"
-
-    @classmethod
-    def GetObjectsByIndex(clss, id, ListField, FilterField):
-        sg_id = None; ip_n = None
-        if id != None:
-            sg_id, _, ip_n = id.rpartition(IdDv)
-
-        pars = clss.ParentClass.GetObjects(sg_id)
-
-        res = []
-        for par in pars:
-            index = -1
-            for permission in par[ListField]:
-                index += 1
-
-                if ip_n != None and ip_n != "" and ip_n != "*":
-                    if ip_n != (str(index) if FilterField == int else permission[FilterField]):
-                        continue
-
-                res.append(permission)
-
-        return res
-
-    @classmethod
-    def Query(clss, query):
-        data_structure = clss.GetObjects()
-
-        xml_tree = structure_to_xml(data_structure)
-
-        with open("Query.xml", "w", encoding="utf-8") as file: file.write(prettify(xml_tree.getroot()))
-
-        reslist = PlainQuery(xml_tree, query)
-
-        resdict = {}
-        for idx, d in enumerate(reslist):
-            for key, value in d.items():
-                if key not in resdict:
-                    resdict[key] = [None] * len(reslist)
-                resdict[key][idx] = value
-
-        return resdict
-
+class cTag(cParent):
+    @staticmethod
+    def Create(id, Name, Value):
+        bt('ec2').create_tags(
+            Resources=[id],
+            Tags=[
+                {
+                    'Key': Name,
+                    'Value': Value
+                },
+            ]
+        )
 
     @staticmethod
-    def GetObjects(id=None):
-        return None
-
-    
-    @staticmethod
-    def Fields():
-        return {}
-
-    @staticmethod
-    def CLIAdd(args = None):
-        return "<?>"
+    def Delete(id, Name):
+        bt('ec2').delete_tags(
+            Resources=[id],
+            Tags=[
+                {'Key': Name}
+            ]
+        )
 
     @staticmethod
-    def CLIDel(args = None):
-        return "<?>"
+    def CLIAdd(Name):
+        return f""
 
-    @classmethod
-    def GetClassView(cls):
-        return cls.__name__[1:]
+    @staticmethod
+    def CLIDel(id, Name):
+        return f"aws ec2 delete-tags --resources {id} --tags Key={Name}"
+
 
 class cReservation(cParent): 
     Icon = "EC2"
@@ -689,21 +576,26 @@ class cRouteTableAssociation(cParent):
     Draw = dExt
     Color = "#7CCF9C"
 
+    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
+        super().__init__(aws, IdQuery, resp, DoAutoSave)
+        self.Id = f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
+
     @staticmethod
     def Fields():
         return {
-                    'RouteTableAssociationId': (cRouteTableAssociation, fId),
-                    'RouteTableId': (cRouteTable, fOwner),
-                    'SubnetId': (cSubnet, fIn),
-                    'AssociationState': str, #!!!
+#                    "ParentId"               : (cRouteTable, fList),
+                    'Id': (str, fId),
+                    'RouteTableId'           : (cRouteTable, fOwner),
+                    'SubnetId'               : (cSubnet, fIn),
+#                    'AssociationState'       : str, #!!!
                 } # +
 
     @staticmethod
     def GetObjects(id=None):
         return cRouteTableAssociation.GetObjectsByIndex(id, "Associations", 'RouteTableAssociationId')
 
-    def GetId(self):
-        return f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
+    # def GetId(self):
+    #     return f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
 
     def GetExt(self):
         if hasattr(self, "SubnetId"):
@@ -727,7 +619,7 @@ class cRouteTableAssociation(cParent):
         )
 
 
-class cRoute(cParent): 
+class cRoute(cParent):
     ParentClass = cRouteTable
     Prefix = "route"
     Draw = dAll-dId
@@ -739,6 +631,7 @@ class cRoute(cParent):
     @staticmethod
     def Fields():
         return {
+                    "ParentId"             : (cRouteTable      , fOwner),
                     "GatewayId"            : (cInternetGateway , fOut),
                     "InstanceId"           : (cEC2             , fOut),
                     "NatGatewayId"         : (cNATGateway      , fOut),
@@ -1198,36 +1091,6 @@ class cDBSubnetGroup(cParent):
         )
         return response['DBSubnetGroup']['DBSubnetGroupName']
 
-
-class cTag(cParent):
-    @staticmethod
-    def Create(id, Name, Value):
-        bt('ec2').create_tags(
-            Resources=[id],
-            Tags=[
-                {
-                    'Key': Name,
-                    'Value': Value
-                },
-            ]
-        )
-
-    @staticmethod
-    def Delete(id, Name):
-        bt('ec2').delete_tags(
-            Resources=[id],
-            Tags=[
-                {'Key': Name}
-            ]
-        )
-
-    @staticmethod
-    def CLIAdd(Name):
-        return f""
-
-    @staticmethod
-    def CLIDel(id, Name):
-        return f"aws ec2 delete-tags --resources {id} --tags Key={Name}"
 
 class AWS(ObjectModel):
     def __init__(self, profile, path, DoAutoLoad = True, DoAutoSave = True):
