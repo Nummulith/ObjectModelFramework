@@ -8,6 +8,7 @@ from xml.dom import minidom
 
 IdDv = "|"
 
+#Fields
 fType  = 0
 fOwner = 1
 fLName = 2
@@ -33,14 +34,52 @@ def prettify(elem):
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="\t")
 
-class cParent:
-    Icon = "AWS"
+def structure_to_xml(data, element = None):
+    isroot = element == None
+    if isroot:
+        element = ET.Element('root')
+
+    if isinstance(data, list):
+        for item in data:
+            sub_element = ET.SubElement(element, "list_item")
+            structure_to_xml(item, sub_element)
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            sub_element = ET.SubElement(element, key)
+            structure_to_xml(value, sub_element)
+    else:
+        element.text = str(data)
+
+    if isroot:
+        return ET.ElementTree(element)
+
+    return element
+
+def PlainQuery(tree, path, pref = "/", res = [], parfields = None):
+    this, _, next = path.partition("/")
+    result = tree.findall(pref + this)
+
+    for item in result:
+        fields = {} if parfields == None else parfields.copy()
+        
+        for child in item:
+            fields[child.tag] = child.text
+
+        if next:
+            PlainQuery(item, next, "./", res, fields)
+        else:
+            res.append(fields)
+    
+    return res
+
+
+class ObjectModelItem:
+    Icon = ""
     Show = True
     Draw = dDef
     Color = "#A9DFBF"
-    Prefix = ""
 
-    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
+    def __init__(self, model, IdQuery, resp, DoAutoSave=True):
         if IdQuery != None:
             par_id, _, cur_id = IdQuery.rpartition(IdDv)
             if par_id != "":
@@ -68,7 +107,7 @@ class cParent:
                 if fieldtype[0] == str:
                     continue
                 else:
-                    aws[fieldtype[0]].Fetch(f"{self.GetId()}{IdDv}*", value, DoAutoSave)
+                    model[fieldtype[0]].Fetch(f"{self.GetId()}{IdDv}*", value, DoAutoSave)
             elif fieldtype == list:
                 continue
             elif type(fieldtype) == dict:
@@ -90,7 +129,7 @@ class cParent:
         
         return getattr(self, field)
 
-    def GetOwner(self, aws):
+    def GetOwner(self, model):
         field = next(self.FieldsOfAKind(fOwner), None)
         if field != None:
             id = getattr(self, field, None)
@@ -98,16 +137,16 @@ class cParent:
 
             clss = self.Fields()[field][fType]
 
-            if not id in aws[clss].Map : return None
+            if not id in model[clss].Map : return None
 
-            owner = aws[clss].Map[id]
+            owner = model[clss].Map[id]
             return owner
 
         # if hasattr(self, "ParentId"):
-        #     if not self.ParentId in aws[self.ParentClass].Map:
+        #     if not self.ParentId in model[self.ParentClass].Map:
         #         return None
             
-        #     owner = aws[self.ParentClass].Map[self.ParentId]
+        #     owner = model[self.ParentClass].Map[self.ParentId]
         #     return owner
 
         return None

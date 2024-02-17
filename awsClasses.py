@@ -18,6 +18,7 @@ def bt(aws_service):
 def Id17(id):
     return id[-17:]
 
+# id parameter passing
 pPar = 0
 pList = 1
 pFilter = 2
@@ -51,6 +52,11 @@ def Wait(waiter_name, resource_param, resource_id):
             'MaxAttempts': 100
         }
     )
+
+
+class cParent(ObjectModelItem):
+    Icon = "AWS"
+    Prefix = ""
 
 
 class cTag(cParent):
@@ -585,7 +591,7 @@ class cRouteTableAssociation(cParent):
         return {
 #                    "ParentId"               : (cRouteTable, fList),
                     'Id': (str, fId),
-                    'RouteTableId'           : (cRouteTable, fOwner),
+                    'RouteTableId'           : (cRouteTable, fLItem),
                     'SubnetId'               : (cSubnet, fIn),
 #                    'AssociationState'       : str, #!!!
                 } # +
@@ -907,44 +913,6 @@ class cGroup(cParent):
 
     def GetId(self):
         return f"{self.GroupName}"
-
-def structure_to_xml(data, element = None):
-    isroot = element == None
-    if isroot:
-        element = ET.Element('root')
-
-    if isinstance(data, list):
-        for item in data:
-            sub_element = ET.SubElement(element, "list_item")
-            structure_to_xml(item, sub_element)
-    elif isinstance(data, dict):
-        for key, value in data.items():
-            sub_element = ET.SubElement(element, key)
-            structure_to_xml(value, sub_element)
-    else:
-        element.text = str(data)
-
-    if isroot:
-        return ET.ElementTree(element)
-
-    return element
-
-def PlainQuery(tree, path, pref = "/", res = [], parfields = None):
-    this, _, next = path.partition("/")
-    result = tree.findall(pref + this)
-
-    for item in result:
-        fields = {} if parfields == None else parfields.copy()
-        
-        for child in item:
-            fields[child.tag] = child.text
-
-        if next:
-            PlainQuery(item, next, "./", res, fields)
-        else:
-            res.append(fields)
-    
-    return res
 
 
 class cRole(cParent):
