@@ -187,8 +187,8 @@ class cEC2(cParent):
 
         Wait('instance_terminated', "InstanceIds", id)
 
-    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
-        super().__init__(aws, IdQuery, resp, DoAutoSave)
+    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
+        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
 
         if hasattr(self, "KeyName"):
             setattr(self, "KeyPairId", cKeyPair.NameToId(self.KeyName))
@@ -579,19 +579,26 @@ class cRouteTable(cParent):
 class cRouteTableAssociation(cParent):
     Prefix = "rtba"
     ParentClass = cRouteTable
-    Draw = dExt
+    Draw = dAll
     Color = "#7CCF9C"
+    ListName = "Associations"
+    Index = None
 
-    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
-        super().__init__(aws, IdQuery, resp, DoAutoSave)
-        self.Id = f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
+    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
+        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
+        self.Id   = f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
+        self.View = f"{Id17(self.SubnetId)}" if hasattr(self, "SubnetId") else "-"
+        self.Ext  = f"{Id17(self.SubnetId)}" if hasattr(self, "SubnetId") else "-"
 
     @staticmethod
     def Fields():
         return {
 #                    "ParentId"               : (cRouteTable, fList),
-                    'Id': (str, fId),
+                    'Id'  : (str, fId),
+                    'Ext' : (str, fExt),
+                    'View': (str, fView),
                     'RouteTableId'           : (cRouteTable, fLItem),
+                    'ListName'               : (cRouteTable, fLName),
                     'SubnetId'               : (cSubnet, fIn),
 #                    'AssociationState'       : str, #!!!
                 } # +
@@ -603,13 +610,13 @@ class cRouteTableAssociation(cParent):
     # def GetId(self):
     #     return f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
 
-    def GetExt(self):
-        if hasattr(self, "SubnetId"):
-            return f"{Id17(self.SubnetId)}"
-        return "-"
+    # def GetExt(self):
+    #     if hasattr(self, "SubnetId"):
+    #         return f"{Id17(self.SubnetId)}"
+    #     return "-"
     
-    def GetView(self):
-        return f"Route[{self.Index}]"
+    # def GetView(self):
+    #     return f"Route[{self.Index}]"
     
 
     @staticmethod
@@ -633,11 +640,13 @@ class cRoute(cParent):
     Color = "#7CCF9C"
     Index = None
     DontFetch = True
+    ListName = "Routes"
 
     @staticmethod
     def Fields():
         return {
-                    "ParentId"             : (cRouteTable      , fOwner),
+                    'ListName'             : (cRouteTable      , fLName),
+                    "ParentId"             : (cRouteTable      , fLItem), #fOwner
                     "GatewayId"            : (cInternetGateway , fOut),
                     "InstanceId"           : (cEC2             , fOut),
                     "NatGatewayId"         : (cNATGateway      , fOut),
@@ -654,14 +663,14 @@ class cRoute(cParent):
         return f"{self.ParentId}{IdDv}{self.DestinationCidrBlock}"
 
     def GetView(self):
-        return f"{self.Index}"
+#        return f"{self.Index}"
+        return f"{getattr(self, 'DestinationCidrBlock', '-')}"
 
     def GetExt(self):
         return f"{getattr(self, 'DestinationCidrBlock', '-')}"
 
-    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
-
-        super().__init__(aws, IdQuery, resp, DoAutoSave)
+    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
+        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
 
         if hasattr(self, "GatewayId") and self.GatewayId == "local":
             self.GatewayId = None
@@ -1007,8 +1016,8 @@ class cDBInstance(cParent):
         response = bt('rds').describe_db_instances(**idpar('DBInstanceIdentifier', id, pPar))
         return response['DBInstances']
 
-    def __init__(self, aws, IdQuery, resp, DoAutoSave=True):
-        super().__init__(aws, IdQuery, resp, DoAutoSave)
+    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
+        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
 
         if hasattr(self, "DBSubnetGroup"):
             setattr(self, "DBSubnetGroupName", self.DBSubnetGroup["DBSubnetGroupName"])

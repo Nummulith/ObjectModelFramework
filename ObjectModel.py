@@ -79,17 +79,18 @@ class ObjectModelItem:
     Draw = dDef
     Color = "#A9DFBF"
 
-    def __init__(self, model, IdQuery, resp, DoAutoSave=True):
+    def __init__(self, model, IdQuery, Index, resp, DoAutoSave=True):
         if IdQuery != None:
             par_id, _, cur_id = IdQuery.rpartition(IdDv)
             if par_id != "":
                 setattr(self, "ParentId", par_id)
-            if hasattr(self, "Index") and cur_id != "" and cur_id != "*":
-                setattr(self, "Index", int(cur_id))
+
+        if hasattr(self, "Index"):
+            setattr(self, "Index", Index)
 
         fields = type(self).Fields()
 
-        key = next(self.FieldsOfAKind(fId), None) # process Id first
+        key = self.FieldOfAKind(fId) # process Id first
         if key != None and key in resp:
             setattr(self, key, resp[key])
 
@@ -120,39 +121,61 @@ class ObjectModelItem:
         
     def FieldsOfAKind(self, kind):
         return (key for key, value in self.Fields().items() if isinstance(value, tuple) and value[1] == kind)
+    
+    def FieldOfAKind(self, kind):
+        return next(self.FieldsOfAKind(kind), None)
+
+    def ValueOfAKind(self, kind):
+        field = self.FieldOfAKind(kind)
+        return getattr(self, field, None)
+
+    def GetObject(self, model, field):
+        if field == None: return None
+
+        id = getattr(self, field, None)
+        if id == None: return None
+
+        clss = self.Fields()[field][fType]
+
+        if not id in model[clss].Map : return None
+        obj = model[clss].Map[id]
+        return obj
+
+    def ObjectOfAKind(self, model, kind):
+        field = self.FieldOfAKind(kind)
+        return self.GetObject(model, field)
+
+    def GetLink(self, model):
+        lister = self.ObjectOfAKind(model, fLItem)
+        if lister != None:
+            listname = self.ValueOfAKind(fLName)
+            return f"{lister.GetId()}-{listname}:{self.GetId()}"
+
+        return self.GetId()
 
     def GetId(self):
-        field = next(self.FieldsOfAKind(fId), None)
+        field = self.FieldOfAKind(fId)
+        if field != None and hasattr(self, field): return getattr(self, field)
 
-        if field == None or not hasattr(self, field):
-            return f"{getattr(self, 'ParentId', '?')}{IdDv}{getattr(self, 'Index', '?')}"
-        
-        return getattr(self, field)
-
-    def GetOwner(self, model):
-        field = next(self.FieldsOfAKind(fOwner), None)
-        if field != None:
-            id = getattr(self, field, None)
-            if id == None: return None
-
-            clss = self.Fields()[field][fType]
-
-            if not id in model[clss].Map : return None
-
-            owner = model[clss].Map[id]
-            return owner
-
-        # if hasattr(self, "ParentId"):
-        #     if not self.ParentId in model[self.ParentClass].Map:
-        #         return None
-            
-        #     owner = model[self.ParentClass].Map[self.ParentId]
-        #     return owner
-
-        return None
+        return f"{getattr(self, 'ParentId', '?')}{IdDv}{getattr(self, 'Index', '?')}"
 
     def GetView(self):
+        field = self.FieldOfAKind(fView)
+        if field != None and hasattr(self, field): return getattr(self, field)
+
         return f"{getattr(self, 'Tag_Name', self.GetId())}"
+
+    def GetExt(self):
+        field = self.FieldOfAKind(fExt)
+        if field != None and hasattr(self, field): return getattr(self, field)
+
+        return ""
+
+    def GetIcon(self):
+        field = self.FieldOfAKind(fIcon)
+        if field != None and hasattr(self, field): return getattr(self, field)
+
+        return ""
 
     @classmethod
     def GetObjectsByIndex(clss, id, ListField, FilterField):
@@ -269,7 +292,7 @@ class ObjectList:
             if ip_nn == "*":
                 ip_nn = int(Index)
 
-            obj = self.Class(self.Model, f"{sg_id}{IdDv}{ip_nn}", el, DoAutoSave)
+            obj = self.Class(self.Model, f"{sg_id}{IdDv}{ip_nn}", Index, el, DoAutoSave)
             self.Map[obj.GetId()] = obj
 
         if DoAutoSave:
@@ -532,46 +555,85 @@ class ObjectModel:
     def Draw(self):
         drawing = Drawing()
 
-        hasowned = {}
-        owners = {}
-
+        hasowned  = {}; isowned  = {}
+        haslisted = {}; islisted = {}
         for clss in ObjectModel.Classes["All"]:
             wrap = self[clss]
 
             for id, obj in wrap.Map.items():
-                owner = obj.GetOwner(self)
+                owner = obj.ObjectOfAKind(self, fOwner)
                 if owner != None:
-                    owners[obj] = owner
+                    isowned[obj] = owner
                     hasowned[owner] = True
+                
+                listitemfield = obj.FieldOfAKind(fLItem)
+                if listitemfield != None and hasattr(obj, listitemfield):
+                    listitem = getattr(obj, listitemfield)
+
+                    islisted[obj] = listitem
+
+                    listname = getattr(obj, obj.FieldOfAKind(fLName), "List")
+
+                    if not listitem in haslisted: haslisted[listitem] = {}
+                    if not listname in haslisted[listitem]: haslisted[listitem][listname] = []
+
+                    haslisted[listitem][listname].append(obj)
+
 
         for clss in ObjectModel.Classes["All"]:
             wrap = self[clss]
             if not clss.Show: continue
 
             for id, obj in wrap.Map.items():
-
-                if not obj in hasowned:
-                    drawing.AddItem(id, ItemView(NodeLabel(obj), shape='plaintext'))
-
-                else:
+                if obj in hasowned or id in haslisted:
                     drawing.AddItem(id,
                         cluster = ItemView(ClusterLabel(obj), style = 'filled', fillcolor = type(obj).Color),
                         point   = ItemView("", shape='point', width='0.1')
                     )
+                elif obj in islisted:
+                    pass
+                else:
+                    drawing.AddItem(id, ItemView(NodeLabel(obj), shape='plaintext'))
 
-                par = owners[obj] if obj in owners else None
+                par = isowned[obj] if obj in isowned else None
                 if par != None:
                     drawing.AddParent(id, par.GetId())
 
+                if id in haslisted:
+                    for listname, listitems in haslisted[id].items():
+                        # break
+
+                        label = f'<TR><TD BGCOLOR="#A9DFBF"><B>{listname}</B></TD></TR>\n'
+                        for listitem in listitems:
+                            label += f'<TR><TD BGCOLOR="white" PORT="{listitem.GetId()}"><FONT POINT-SIZE="7.0">{listitem.GetView()}</FONT></TD></TR>\n'
+
+                        label = f'''<
+                            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+                            {label}
+                            </TABLE>
+                        >'''
+
+                        drawing.AddItem  (id + "-" + listname, ItemView(label, shape='plaintext'))
+                        drawing.AddParent(id + "-" + listname, id)
+
+
+                idlink = obj.GetLink(self)
+
                 for field in obj.FieldsOfAKind(fOut):
-                    corr = getattr(obj, field, None)
+                    # corr = getattr(obj, field, None)
+                    # if corr == None: continue
+                    # drawing.AddLink(idlink, corr, field)
+                    corr = obj.GetObject(self, field)
                     if corr == None: continue
-                    drawing.AddLink(id, corr, field)
+                    drawing.AddLink(idlink, corr.GetLink(self), field)
 
                 for field in obj.FieldsOfAKind(fIn):
-                    corr = getattr(obj, field, None)
+                    # corr = getattr(obj, field, None)
+                    # if corr == None: continue
+                    # drawing.AddLink(corr, idlink, field + "<")
+                    corr = obj.GetObject(self, field)
                     if corr == None: continue
-                    drawing.AddLink(corr, id, field + "<")
+                    drawing.AddLink(corr.GetLink(self), idlink, field + "<")
 
 
 #        drawing.print()
