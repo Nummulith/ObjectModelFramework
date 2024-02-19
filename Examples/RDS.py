@@ -14,12 +14,13 @@ def RDS(aws):
 
 
     dbi = "dbinstance-pavel-1"
-    # dbi = aws.DBInstance.Create(
-    #     dbi,
-    #     dbsgname,
-    #     "DBAdmin",
-    #     "DBPass123!"
-    # )
-    # print(dbi)
+    dbi = aws.DBInstance.Create(
+        dbi,
+        dbsgname,
+        "DBAdmin",
+        "DBPass123!"
+    )
+
+    aws.Draw()
 
     aws.DBInstance.Delete(dbi)

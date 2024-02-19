@@ -183,7 +183,7 @@ class ObjectModelItem:
         if id != None:
             sg_id, _, ip_n = id.rpartition(IdDv)
 
-        pars = clss.ParentClass.GetObjects(sg_id)
+        pars = clss.GetObjects(sg_id)
 
         res = []
         for par in pars:
@@ -192,7 +192,7 @@ class ObjectModelItem:
                 index += 1
 
                 if ip_n != None and ip_n != "" and ip_n != "*":
-                    if ip_n != (str(index) if FilterField == int else permission[FilterField]):
+                    if ip_n != (str(index) if FilterField == int else str(permission[FilterField])):
                         continue
 
                 res.append(permission)
@@ -455,12 +455,12 @@ class ObjectModel:
         ObjectModel.Const = Const
         ObjectModel.Classes = Classes
 
-        ObjectModel.Classes["All"] = []
+        ObjectModel.Classes["ALL"] = []
         for key, clsss in ObjectModel.Classes.items():
-            if key == "All": continue
-            ObjectModel.Classes["All"] += clsss
+            if key == "ALL": continue
+            ObjectModel.Classes["ALL"] += clsss
 
-        for clss in ObjectModel.Classes["All"]:
+        for clss in ObjectModel.Classes["ALL"]:
             wrapper = ObjectList(self, clss)
             name = wrapper.View()
             setattr(self, name, wrapper)
@@ -477,16 +477,17 @@ class ObjectModel:
         setattr(self, key, wrap)
 
     def DeleteAll(self, clssList = None):
-        if clssList == None:
-            clssList = ObjectModel.Classes["All"]
+        clsss = self.StringToClasses(clssList)
 
-        for clss in reversed(clssList):
+        for clss in reversed(clsss):
             name = clss.GetClassView()
             wrapper = getattr(self, name)
             wrapper.DeleteAll()
     
-    def Print(self):
-        for clss in ObjectModel.Classes["All"]:
+    def Print(self, clssList = None):
+        clsss = self.StringToClasses(clssList)
+
+        for clss in clsss:
             name = clss.GetClassView()
             wrapper = getattr(self, name)
             wrapper.Print()
@@ -512,7 +513,7 @@ class ObjectModel:
     def Save(self):
         root = ET.Element("root")
 
-        for clss in ObjectModel.Classes["All"]:
+        for clss in ObjectModel.Classes["ALL"]:
             name = clss.GetClassView()
             wrapper = getattr(self, name)
 
@@ -530,21 +531,28 @@ class ObjectModel:
         if self.DoAutoSave:
             self.Save()
 
+    def StringToClasses(self, clssList = None):
+        clsss = clssList
 
-    def Fetch(self, clsss = "All"):
+        if clsss == None: clsss = "ALL"
+
         if hasattr(self, clsss):
             clsss = [getattr(self, clsss).Class]
 
         if type(clsss) == str:
             clsss = ObjectModel.Classes[clsss]
+        
+        return clsss
+
+    def Fetch(self, clssList = None):
+        clsss = self.StringToClasses(clssList)
 
         for clss in clsss:
             if getattr(clss, "DontFetch", False): continue
             self[clss].Fetch()
 
-    def Release(self, clsss = "All"):
-        if hasattr(self, clsss):
-            clsss = [getattr(self, clsss).Class]
+    def Release(self, clssList = None):
+        clsss = self.StringToClasses(clssList)
 
         if type(clsss) == str:
             clsss = ObjectModel.Classes[clsss]
@@ -552,12 +560,13 @@ class ObjectModel:
         for clss in clsss:
             self[clss].Release()
 
-    def Draw(self):
+    def Draw(self, clssList = None):
+        clsss = self.StringToClasses(clssList)
         drawing = Drawing()
 
         hasowned  = {}; isowned  = {}
         haslisted = {}; islisted = {}
-        for clss in ObjectModel.Classes["All"]:
+        for clss in clsss:
             wrap = self[clss]
 
             for id, obj in wrap.Map.items():
@@ -580,9 +589,9 @@ class ObjectModel:
                     haslisted[listitem][listname].append(obj)
 
 
-        for clss in ObjectModel.Classes["All"]:
+        for clss in clsss:
             wrap = self[clss]
-            if not clss.Show: continue
+            if not clss in clsss: continue
 
             for id, obj in wrap.Map.items():
                 if obj in hasowned or id in haslisted:

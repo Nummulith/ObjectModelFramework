@@ -18,8 +18,8 @@ class MyWidget(QWidget):
 
         self.leProfile.setText("TS") # TS, DCI
         self.leFile   .setText("awsScript")
-        self.leClasses.setText("RouteTable")
-        self.leExample.setText("RDS")
+        self.leClasses.setText("SUBNET")
+        self.leExample.setText("Subnet")
 
     def GetAWS(self, DoAutoLoad = True, DoAutoSave = True):
         return AWS(
@@ -53,7 +53,7 @@ class MyWidget(QWidget):
         aws = self.GetAWS(False, False)
         aws.Load()
         aws.Save()
-        aws.Draw()
+        aws.Draw(self.leClasses.text())
 
     def Delete(self):
         aws = self.GetAWS()

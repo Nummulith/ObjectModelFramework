@@ -54,7 +54,7 @@ class Drawing:
             print(f"{id} --[{label}]--> {link}")
 
     def DrawRec(self, parent, grandDigraph):
-        items = [id for id in self.Items if not id in self.Parents] \
+        items = [id for id in self.Items if not id in [chi for chi, par in self.Parents.items() if par in self.Items]] \
             if parent == None \
             else [id for id, par in self.Parents.items() if par == parent]
         
@@ -77,11 +77,11 @@ class Drawing:
                     #             </TABLE>>'''
                     label = view["label"]
                     # print(label.replace("\n", ""))
-
                     parDigraph.attr(label = label, style = view["style"], fillcolor = view["fillcolor"])
 
-                    view = self.Items[parent]["point"]
-                    parDigraph.node(name=parent, shape=view["shape"], width=view["width"])
+                    if parent in self.Linked:
+                        view = self.Items[parent]["point"]
+                        parDigraph.node(name=parent, shape=view["shape"], width=view["width"])
                     
                 self.DrawRec(id, parDigraph)
 
@@ -92,10 +92,16 @@ class Drawing:
     def Draw(self, Name):
         dot = Digraph(Name)
 
+        self.Linked = {}
+        for id, link, label in self.Links:
+            self.Linked[id] = True
+            self.Linked[link] = True
+            dot.edge(id, link, label = label)
+
         if len(self.Items) > 0:
             self.DrawRec(None, dot)
 
-        for id, link, label in self.Links: dot.edge(id, link, label = label)
+        self.Linked = None
 
         dot.render(Name, format='png', cleanup=True)
         #dot.render(Name, format='svg', cleanup=True)

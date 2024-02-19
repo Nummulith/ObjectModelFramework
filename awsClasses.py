@@ -227,15 +227,17 @@ class cInternetGateway(cParent):
 
 class cInternetGatewayAttachment(cParent): 
     Prefix = "igw-attach"
-    ParentClass = cInternetGateway
     Icon = "Gateway"
     Draw = dView
     Color = "#F488BB"
     DontFetch = True
+    ListName = "Attachments"
 
     @staticmethod
     def Fields():
         return {
+                    "ParentId" : (cInternetGateway, fLItem),
+                    "ListName" : (str, fLName),
                     "VpcId" : (cVpc, fIn),
                 }
     
@@ -244,7 +246,7 @@ class cInternetGatewayAttachment(cParent):
 
     @staticmethod
     def GetObjects(id=None):
-        return cInternetGatewayAttachment.GetObjectsByIndex(id, "Attachments", "VpcId")
+        return cInternetGateway.GetObjectsByIndex(id, "Attachments", "VpcId")
     
     def GetId(self):
         return f"{self.ParentId}{IdDv}{self.VpcId}"
@@ -303,7 +305,6 @@ class cNATGateway(cParent):
 
 
 class cAssociation(cParent): 
-    ParentClass = cNATGateway
     DontFetch = True
 
     @staticmethod
@@ -379,13 +380,14 @@ class cSecurityGroup(cParent):
 
 class cSecurityGroupRule(cParent):
     Prefix = "sgr"
-    ParentClass = cSecurityGroup
+    ListName = "Rules"
 
     @staticmethod
     def Fields():
         return {
                     'SecurityGroupRuleId': cSecurityGroupRule,
-                    'GroupId': (cSecurityGroup, fOwner),
+                    'GroupId': (cSecurityGroup, fLItem),
+                    'ListName': (str, fLName),
                 }
     
     @staticmethod
@@ -523,23 +525,29 @@ class cNetworkAcl(cParent):
 
 class cNetworkAclEntry(cParent): 
     Prefix = "nacle"
-    ParentClass = cNetworkAcl
-    Draw = dView + dExt
     Icon = "NetworkAccessControlList"
     DontFetch = True
+    ListName = "Entries"
+
+    @staticmethod
+    def Fields():
+        return {
+            "ParentId": (cNetworkAcl, fLItem),
+            "ListName": (cNetworkAcl, fLName),
+            "Id"   : (cNetworkAclEntry, fId),
+            "Ext"  : (str, fExt ),
+            "View" : (str, fView),
+        }
 
     @staticmethod
     def GetObjects(id=None):
-        return None
-    
-    def GetView(self):
-        return f"{self.RuleNumber}:{self.Protocol} {getattr(self, 'PortRange', '')}"
+        return cNetworkAcl.GetObjectsByIndex(id, "Entries", "RuleNumber")
 
-    def GetExt(self):
-        return f"{self.RuleAction} - {getattr(self, 'CidrBlock', '*')}"
     
-    def GetId(self):
-        return f"{self.RuleNumber}"
+    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
+        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
+        self.Id   = f"{self.ParentId}{IdDv}{self.RuleNumber}"
+        self.View = f"{self.RuleAction} - {getattr(self, 'CidrBlock', '*')}- {self.RuleNumber}:{self.Protocol} {getattr(self, 'PortRange', '')}"
 
 
 class cRouteTable(cParent): 
@@ -578,7 +586,6 @@ class cRouteTable(cParent):
 
 class cRouteTableAssociation(cParent):
     Prefix = "rtba"
-    ParentClass = cRouteTable
     Draw = dAll
     Color = "#7CCF9C"
     ListName = "Associations"
@@ -605,7 +612,7 @@ class cRouteTableAssociation(cParent):
 
     @staticmethod
     def GetObjects(id=None):
-        return cRouteTableAssociation.GetObjectsByIndex(id, "Associations", 'RouteTableAssociationId')
+        return cRouteTable.GetObjectsByIndex(id, "Associations", 'RouteTableAssociationId')
 
     # def GetId(self):
     #     return f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
@@ -633,7 +640,6 @@ class cRouteTableAssociation(cParent):
 
 
 class cRoute(cParent):
-    ParentClass = cRouteTable
     Prefix = "route"
     Draw = dAll-dId
     Icon = "Route"
@@ -657,7 +663,7 @@ class cRoute(cParent):
 
     @staticmethod
     def GetObjects(id=None):
-        return cRoute.GetObjectsByIndex(id, "Routes", int)
+        return cRouteTable.GetObjectsByIndex(id, "Routes", int)
     
     def GetId(self):
         return f"{self.ParentId}{IdDv}{self.DestinationCidrBlock}"
@@ -987,6 +993,7 @@ class cFunction(cParent):
         )        
         return response['FunctionName']
     
+    @staticmethod
     def Delete(id):
         bt('lambda').delete_function(FunctionName=id)
 
@@ -1044,7 +1051,6 @@ class cDBInstance(cParent):
             DBInstanceIdentifier = id,
             SkipFinalSnapshot = SkipFinalSnapshot
         )        
-
     
 class cDBSubnetGroup(cParent):
     @staticmethod
@@ -1067,6 +1073,54 @@ class cDBSubnetGroup(cParent):
             SubnetIds = SubnetIds
         )
         return response['DBSubnetGroup']['DBSubnetGroupName']
+
+    @staticmethod
+    def Delete(id):
+        response = bt('rds').delete_db_subnet_group(DBSubnetGroupName=db)
+        return
+
+class cDynamoDB(cParent):
+    @staticmethod
+    def Fields():
+        return {
+                    'TableName': (cDynamoDB, fId),
+                }
+
+    @staticmethod
+    def GetObjects(id = None):
+        if id == None:
+            response = bt('dynamodb').list_tables()
+            res = []
+            for curid in response["TableNames"]:
+                res += cDynamoDB.GetObjects(curid)
+            return res
+        
+        else:
+            response = bt('dynamodb').describe_table(TableName = id)
+            return [response["Table"]]
+
+    @staticmethod
+    def Create(id):
+        attribute_definitions = [
+            {'AttributeName': 'id', 'AttributeType': 'N'}, # Add other attribute definitions as needed
+        ]
+        key_schema = [
+            {'AttributeName': 'id', 'KeyType': 'HASH'}, # Add other key schema elements as needed
+        ]
+        provisioned_throughput = {'ReadCapacityUnits': 5, 'WriteCapacityUnits': 5}
+
+        response = bt('dynamodb').create_table(
+            TableName=id,
+            AttributeDefinitions=attribute_definitions,
+            KeySchema=key_schema,
+            ProvisionedThroughput=provisioned_throughput
+        )
+        return id
+
+    @staticmethod
+    def Delete(id):
+        response = bt('dynamodb').delete_table(TableName=id)
+        return
 
 
 class AWS(ObjectModel):
@@ -1098,15 +1152,15 @@ class AWS(ObjectModel):
                     cInternetGateway, cInternetGatewayAttachment,
                     cNetworkAcl, cNetworkAclEntry,
                 ],
-                'Subnet' : [
+                'SUBNET' : [
                     cSubnet,
                     cRouteTable, cRoute, cRouteTableAssociation,
                     cElasticIP, 
                     cNATGateway, cAssociation, 
                 ],
+                'RDS' : [cDBSubnetGroup, cDBInstance, cDynamoDB],
                 'AMI' : [cUser, cGroup, cRole],
-                'RDS' : [cDBSubnetGroup, cDBInstance],
-                'Other' : [
+                'OTHER' : [
                     cReservation, cEC2, cNetworkInterface,
                     cS3,
                     cSNS,
