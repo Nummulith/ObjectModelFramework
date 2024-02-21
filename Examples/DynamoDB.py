@@ -1,9 +1,9 @@
 def DynamoDB(aws):
-    aws.DynamoDB.Fetch()
+    aws.DynamoDB.fetch()
 
     id = "DB-Pavel"
-    aws.DynamoDB.Create(id)
+    aws.DynamoDB.create(id)
 
-    aws.Draw()
+    aws.draw()
 
-    aws.DynamoDB.Delete(id)
+    aws.DynamoDB.delete(id)

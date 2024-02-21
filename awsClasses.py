@@ -1,3 +1,18 @@
+"""
+AWS Classes Module
+
+This module provides a classes representing a behaivour of AWS objects
+
+Classes:
+
+Methods:
+
+Usage:
+- ...
+
+Author: Pavel ERESKO
+"""
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -61,7 +76,7 @@ class cParent(ObjectModelItem):
 
 class cTag(cParent):
     @staticmethod
-    def Create(id, Name, Value):
+    def create(id, Name, Value):
         bt('ec2').create_tags(
             Resources=[id],
             Tags=[
@@ -73,7 +88,7 @@ class cTag(cParent):
         )
 
     @staticmethod
-    def Delete(id, Name):
+    def delete(id, Name):
         bt('ec2').delete_tags(
             Resources=[id],
             Tags=[
@@ -82,11 +97,11 @@ class cTag(cParent):
         )
 
     @staticmethod
-    def CLIAdd(Name):
+    def cli_add(Name):
         return f""
 
     @staticmethod
-    def CLIDel(id, Name):
+    def cli_del(id, Name):
         return f"aws ec2 delete-tags --resources {id} --tags Key={Name}"
 
 
@@ -95,34 +110,34 @@ class cReservation(cParent):
     Show = False
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "ReservationId" : (cReservation, fId),
+                    "ReservationId" : (cReservation, FIELD.ID),
                     "OwnerId"       : str,
                     "Groups"        : ([str]), # !!!
                     "Instances"     : ([cEC2]),
                 }
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         resp = bt('ec2').describe_instances(**idpar('reservation-id', id, pFilter))
         return resp['Reservations']
 
 
 class cEC2(cParent): 
     Prefix = "i"
-    Draw = dAll
-    Icon = "EC2"
+    Draw = DRAW.ALL
+    Icon = "Arch_Amazon-EC2_48"
     Color = "#FFC18A"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "InstanceId" : (cEC2, fId),
-                    "SubnetId" : (cSubnet, fOwner),
+                    "InstanceId" : (cEC2, FIELD.ID),
+                    "SubnetId" : (cSubnet, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
                     'VpcId': cVpc,
-                    'KeyPairId': (cKeyPair, fIn),
+                    'KeyPairId': (cKeyPair, FIELD.LINK_IN),
                 }
     
 # 'SecurityGroups': [{'GroupName': 'secgrup-antony', 'GroupId': 'sg-0e050b1cd54e6fcc8'}]
@@ -145,18 +160,18 @@ class cEC2(cParent):
 
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         resp = bt('ec2').describe_instances(**idpar('InstanceIds', id))
         res = []
         for Reservation in resp['Reservations']:
             res = res + Reservation["Instances"]
         return res
 
-    def GetExt(self):
+    def get_ext(self):
         return f"{getattr(self, 'PlatformDetails', '-')}"
 
     @staticmethod
-    def Create(Name, ImageId, InstanceType, KeyPairId, SubnetId, Groups=[], PrivateIpAddress=None, UserData=""):
+    def create(Name, ImageId, InstanceType, KeyPairId, SubnetId, Groups=[], PrivateIpAddress=None, UserData=""):
         id = bt('ec2').run_instances(
             ImageId = ImageId,
             InstanceType = InstanceType,
@@ -165,7 +180,7 @@ class cEC2(cParent):
                 {
                     'SubnetId': SubnetId,
                     'DeviceIndex': 0,
-                    'AssociatePublicIpAddress': True if PrivateIpAddress != None else False,
+                    'AssociatePublicIpAddress': True if PrivateIpAddress is not None else False,
                     'PrivateIpAddress': PrivateIpAddress,
                     'Groups': Groups,
                 }
@@ -175,51 +190,51 @@ class cEC2(cParent):
             MaxCount = 1
         )['Instances'][0]['InstanceId']
 
-        cTag.Create(id, "Name", f"{cEC2.Prefix}-{Name}")
+        cTag.create(id, "Name", f"{cEC2.Prefix}-{Name}")
 
         return id
     
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('ec2').terminate_instances(
             InstanceIds=[id]
         )
 
         Wait('instance_terminated', "InstanceIds", id)
 
-    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
-        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
+    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, Index, resp, do_auto_save)
 
         if hasattr(self, "KeyName"):
             setattr(self, "KeyPairId", cKeyPair.NameToId(self.KeyName))
 
 class cInternetGateway(cParent): 
     Prefix = "igw"
-    Icon = "Gateway"
+    Icon = "Arch_Amazon-API-Gateway_48"
     Color = "#F9BBD9"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "InternetGatewayId" : (cInternetGateway, fId),
+                    "InternetGatewayId" : (cInternetGateway, FIELD.ID),
                     'Attachments' : ([cInternetGatewayAttachment]),
                     'Tags' : ({"Key" : "Value"}),
                 }
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         resp = bt('ec2').describe_internet_gateways(**idpar('InternetGatewayIds', id))
         return resp['InternetGateways']
 
 
     @staticmethod
-    def Create(Name):
+    def create(Name):
         id = bt('ec2').create_internet_gateway()['InternetGateway']['InternetGatewayId']
-        cTag.Create(id, "Name", f"{cInternetGateway.Prefix}-{Name}")
+        cTag.create(id, "Name", f"{cInternetGateway.Prefix}-{Name}")
         return id
 
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('ec2').delete_internet_gateway(
             InternetGatewayId = id
         )
@@ -228,37 +243,37 @@ class cInternetGateway(cParent):
 class cInternetGatewayAttachment(cParent): 
     Prefix = "igw-attach"
     Icon = "Gateway"
-    Draw = dView
+    Draw = DRAW.VIEW
     Color = "#F488BB"
     DontFetch = True
     ListName = "Attachments"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "ParentId" : (cInternetGateway, fLItem),
-                    "ListName" : (str, fLName),
-                    "VpcId" : (cVpc, fIn),
+                    "ParentId" : (cInternetGateway, FIELD.LIST_ITEM),
+                    "ListName" : (str, FIELD.LIST_NAME),
+                    "VpcId" : (cVpc, FIELD.LINK_IN),
                 }
     
-    def GetView(self):
+    def get_view(self):
         return f"{Id17(self.VpcId)}"
 
     @staticmethod
-    def GetObjects(id=None):
-        return cInternetGateway.GetObjectsByIndex(id, "Attachments", "VpcId")
+    def get_objects(id=None):
+        return cInternetGateway.get_objects_by_index(id, "Attachments", "VpcId")
     
-    def GetId(self):
-        return f"{self.ParentId}{IdDv}{self.VpcId}"
+    def get_id(self):
+        return f"{self.ParentId}{ID_DV}{self.VpcId}"
 
     @staticmethod
-    def Create(InternetGatewayId, VpcId):
+    def create(InternetGatewayId, VpcId):
         resp = bt('ec2').attach_internet_gateway(InternetGatewayId=InternetGatewayId, VpcId=VpcId)
-        return f"{InternetGatewayId}{IdDv}{VpcId}"
+        return f"{InternetGatewayId}{ID_DV}{VpcId}"
 
     @staticmethod
-    def Delete(id):
-        InternetGatewayId, _, VpcId = id.rpartition(IdDv)
+    def delete(id):
+        InternetGatewayId, _, VpcId = id.rpartition(ID_DV)
         bt('ec2').detach_internet_gateway(
             InternetGatewayId=InternetGatewayId, VpcId=VpcId
         )
@@ -266,39 +281,39 @@ class cInternetGatewayAttachment(cParent):
 
 class cNATGateway(cParent): 
     Prefix = "nat"
-    Icon = "NATGateway"
+    Icon = "Res_Amazon-VPC_NAT-Gateway_48"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "NatGatewayId"        : (cNATGateway, fId),
-                    "SubnetId"            : (cSubnet    , fOwner),
-                    "VpcId"               : (cVpc       , fIn),
+                    "NatGatewayId"        : (cNATGateway, FIELD.ID),
+                    "SubnetId"            : (cSubnet    , FIELD.OWNER),
+                    "VpcId"               : (cVpc       , FIELD.LINK_IN),
                     'Tags'                : ({"Key" : "Value"}),
-                    "NatGatewayAddresses" : ([cAssociation], fIn),
+                    "NatGatewayAddresses" : ([cAssociation], FIELD.LINK_IN),
                     # 'CreateTime': datetime.datetime(2024, 1, 30, 16, 38, 41, tzinfo=tzutc())
                 }
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         resp = bt('ec2').describe_nat_gateways(**idpar('NatGatewayIds', id))
         return resp['NatGateways']
     
-    def GetView(self):
+    def get_view(self):
         return f"NAT"
 
     @staticmethod
-    def Create(Name, SubnetId, AllocationId):
+    def create(Name, SubnetId, AllocationId):
         id = bt('ec2').create_nat_gateway(SubnetId = SubnetId, AllocationId = AllocationId)['NatGateway']['NatGatewayId']
 
-        cTag.Create(id, "Name", f"{cNATGateway.Prefix}-{Name}")
+        cTag.create(id, "Name", f"{cNATGateway.Prefix}-{Name}")
 
         Wait('nat_gateway_available', "NatGatewayIds", id)
 
         return id
     
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('ec2').delete_nat_gateway(NatGatewayId = id)
 
         Wait('nat_gateway_deleted', "NatGatewayIds", id)
@@ -308,16 +323,16 @@ class cAssociation(cParent):
     DontFetch = True
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    'AssociationId'      : (cAssociation, fId),
-                    "AllocationId"       : (cElasticIP, fIn),
+                    'AssociationId'      : (cAssociation, FIELD.ID),
+                    "AllocationId"       : (cElasticIP, FIELD.LINK_IN),
                     "NetworkInterfaceId" : (cNetworkInterface ), # !!!!!!!!!!
                     'Tags'               : ({"Key" : "Value"}),
                 }
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         filters = []
         if id:
             filters.append({
@@ -330,36 +345,37 @@ class cAssociation(cParent):
         return resp["Addresses"]
 
     @staticmethod
-    def Create(allocation_id, instance_id):
+    def create(allocation_id, instance_id):
         resp = bt('ec2').associate_address(AllocationId=allocation_id, InstanceId=instance_id)
         return f"{resp['AssociationId']}"
 
     @staticmethod
-    def Delete(id):
-        RouteTableId, _, AssociationId = id.rpartition(IdDv)
+    def delete(id):
+        RouteTableId, _, AssociationId = id.rpartition(ID_DV)
         bt('ec2').disassociate_address(AssociationId = AssociationId)
 
 class cSecurityGroup(cParent):
     Prefix = "sg"
+    Icon = "SecurityGroup"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "GroupId"    : (str , fId),
-                    "VpcId"      : (cVpc, fOwner),
+                    "GroupId"    : (str , FIELD.ID),
+                    "VpcId"      : (cVpc, FIELD.OWNER),
 #                    "IpPermissions"       : ([cSecurityGroupRule]),
 #                    "IpPermissionsEgress" : ([cSecurityGroupRule]),
                 }
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         return bt('ec2').describe_security_groups(**idpar('GroupIds', id))['SecurityGroups']
 
-    def GetView(self):
+    def get_view(self):
         return f"{self.GroupName}"
 
     @staticmethod
-    def Create(Name, Description, Vpc):
+    def create(Name, Description, Vpc):
         sgName = f"{cSecurityGroup.Prefix}-{Name}"
 
         id = bt('ec2').create_security_group(
@@ -368,12 +384,12 @@ class cSecurityGroup(cParent):
             VpcId = Vpc
         )['GroupId']
 
-        cTag.Create(id, "Name", sgName)
+        cTag.create(id, "Name", sgName)
 
         return id
     
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('ec2').delete_security_group(
             GroupId=id
         )
@@ -383,15 +399,15 @@ class cSecurityGroupRule(cParent):
     ListName = "Rules"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
                     'SecurityGroupRuleId': cSecurityGroupRule,
-                    'GroupId': (cSecurityGroup, fLItem),
-                    'ListName': (str, fLName),
+                    'GroupId': (cSecurityGroup, FIELD.LIST_ITEM),
+                    'ListName': (str, FIELD.LIST_NAME),
                 }
     
     @staticmethod
-    def Create(GroupId, IpProtocol, FromToPort, CidrIp):
+    def create(GroupId, IpProtocol, FromToPort, CidrIp):
         id = bt('ec2').authorize_security_group_ingress(
             GroupId=GroupId,
             IpPermissions=[
@@ -407,28 +423,28 @@ class cSecurityGroupRule(cParent):
             ]
         )["SecurityGroupRules"][0]["SecurityGroupRuleId"]
 
-        return f"{GroupId}{IdDv}{id}"
+        return f"{GroupId}{ID_DV}{id}"
         
     @staticmethod
-    def Delete(id):
-        security_group_id, _, security_group_rule_id = id.rpartition(IdDv)
+    def delete(id):
+        security_group_id, _, security_group_rule_id = id.rpartition(ID_DV)
         bt('ec2').revoke_security_group_ingress(
             GroupId=security_group_id,
             SecurityGroupRuleIds=[security_group_rule_id]
         )
 
-    def GetId(self):
-        return f"{self.GroupId}{IdDv}{self.SecurityGroupRuleId}"
+    def get_id(self):
+        return f"{self.GroupId}{ID_DV}{self.SecurityGroupRuleId}"
 
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/describe_security_group_rules.html
         # security-group-rule-id - The ID of the security group rule.
         # group-id - The ID of the security group.
 
         par_id = None; cur_id = None
-        if id != None:
-            par_id, _, cur_id = id.rpartition(IdDv)
+        if id is not None:
+            par_id, _, cur_id = id.rpartition(ID_DV)
 
         filters = []
         if par_id:
@@ -447,7 +463,7 @@ class cSecurityGroupRule(cParent):
         )
         return resp['SecurityGroupRules']
 
-    def GetView(self):
+    def get_view(self):
         res = ""
         res = f"{res}{getattr(self, 'IpProtocol', '')}"
         if hasattr(self, "FromPort"):
@@ -461,14 +477,15 @@ class cSecurityGroupRule(cParent):
 
 class cSubnet(cParent): 
     Prefix = "subnet"
-    Draw = dAll
+    Draw = DRAW.ALL
+    Icon = "Subnet"
     Color = '#D4E6F1'
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "SubnetId" : (cSubnet, fId),
-                    "VpcId" : (cVpc, fOwner),
+                    "SubnetId" : (cSubnet, FIELD.ID),
+                    "VpcId" : (cVpc, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
                 }
 # 'Ipv6CidrBlockAssociationSet': []
@@ -476,26 +493,26 @@ class cSubnet(cParent):
 
 
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         return bt('ec2').describe_subnets(**idpar('SubnetIds', id))['Subnets']
     
-    def GetExt(self):
+    def get_ext(self):
         return f"{getattr(self, 'CidrBlock', '-')}"
 
     @staticmethod
-    def Create(Name, Vpc, CidrBlock):
+    def create(Name, Vpc, CidrBlock):
         id = bt('ec2').create_subnet(
             VpcId = Vpc,
             CidrBlock = CidrBlock,
 #           AvailabilityZone='us-east-1a'
         )["Subnet"]["SubnetId"]
 
-        cTag.Create(id, "Name", f"{cSubnet.Prefix}-{Name}")
+        cTag.create(id, "Name", f"{cSubnet.Prefix}-{Name}")
 
         return id
     
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('ec2').delete_subnet(
             SubnetId = id
         )
@@ -504,22 +521,22 @@ class cSubnet(cParent):
 
 class cNetworkAcl(cParent): 
     Prefix = "nacl"
-    Icon = "NetworkAccessControlList"
+    Icon = "Res_Amazon-VPC_Network-Access-Control-List_48"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "NetworkAclId" : (cNetworkAcl, fId),
-                    'VpcId': (cVpc, fOwner),
-                    'OwnerId': (str, fOwner),
-                    'Entries': ([cNetworkAclEntry], fOwner),
+                    "NetworkAclId" : (cNetworkAcl, FIELD.ID),
+                    'VpcId': (cVpc, FIELD.OWNER),
+                    'OwnerId': (str, FIELD.OWNER),
+                    'Entries': ([cNetworkAclEntry], FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
                     #),[{'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}]
                     # 'Associations': [{'NetworkAclAssociationId': 'aclassoc-0c867a11b811c5be1', 'NetworkAclId': 'acl-0334606b00fe7551c', 'SubnetId': 'subnet-06678d33e23eba72f'}]
                 }
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         return bt('ec2').describe_network_acls(**idpar('NetworkAclIds', id))['NetworkAcls']
 
 
@@ -530,110 +547,110 @@ class cNetworkAclEntry(cParent):
     ListName = "Entries"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-            "ParentId": (cNetworkAcl, fLItem),
-            "ListName": (cNetworkAcl, fLName),
-            "Id"   : (cNetworkAclEntry, fId),
-            "Ext"  : (str, fExt ),
-            "View" : (str, fView),
+            "ParentId": (cNetworkAcl, FIELD.LIST_ITEM),
+            "ListName": (cNetworkAcl, FIELD.LIST_NAME),
+            "Id"      : (cNetworkAclEntry, FIELD.ID),
+            "Ext"     : (str, FIELD.EXT ),
+            "View"    : (str, FIELD.VIEW),
         }
 
     @staticmethod
-    def GetObjects(id=None):
-        return cNetworkAcl.GetObjectsByIndex(id, "Entries", "RuleNumber")
+    def get_objects(id=None):
+        return cNetworkAcl.get_objects_by_index(id, "Entries", "RuleNumber")
 
     
-    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
-        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
-        self.Id   = f"{self.ParentId}{IdDv}{self.RuleNumber}"
+    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, Index, resp, do_auto_save)
+        self.Id   = f"{self.ParentId}{ID_DV}{self.RuleNumber}"
         self.View = f"{self.RuleAction} - {getattr(self, 'CidrBlock', '*')}- {self.RuleNumber}:{self.Protocol} {getattr(self, 'PortRange', '')}"
 
 
 class cRouteTable(cParent): 
     Prefix = "rtb"
-    Icon = "RouteTable"
-    Color = "#A9DFBF"
+    Icon = "Res_Amazon-Route-53_Route-Table_48"
+    Color = '#D4E6F1'
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "RouteTableId" : (cRouteTable, fId),
-                    "VpcId" : (cVpc, fOwner),
+                    "RouteTableId" : (cRouteTable, FIELD.ID),
+                    "VpcId" : (cVpc, FIELD.OWNER),
                     "Routes" : ([cRoute]),
                     "Associations" : ([cRouteTableAssociation]),
-                    'OwnerId': (str, fOwner),
+                    'OwnerId': (str, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
                     # 'PropagatingVgws': []
                 }
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         return bt('ec2').describe_route_tables(**idpar('RouteTableIds', id))['RouteTables']
 
     @staticmethod
-    def Create(Name, VpcId):
+    def create(Name, VpcId):
         id = bt('ec2').create_route_table(VpcId = VpcId)['RouteTable']['RouteTableId']
 
-        cTag.Create(id, "Name", f"{cRouteTable.Prefix}-{Name}")
+        cTag.create(id, "Name", f"{cRouteTable.Prefix}-{Name}")
         return id
 
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('ec2').delete_route_table(
             RouteTableId = id
         )
 
 class cRouteTableAssociation(cParent):
     Prefix = "rtba"
-    Draw = dAll
-    Color = "#7CCF9C"
+    Draw = DRAW.ALL
+    Color = '#D4E6F1'
     ListName = "Associations"
     Index = None
 
-    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
-        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
-        self.Id   = f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
+    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, Index, resp, do_auto_save)
+        self.Id   = f"{self.RouteTableId}{ID_DV}{self.RouteTableAssociationId}"
         self.View = f"{Id17(self.SubnetId)}" if hasattr(self, "SubnetId") else "-"
         self.Ext  = f"{Id17(self.SubnetId)}" if hasattr(self, "SubnetId") else "-"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
 #                    "ParentId"               : (cRouteTable, fList),
-                    'Id'  : (str, fId),
-                    'Ext' : (str, fExt),
-                    'View': (str, fView),
-                    'RouteTableId'           : (cRouteTable, fLItem),
-                    'ListName'               : (cRouteTable, fLName),
-                    'SubnetId'               : (cSubnet, fIn),
+                    'Id'  : (str, FIELD.ID),
+                    'Ext' : (str, FIELD.EXT),
+                    'View': (str, FIELD.VIEW),
+                    'RouteTableId'           : (cRouteTable, FIELD.LIST_ITEM),
+                    'ListName'               : (cRouteTable, FIELD.LIST_NAME),
+                    'SubnetId'               : (cSubnet, FIELD.LINK_IN),
 #                    'AssociationState'       : str, #!!!
                 } # +
 
     @staticmethod
-    def GetObjects(id=None):
-        return cRouteTable.GetObjectsByIndex(id, "Associations", 'RouteTableAssociationId')
+    def get_objects(id=None):
+        return cRouteTable.get_objects_by_index(id, "Associations", 'RouteTableAssociationId')
 
-    # def GetId(self):
-    #     return f"{self.RouteTableId}{IdDv}{self.RouteTableAssociationId}"
+    # def get_id(self):
+    #     return f"{self.RouteTableId}{ID_DV}{self.RouteTableAssociationId}"
 
-    # def GetExt(self):
+    # def get_ext(self):
     #     if hasattr(self, "SubnetId"):
     #         return f"{Id17(self.SubnetId)}"
     #     return "-"
     
-    # def GetView(self):
+    # def get_view(self):
     #     return f"Route[{self.Index}]"
     
 
     @staticmethod
-    def Create(RouteTableId, SubnetId):
+    def create(RouteTableId, SubnetId):
         resp = bt('ec2').associate_route_table(SubnetId = SubnetId, RouteTableId = RouteTableId)
-        return f"{RouteTableId}{IdDv}{resp['AssociationId']}"
+        return f"{RouteTableId}{ID_DV}{resp['AssociationId']}"
 
     @staticmethod
-    def Delete(id):
-        RouteTableId, _, AssociationId = id.rpartition(IdDv)
+    def delete(id):
+        RouteTableId, _, AssociationId = id.rpartition(ID_DV)
         bt('ec2').disassociate_route_table(
             AssociationId = AssociationId
         )
@@ -641,67 +658,67 @@ class cRouteTableAssociation(cParent):
 
 class cRoute(cParent):
     Prefix = "route"
-    Draw = dAll-dId
+    Draw = DRAW.ALL-DRAW.ID
     Icon = "Route"
-    Color = "#7CCF9C"
+    Color = '#D4E6F1'
     Index = None
     DontFetch = True
     ListName = "Routes"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    'ListName'             : (cRouteTable      , fLName),
-                    "ParentId"             : (cRouteTable      , fLItem), #fOwner
-                    "GatewayId"            : (cInternetGateway , fOut),
-                    "InstanceId"           : (cEC2             , fOut),
-                    "NatGatewayId"         : (cNATGateway      , fOut),
-                    "NetworkInterfaceId"   : (cNetworkInterface, fOut),
+                    'ListName'             : (cRouteTable      , FIELD.LIST_NAME),
+                    "ParentId"             : (cRouteTable      , FIELD.LIST_ITEM), #FIELD.OWNER
+                    "GatewayId"            : (cInternetGateway , FIELD.LINK_OUT),
+                    "InstanceId"           : (cEC2             , FIELD.LINK_OUT),
+                    "NatGatewayId"         : (cNATGateway      , FIELD.LINK_OUT),
+                    "NetworkInterfaceId"   : (cNetworkInterface, FIELD.LINK_OUT),
 
-                    "GatewayId_local"      : (cVpc             , fIn),
+                    "GatewayId_local"      : (cVpc             , FIELD.LINK_IN),
                 } # +
 
     @staticmethod
-    def GetObjects(id=None):
-        return cRouteTable.GetObjectsByIndex(id, "Routes", int)
+    def get_objects(id=None):
+        return cRouteTable.get_objects_by_index(id, "Routes", int)
     
-    def GetId(self):
-        return f"{self.ParentId}{IdDv}{self.DestinationCidrBlock}"
+    def get_id(self):
+        return f"{self.ParentId}{ID_DV}{self.DestinationCidrBlock}"
 
-    def GetView(self):
+    def get_view(self):
 #        return f"{self.Index}"
         return f"{getattr(self, 'DestinationCidrBlock', '-')}"
 
-    def GetExt(self):
+    def get_ext(self):
         return f"{getattr(self, 'DestinationCidrBlock', '-')}"
 
-    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
-        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
+    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, Index, resp, do_auto_save)
 
         if hasattr(self, "GatewayId") and self.GatewayId == "local":
             self.GatewayId = None
-            setattr(self, "GatewayId_local", cRouteTable.GetObjects(self.ParentId)[0]["VpcId"])
+            setattr(self, "GatewayId_local", cRouteTable.get_objects(self.ParentId)[0]["VpcId"])
 
     @staticmethod
-    def Create(RouteTableId, DestinationCidrBlock, GatewayId = None, NatGatewayId = None):
+    def create(RouteTableId, DestinationCidrBlock, GatewayId = None, NatGatewayId = None):
         args = {
             "RouteTableId": RouteTableId,
             "DestinationCidrBlock": DestinationCidrBlock,
         }
 
-        if GatewayId != None:
+        if GatewayId is not None:
             args["GatewayId"] = GatewayId
         
-        if NatGatewayId != None:
+        if NatGatewayId is not None:
             args["NatGatewayId"] = NatGatewayId
 
         resp = bt('ec2').create_route(**args)
 
-        return f"{RouteTableId}{IdDv}{DestinationCidrBlock}"
+        return f"{RouteTableId}{ID_DV}{DestinationCidrBlock}"
     
     @staticmethod
-    def Delete(id):
-        RouteTableId, _, DestinationCidrBlock = id.rpartition(IdDv)
+    def delete(id):
+        RouteTableId, _, DestinationCidrBlock = id.rpartition(ID_DV)
 
         try:
             bt('ec2').delete_route(
@@ -717,80 +734,81 @@ class cRoute(cParent):
 
 class cVpc(cParent): 
     Prefix = "vpc"
-    Draw = dAll
+    Draw = DRAW.ALL
     Icon = "VPC"
     Color = '#E3D5FF'
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "VpcId"           : (cVpc, fId),
+                    "VpcId"           : (cVpc, FIELD.ID),
                     "NetworkAclId"    : (cNetworkAcl),
                     'Tags'            : ({"Key" : "Value"})
 #                    'CidrBlockAssociationSet' : [{'AssociationId': 'vpc-cidr-assoc-070bb...bcc9c9695b', 'CidrBlock': '10.222.0.0/16', 'CidrBlockState': {...}}],
                 }
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         resp = bt('ec2').describe_vpcs(**idpar('VpcIds', id))
         return resp['Vpcs']
     
-    def GetExt(self):
+    def get_ext(self):
         return f"{getattr(self, 'CidrBlock', '-')}"
     
     @staticmethod
-    def Create(Name, CidrBlock):
+    def create(Name, CidrBlock):
         id = bt('ec2').create_vpc(CidrBlock=CidrBlock)['Vpc']['VpcId']
-        cTag.Create(id, "Name", f"{cVpc.Prefix}-{Name}")
+        cTag.create(id, "Name", f"{cVpc.Prefix}-{Name}")
         return id
     
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('ec2').delete_vpc(
             VpcId = id
         )
     
     @staticmethod
-    def CLIAdd(Name, CidrBlock):
+    def cli_add(Name, CidrBlock):
         return f"id000000001"
 
 class cNetworkInterface(cParent): 
     Prefix = "ni"
+    Icon = "Res_Amazon-VPC_Elastic-Network-Interface_48"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "NetworkInterfaceId" : (cNetworkInterface, fId),
+                    "NetworkInterfaceId" : (cNetworkInterface, FIELD.ID),
                     "VpcId"              : cVpc,
-                    "SubnetId"           : (cSubnet, fOwner),
+                    "SubnetId"           : (cSubnet, FIELD.OWNER),
 #                    "PrivateIpAddresses" : str, # print("Private IP Addresses:", [private_ip['PrivateIpAddress'] for private_ip in network_interface['PrivateIpAddresses']])
 #                    "Attachment"         : str, #    print("Attachment ID:", network_interface['Attachment']['AttachmentId'])
                 }
     
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         return bt('ec2').describe_network_interfaces(**idpar('NetworkInterfaceIds', id))['NetworkInterfaces']
 
     @staticmethod
-    def CLIAdd(Name, CidrBlock, fdrgtd):
+    def cli_add(Name, CidrBlock, fdrgtd):
         return f"id000000002"
 
 
 class cS3(cParent): 
     Prefix = "s3"
-    Icon = "S3"
+    Icon = "Arch_Amazon-Simple-Storage-Service_48"
     DontFetch = True
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    "Name" : (cS3, fId),
+                    "Name" : (cS3, FIELD.ID),
 #                    'CreationDate': datetime.datetime(2023, 9, 29, 12, 28, 16, tzinfo=tzutc())
                 }
     
     @staticmethod
-    def GetObjects(id=None):
-        if id == None:
+    def get_objects(id=None):
+        if id is None:
             response = bt('s3').list_buckets()
             return response['Buckets']
         else:
@@ -801,28 +819,29 @@ class cS3(cParent):
 
 class cElasticIP(cParent):
     Prefix = "eipassoc"
+    Icon = "ElasticIP"
 
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    'AllocationId': (cElasticIP, fId),
+                    'AllocationId': (cElasticIP, FIELD.ID),
                     'Tags': ({"Key" : "Value"}),
                 }
     
     @staticmethod
-    def Create(Name):
+    def create(Name):
         id = bt('ec2').allocate_address(Domain='vpc')['AllocationId']
-        cTag.Create(id, "Name", f"{cElasticIP.Prefix}-{Name}")
+        cTag.create(id, "Name", f"{cElasticIP.Prefix}-{Name}")
         return id
     
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('ec2').release_address(
             AllocationId = id
         )
 
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         resp = bt('ec2').describe_addresses(**idpar('AllocationIds', id))
         return resp['Addresses']
 
@@ -830,11 +849,12 @@ class cElasticIP(cParent):
 class cKeyPair(cParent):
     Prefix = "key"
     DontFetch = True
+    Icon = "KeyPair"
     
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    'KeyPairId': (cKeyPair, fId),
+                    'KeyPairId': (cKeyPair, FIELD.ID),
                     'Tags': ({"Key" : "Value"}),
                 }
     
@@ -842,21 +862,21 @@ class cKeyPair(cParent):
         bt('ec2').delete_key_pair(KeyPairId = id)
 
     @staticmethod
-    def CLIAdd(Name):
+    def cli_add(Name):
         return f"aws ec2 create-key-pair --key-name {Name} --query 'KeyMaterial' --output text > {Name}.pem"
 
     @staticmethod
-    def CLIDel(Name):
+    def cli_del(Name):
         return f"aws ec2 delete-key-pair --key-name {Name}"
 
     @staticmethod
-    def GetObjects(id=None):
+    def get_objects(id=None):
         response = bt('ec2').describe_key_pairs(**idpar('KeyPairIds', id))
         return response['KeyPairs']
 
 
     @staticmethod
-    def Create(Name):
+    def create(Name):
         KeyName = f"{cKeyPair.Prefix}-{Name}"
         resp = bt('ec2').create_key_pair(KeyName=KeyName)
 
@@ -864,14 +884,14 @@ class cKeyPair(cParent):
         try:
             with open(f'PrivateKeys\\{KeyName}.pem', 'w') as key_file: key_file.write(private_key)
         except Exception as e:
-            print(f"KeyPair.Create: An exception occurred: {type(e).__name__} - {e}")
+            print(f"KeyPair.create: An exception occurred: {type(e).__name__} - {e}")
 
         id = resp['KeyPairId']
 
         return id
     
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('ec2').delete_key_pair(KeyPairId = id)
 
     @staticmethod
@@ -887,23 +907,26 @@ class cKeyPair(cParent):
         KeyPairId = resp['KeyPairs'][0]['KeyPairId']
         return KeyPairId
 
-    def GetView(self):
+    def get_view(self):
         return f"{self.KeyName}"
 
 
 class cSNS(cParent):
     DontFetch = True
+    Icon = "Arch_Amazon-Simple-Notification-Service_48"
 
     @staticmethod
-    def Create(Name):
+    def create(Name):
         resp = bt('sns').create_topic(Name=Name)
         return resp['TopicArn']
 
 
 class cUser(cParent):
+    Icon = "Res_User_48_Light"
+
     @staticmethod
-    def GetObjects(id=None):
-        if id == None:
+    def get_objects(id=None):
+        if id is None:
             response = bt('iam').list_users()
             return response['Users']
         
@@ -911,14 +934,16 @@ class cUser(cParent):
             response = bt('iam').get_user(UserName=id)
             return [response['User']]
 
-    def GetId(self):
+    def get_id(self):
         return f"{self.UserName}"
 
 
 class cGroup(cParent):
+    Icon = "Res_Users_48_Light"
+
     @staticmethod
-    def GetObjects(id=None):
-        if id == None:
+    def get_objects(id=None):
+        if id is None:
             response = bt('iam').list_groups()
             return response['Groups']
         
@@ -926,16 +951,17 @@ class cGroup(cParent):
             response = bt('iam').get_group(GroupName=id)
             return [response['Group']]
 
-    def GetId(self):
+    def get_id(self):
         return f"{self.GroupName}"
 
 
 class cRole(cParent):
     DontFetch = True
+    Icon = "Res_AWS-Identity-Access-Management_Role_48"
 
     @staticmethod
-    def GetObjects(id = None):
-        if id == None:
+    def get_objects(id = None):
+        if id is None:
             response = bt('iam').list_roles()
             return response['Roles']
         
@@ -943,22 +969,25 @@ class cRole(cParent):
             response = bt('iam').get_role(RoleName=id)
             return [response['Role']]
 
-    def GetId(self):
+    def get_id(self):
         return f"{self.RoleName}"
 
 
     
 class cFunction(cParent):
+    Icon = "Arch_AWS-Lambda_48"
+    Color = "#ffc28c"
+
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    'FunctionName': (cFunction, fId),
+                    'FunctionName': (cFunction, FIELD.ID),
                     'Tags': ({"Key" : "Value"}),
                 }
 
     @staticmethod
-    def GetObjects(id=None):
-        if id == None:
+    def get_objects(id=None):
+        if id is None:
             response = bt('lambda').list_functions()
             return response['Functions']
         else:
@@ -966,7 +995,7 @@ class cFunction(cParent):
             return [response["Configuration"]]
         
     @staticmethod
-    def Create(Name, Code):
+    def create(Name, Code):
         handler = 'lambda_function.lambda_handler'
         runtime = 'python3.12'
         role_arn = 'arn:aws:iam::047989593255:role/lambda-s3-role'
@@ -994,7 +1023,7 @@ class cFunction(cParent):
         return response['FunctionName']
     
     @staticmethod
-    def Delete(id):
+    def delete(id):
         bt('lambda').delete_function(FunctionName=id)
 
     def Invoke(id, payload):
@@ -1010,27 +1039,29 @@ class cFunction(cParent):
 
 
 class cDBInstance(cParent):
+    Color = "#c925d1"
+
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    'DBInstanceIdentifier': (cDBInstance, fId),
-                    'DBSubnetGroupName': (cDBSubnetGroup, fOwner),
+                    'DBInstanceIdentifier': (cDBInstance, FIELD.ID),
+                    'DBSubnetGroupName': (cDBSubnetGroup, FIELD.OWNER),
                     'Tags': ({"Key" : "Value"}),
                 }
 
     @staticmethod
-    def GetObjects(id = None):
+    def get_objects(id = None):
         response = bt('rds').describe_db_instances(**idpar('DBInstanceIdentifier', id, pPar))
         return response['DBInstances']
 
-    def __init__(self, aws, IdQuery, Index, resp, DoAutoSave=True):
-        super().__init__(aws, IdQuery, Index, resp, DoAutoSave)
+    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, Index, resp, do_auto_save)
 
         if hasattr(self, "DBSubnetGroup"):
             setattr(self, "DBSubnetGroupName", self.DBSubnetGroup["DBSubnetGroupName"])
     
     @staticmethod
-    def Create(Name, DBSubnetGroupName, User, Pass):
+    def create(Name, DBSubnetGroupName, User, Pass):
         response = bt('rds').create_db_instance(
             DBInstanceIdentifier = Name,
             DBInstanceClass = AWS.Const['RDS.InstanceType'],
@@ -1046,27 +1077,30 @@ class cDBInstance(cParent):
         return response['DBInstance']['DBInstanceIdentifier']
 
     @staticmethod
-    def Delete(id, SkipFinalSnapshot = True):
+    def delete(id, SkipFinalSnapshot = True):
         bt('rds').delete_db_instance(
             DBInstanceIdentifier = id,
             SkipFinalSnapshot = SkipFinalSnapshot
         )        
     
 class cDBSubnetGroup(cParent):
+    Icon = "Arch_Amazon-RDS_48"
+    Color = "#c925d1"
+
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    'DBSubnetGroupName': (cDBSubnetGroup, fId),
-                    'VpcId': (cVpc, fOwner),
+                    'DBSubnetGroupName': (cDBSubnetGroup, FIELD.ID),
+                    'VpcId': (cVpc, FIELD.OWNER),
                 }
 
     @staticmethod
-    def GetObjects(id = None):
+    def get_objects(id = None):
         response = bt('rds').describe_db_subnet_groups(**idpar('DBSubnetGroupName', id, pPar))
         return response['DBSubnetGroups']
     
     @staticmethod
-    def Create(Name, DBSubnetGroupDescription, SubnetIds):
+    def create(Name, DBSubnetGroupDescription, SubnetIds):
         response = bt('rds').create_db_subnet_group(
             DBSubnetGroupName = Name,
             DBSubnetGroupDescription=DBSubnetGroupDescription,
@@ -1075,24 +1109,26 @@ class cDBSubnetGroup(cParent):
         return response['DBSubnetGroup']['DBSubnetGroupName']
 
     @staticmethod
-    def Delete(id):
+    def delete(id):
         response = bt('rds').delete_db_subnet_group(DBSubnetGroupName=db)
         return
 
 class cDynamoDB(cParent):
+    Icon = "Arch_Amazon-DynamoDB_48"
+
     @staticmethod
-    def Fields():
+    def fields():
         return {
-                    'TableName': (cDynamoDB, fId),
+                    'TableName': (cDynamoDB, FIELD.ID),
                 }
 
     @staticmethod
-    def GetObjects(id = None):
-        if id == None:
+    def get_objects(id = None):
+        if id is None:
             response = bt('dynamodb').list_tables()
             res = []
             for curid in response["TableNames"]:
-                res += cDynamoDB.GetObjects(curid)
+                res += cDynamoDB.get_objects(curid)
             return res
         
         else:
@@ -1100,7 +1136,7 @@ class cDynamoDB(cParent):
             return [response["Table"]]
 
     @staticmethod
-    def Create(id):
+    def create(id):
         attribute_definitions = [
             {'AttributeName': 'id', 'AttributeType': 'N'}, # Add other attribute definitions as needed
         ]
@@ -1118,20 +1154,20 @@ class cDynamoDB(cParent):
         return id
 
     @staticmethod
-    def Delete(id):
+    def delete(id):
         response = bt('dynamodb').delete_table(TableName=id)
         return
 
 
 class AWS(ObjectModel):
-    def __init__(self, profile, path, DoAutoLoad = True, DoAutoSave = True):
+    def __init__(self, profile, path, do_auto_load = True, do_auto_save = True):
 
         setattr(AWS, "PROFILE", profile)
 
         super().__init__(
             path,
-            DoAutoLoad,
-            DoAutoSave, 
+            do_auto_load,
+            do_auto_save, 
             {
                 'EC2.UserData.Apache' : ""\
                                 + "#!/bin/bash\n"\

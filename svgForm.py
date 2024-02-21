@@ -8,10 +8,10 @@ class ZoomableSvgView(QGraphicsView):
     def __init__(self, parent=None):
         super(ZoomableSvgView, self).__init__(parent)
 
-        # Create a QGraphicsScene
+        # create a QGraphicsScene
         scene = QGraphicsScene(self)
 
-        # Create a QGraphicsSvgItem and add it to the scene
+        # create a QGraphicsSvgItem and add it to the scene
         self.svg_item = QGraphicsSvgItem("Drawing.svg")
         scene.addItem(self.svg_item)
 

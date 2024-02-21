@@ -44,14 +44,14 @@ class AWS_Window(QDialog):
         self.cliAdd.clicked.connect(self.cliAddCall)
         self.cliDel.clicked.connect(self.cliDelCall)
 
-        self.cliAddLine.setText(clss.CLIAdd(self.AddParams))
-        self.cliDelLine.setText(clss.CLIDel(self.DelParams))
+        self.cliAddLine.setText(clss.cli_add(self.AddParams))
+        self.cliDelLine.setText(clss.cli_del(self.DelParams))
 
         self.Close.clicked.connect(self.accept)
 
     def pyAddCall(self, args):
         try:
-            AddId = self.Class.Create(self.AddParams)
+            AddId = self.Class.create(self.AddParams)
             self.Id.setText(AddId)
         except Exception as e:
             print(f"Error: {str(e)}")        
@@ -105,7 +105,7 @@ class MyWidget(QWidget):
                 return obj.isoformat()
             raise TypeError(f'Type {type(obj)} not serializable')
 
-        # Create an EC2 client
+        # create an EC2 client
         ec2 = boto3.client('ec2')
 
         # List all instances
@@ -128,7 +128,7 @@ class MyWidget(QWidget):
         elif pref == "CIDR":
             buttons = False
 
-        self.Fields.append(field)
+        self.FIELD.append(field)
 
         #field = layout.objectName().replace("_Layout", "")
         layout = getattr(self, field + "_Layout")
@@ -168,16 +168,16 @@ class MyWidget(QWidget):
 
     def Val(self, field, setval = None):
         line_edit = self.findChild(QtWidgets.QLineEdit, field + "_Id")
-        if line_edit != None:
-            if setval != None:
+        if line_edit is not None:
+            if setval is not None:
                 line_edit.setText(setval)
 
             return line_edit.text()
 
         check_box = self.findChild(QtWidgets.QCheckBox, field + "_Flag")
-        if check_box != None:
-            if setval != None:
-                if type(setval) == str:
+        if check_box is not None:
+            if setval is not None:
+                if isinstance(setval, str):
                     setval = setval == "True"
                 check_box.setChecked(setval)
 
@@ -214,12 +214,12 @@ class MyWidget(QWidget):
                 #vpc_id = response['Vpc']['VpcId']
                 #self.addTag(vpc_id, "Name", "vpc-Pavel-Eresko")
 
-                vpc_id = cVpc.Create("vpc-Pavel-Eresko", '10.3.0.0/16')
+                vpc_id = cVpc.create("vpc-Pavel-Eresko", '10.3.0.0/16')
 
                 self.Val(field, vpc_id)
 
             elif pref == "IGW":
-                internet_gateway_id = cInternetGateway.Create("Pavel-Eresko")
+                internet_gateway_id = cInternetGateway.create("Pavel-Eresko")
 
                 #response = self.boto3ec2.create_internet_gateway()
                 #internet_gateway_id = response['InternetGateway']['InternetGatewayId']
@@ -229,7 +229,7 @@ class MyWidget(QWidget):
                 self.Val(field, internet_gateway_id)
 
             elif pref == "VPCIGW":
-                cInternetGatewayAttachment.Create(self.Val("IGW"), self.Val("VPC"))
+                cInternetGatewayAttachment.create(self.Val("IGW"), self.Val("VPC"))
                 #response = self.boto3ec2.attach_internet_gateway(
                 #    InternetGatewayId=self.Val("IGW"),
                 #    VpcId = self.Val("VPC")
@@ -238,7 +238,7 @@ class MyWidget(QWidget):
                 self.Val(field, True)
 
             elif pref == "SN":
-                subnet_id = cSubnet.Create(
+                subnet_id = cSubnet.create(
                     "Pavel-Eresko-" + field.replace("SN_", ""),
                     self.Val("VPC"),
                     self.Val(field.replace("SN_", "CIDR_"))
@@ -246,7 +246,7 @@ class MyWidget(QWidget):
                 self.Val(field, subnet_id)
 
             elif pref == "RTB":
-                route_table_id = cRouteTable.Create("Pavel-Eresko-" + field.replace("RTB_", ""), self.Val("VPC"))
+                route_table_id = cRouteTable.create("Pavel-Eresko-" + field.replace("RTB_", ""), self.Val("VPC"))
 
                 # response = self.boto3ec2.create_route_table(
                 #     VpcId = self.Val("VPC")
@@ -259,7 +259,7 @@ class MyWidget(QWidget):
                 self.Val(field, route_table_id)
 
             elif pref == "RTBSN":
-                cRouteTableAssociation.Create(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
+                cRouteTableAssociation.create(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
 #                response = self.boto3ec2.associate_route_table(
 #                    SubnetId = self.Val(field.replace("RTBSN_", "SN_")),
 #                    RouteTableId = self.Val(field.replace("RTBSN_", "RTB_"))
@@ -270,7 +270,7 @@ class MyWidget(QWidget):
             elif pref == "RT":
                 GatewayId    = self.Val("IGW") if field == "RT_Public" else None
                 NatGatewayId = self.Val("NAT") if field != "RT_Public" else None
-                cRoute.Create(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0", GatewayId, NatGatewayId)
+                cRoute.create(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0", GatewayId, NatGatewayId)
 
                 #args = {
                 #    "RouteTableId": self.Val(field.replace("RT_", "RTB_")),
@@ -286,7 +286,7 @@ class MyWidget(QWidget):
                 self.Val(field, True)
 
             elif pref == "EIP":
-                id = cElasticIP.Create("Pavel-Eresko-NAT")
+                id = cElasticIP.create("Pavel-Eresko-NAT")
                 #response = self.boto3ec2.allocate_address(Domain='vpc')
                 #eip_allocation_id = response['AllocationId']
                 #self.addTag(eip_allocation_id, "Name", "eipassoc-Pavel-Eresko-NAT")
@@ -309,7 +309,7 @@ class MyWidget(QWidget):
             elif pref == "KEY":
                 key_name = self.Val(field)
 
-                cKeyPair.Create(key_name)
+                cKeyPair.create(key_name)
 
             elif pref == "EC2":
 
@@ -323,7 +323,7 @@ class MyWidget(QWidget):
                 PrivateIpAddress = ("10.3.0.10" if field == "EC2_Public" else "10.3.1.10")
                 UserData = AWS.Const["EC2.UserData.Apache"]
 
-                instance_id = cEC2.Create(
+                instance_id = cEC2.create(
                     Name=Name,
                     ImageId=ImageId,
                     InstanceType=InstanceType,
@@ -339,9 +339,9 @@ class MyWidget(QWidget):
 
 
             elif pref == "SG":
-                sg = cSecurityGroup.Create("Pavel-Eresko-SSH-HTTP" + field.replace("SG_", ""), self.Val("VPC"), "security group by Pavel Eresko")
-                cSecurityGroupRule.Create(sg, 'tcp', 22, '0.0.0.0/0') # SSH (22)
-                cSecurityGroupRule.Create(sg, 'tcp', 80, '0.0.0.0/0') # HTTP (80)
+                sg = cSecurityGroup.create("Pavel-Eresko-SSH-HTTP" + field.replace("SG_", ""), self.Val("VPC"), "security group by Pavel Eresko")
+                cSecurityGroupRule.create(sg, 'tcp', 22, '0.0.0.0/0') # SSH (22)
+                cSecurityGroupRule.create(sg, 'tcp', 80, '0.0.0.0/0') # HTTP (80)
                 self.Val(field, sg)
 
         except Exception as e:
@@ -353,15 +353,15 @@ class MyWidget(QWidget):
 
         try:
             if pref == "VPC":
-                cVpc.Delete(self.Val(field))
+                cVpc.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "IGW":
-                cInternetGateway.Delete(self.Val(field))
+                cInternetGateway.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "VPCIGW":
-                cInternetGatewayAttachment.Delete(self.Val("IGW"), self.Val("VPC"))
+                cInternetGatewayAttachment.delete(self.Val("IGW"), self.Val("VPC"))
                 #response = self.boto3ec2.detach_internet_gateway(
                 #        InternetGatewayId=self.Val("IGW"),
                 #        VpcId = self.Val("VPC")
@@ -369,15 +369,15 @@ class MyWidget(QWidget):
                 self.Val(field, False)
 
             elif pref == "SN":
-                cSubnet.Delete(self.Val(field))
+                cSubnet.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "RTB":
-                cRouteTable.Delete(self.Val(field))
+                cRouteTable.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "RTBSN":
-                cRouteTableAssociation.Delete(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
+                cRouteTableAssociation.delete(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
 
                 #response = self.boto3ec2.describe_route_tables(
                 #    RouteTableIds=[self.Val(field.replace("RTBSN_", "RTB_"))]
@@ -396,7 +396,7 @@ class MyWidget(QWidget):
                 self.Val(field, False)
 
             elif pref == "RT":
-                cRoute.Delete(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0")
+                cRoute.delete(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0")
                 #response = self.boto3ec2.delete_route(
                 #    RouteTableId = self.Val(field.replace("RT_", "RTB_")),
                 #    DestinationCidrBlock = "0.0.0.0/0"
@@ -404,14 +404,14 @@ class MyWidget(QWidget):
                 self.Val(field, False)
 
             elif pref == "KEY":
-                cKeyPair.Delete(self.Val(field))
+                cKeyPair.delete(self.Val(field))
 
             elif pref == "EC2":
-                cEC2.Delete(self.Val(field))
+                cEC2.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "SG":
-                cSecurityGroup.Delete(self.Val(field))
+                cSecurityGroup.delete(self.Val(field))
                 self.Val(field, "")
 
         except Exception as e:
@@ -423,14 +423,14 @@ class MyWidget(QWidget):
             self.close()
 
     def closeEvent(self, event):
-        self.Save()
+        self.save()
         event.accept()
 
-    def Save(self):
-        xml = ET.Element("Fields")
-        for field in self.Fields:
+    def save(self):
+        xml = ET.Element("fields")
+        for field in self.fields:
             val = self.Val(field)
-            if type(val) == bool:
+            if isinstance(val, bool):
                 val = "True" if val else "False"
             xml.set(field, val)
 
@@ -438,13 +438,13 @@ class MyWidget(QWidget):
             xml_file.write(prettify(xml))
 
 
-    def Load(self):
+    def load(self):
         try:
             xml = ET.parse("awsPrefixForm.cfg").getroot()
         except FileNotFoundError:
             return
         
-        for field in self.Fields:
+        for field in self.fields:
             if field in xml.attrib:
                 val = xml.attrib[field]
                 self.Val(field, val)
@@ -454,7 +454,7 @@ class MyWidget(QWidget):
         super(MyWidget, self).__init__()
         loadUi('awsPrefixForm.ui', self)
 
-        self.Fields = []
+        self.fields = []
         for layout in self.findChildren(QtWidgets.QHBoxLayout):
             self.CreateInput(layout.objectName().replace("_Layout", ""))
 
@@ -462,7 +462,7 @@ class MyWidget(QWidget):
 
 #        self.boto3ec2 = boto3.client('ec2', region_name = self.Val("Region"))
 
-        self.Load()
+        self.load()
 
 
 if __name__ == '__main__':
