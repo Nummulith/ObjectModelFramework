@@ -5,16 +5,14 @@ def RDS(aws):
     aws.DBInstance.fetch()
 
     dbsgname = "default-vpc-0525cb89b520dc144"
-    # dbsgname = aws.DBSubnetGroup.create( 
-    #     dbsgname,
-    #     "dbsg Description",
-    #     ["subnet-0a0e70b2c10a4c152","subnet-01c500e6d13f52a29"]
-    # )
-    # print(dbsgname)
-
+    aws.DBSubnetGroup.create( 
+        dbsgname,
+        "dbsg Description",
+        ["subnet-0a0e70b2c10a4c152","subnet-01c500e6d13f52a29"]
+    )
 
     dbi = "dbinstance-pavel-1"
-    dbi = aws.DBInstance.create(
+    aws.DBInstance.create(
         dbi,
         dbsgname,
         "DBAdmin",

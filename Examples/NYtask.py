@@ -1,5 +1,5 @@
 def NYTask(aws):
-    Name = "Pavel-Eresko"
+    Name = "Pavel"
 
     key = aws.KeyPair.create(Name)
 
@@ -48,3 +48,5 @@ def NYTask(aws):
         "10.3.1.10",
         aws.Const["EC2.UserData.Apache"],
     )
+
+    aws.draw()

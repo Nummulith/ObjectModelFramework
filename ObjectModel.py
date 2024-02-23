@@ -404,7 +404,7 @@ class ObjectList:
         index = len(keys_to_delete) - 1
         while index >= 0:
             node_id = keys_to_delete[index]
-            self.delete_inner((node_id,), True)
+            self.delete_inner((node_id,))
             index -= 1
 
     def print(self):
@@ -631,15 +631,36 @@ class ObjectModel:
         clsss = clss_list
 
         if clsss is None:
-            clsss = "ALL"
+            return self.string_to_classes("ALL")
 
-        if hasattr(self, clsss):
-            clsss = [getattr(self, clsss).Class]
+        elif isinstance(clsss, str) and clsss.find(",") >= 0:
+            res = clsss
+            res = res.replace(" ", "")
+            res = res.split(",")
+            return self.string_to_classes(res)
 
-        if isinstance(clsss, str):
-            clsss = ObjectModel.Classes[clsss]
+        elif isinstance(clsss, list):
+            res = []
+            for i in clsss:
+                res += self.string_to_classes(i)
+            return res
 
-        return clsss
+        elif isinstance(clsss, str) and hasattr(self, clsss):
+            return [getattr(self, clsss).Class]
+
+        elif isinstance(clsss, str) and clsss in self.Classes:
+            return self.Classes[clsss]
+        
+        elif isinstance(clsss, str) and clsss in self.Const:
+            return self.string_to_classes(self.Const[clsss])
+
+        elif issubclass(clsss, ObjectModelItem):
+            return [clsss]
+
+        else:
+            print("ObjectModel.string_to_classes: wrong Class key: " + clsss)
+            return []
+
 
     def fetch(self, clss_list = None):
         ''' Fetching the object '''

@@ -38,29 +38,40 @@ class MyWidget(QWidget):
 
         self.leProfile.setText("TS") # TS, DCI
         self.leFile   .setText("awsScript")
-        self.leClasses.setText("SUBNET")
-        self.leExample.setText("Subnet")
+        self.leClasses.setText("ALL")
+        self.leExample.setText("NYTask")
+
+        self.cbAWS .setChecked(True)
+        self.cbLoad.setChecked(True)
+
+        # self.AWS = None
 
     def get_aws(self, do_auto_load = True, do_auto_save = True):
         """ Creating the AWS object """
         return AWS(
             self.leProfile.text(),
             self.leFile   .text(),
-            do_auto_load,
-            do_auto_save
+            do_auto_load, do_auto_save
         )
-
-    def example_script(self, aws):
-        """ Calling the example module function from the '.\\Examples' folder """
-        module_and_function_name = self.leExample.text()
-        module = importlib.import_module("Examples." + module_and_function_name)
-        func = getattr(module, module_and_function_name)
-        func(aws)
 
     def example(self):
         """ 'Example' button click """
-        aws = self.get_aws()
-        self.example_script(aws)
+
+        auto = self.cbLoad.isChecked()
+        aws = self.get_aws(auto, auto) if self.cbAWS.isChecked() else None
+#        aws.CallClasses = self.leClasses.text()
+
+        module_and_function_name = self.leExample.text()
+
+        try:
+            module = importlib.import_module("Examples." + module_and_function_name)
+            importlib.reload(module)
+
+            func = getattr(module, module_and_function_name)
+            func(aws)
+
+        except Exception as e:
+            print(f"Example: An exception occurred: {type(e).__name__} - {e}")
 
     def fetch(self):
         """ 'Fetch' button click """
