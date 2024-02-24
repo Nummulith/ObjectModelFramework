@@ -51,7 +51,7 @@ For more details, refer to the [**Yet Another AWS Analyser**](docs\Yet_Another_A
     </div>
 </div>
 
-The Object Model Framework is a foundational Python-based program that facilitates the creation, management, and visualization of a network of user-defined classes. Users can dynamically define classes, establish relationships between objects, and interact with external systems. [The Graph Drawing Utility](#The_Graph_Drawing_Utility) is employed for visualizing object relationships.
+The [**Object Model Framework**](docs\Object_Model_Framework.md) is a foundational Python-based program that facilitates the creation, management, and visualization of a network of user-defined classes. Users can dynamically define classes, establish relationships between objects, and interact with external systems. [The Graph Drawing Utility](#Graph_Drawing_Utility) is employed for visualizing object relationships.
 
 ### Key Features
 
@@ -81,7 +81,7 @@ For more details, refer to the [**Object Model Framework**](docs\Object_Model_Fr
     </div>
 </div>
 
-The Graph Drawing Utility project provides a flexible tool for visualizing object relationships. This utility allows users to dynamically represent and explore connections between objects. With support for three relationship types (owner, link, and list), users can add, view, and establish relationships before rendering the object graph.
+The [**Graph Drawing Utility**](docs\Graph_Drawing_Utility.md) project provides a flexible tool for visualizing object relationships. This utility allows users to dynamically represent and explore connections between objects. With support for three relationship types (owner, link, and list), users can add, view, and establish relationships before rendering the object graph.
 
 ### Key Features
 
@@ -103,8 +103,8 @@ For more details, refer to the [**Graph Drawing Utility**](docs\Graph_Drawing_Ut
 
 ## Requirements
 
-- [**Python 3.7**](https://www.python.org/) or higher
-- [**Graphviz**](https://graphviz.gitlab.io/download/) to render the diagram
+- [**Python 3.7**](https://www.python.org/)
+- [**Graphviz**](https://graphviz.gitlab.io/download/)
 
 ## Contributing
 
