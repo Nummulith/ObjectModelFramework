@@ -301,7 +301,7 @@ class ObjectModelItem:
     @classmethod
     def get_class_view(cls):
         ''' Get class view '''
-        return cls.__name__[1:]
+        return cls.__name__
 
 
 class ObjectList:
@@ -667,7 +667,7 @@ class ObjectModel:
         clsss = self.string_to_classes(clss_list)
 
         for clss in clsss:
-            if getattr(clss, "DontFetch", False):
+            if getattr(clss, "DoNotFetch", False):
                 continue
             self[clss].fetch()
 

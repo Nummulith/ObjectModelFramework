@@ -44,15 +44,19 @@ class MyWidget(QWidget):
         self.cbAWS .setChecked(True)
         self.cbLoad.setChecked(True)
 
-        # self.AWS = None
+        self.AWS = None
 
     def get_aws(self, do_auto_load = True, do_auto_save = True):
         """ Creating the AWS object """
-        return AWS(
-            self.leProfile.text(),
-            self.leFile   .text(),
-            do_auto_load, do_auto_save
-        )
+        
+        if self.AWS == None:
+            self.AWS = AWS(
+                self.leProfile.text(),
+                self.leFile   .text(),
+                do_auto_load, do_auto_save
+            )
+
+        return self.AWS
 
     def example(self):
         """ 'Example' button click """
@@ -90,6 +94,7 @@ class MyWidget(QWidget):
         aws = self.get_aws(False, False)
         aws.load()
         aws.save()
+
         aws.draw(self.leClasses.text())
 
     def delete(self):
@@ -104,3 +109,8 @@ if __name__ == '__main__':
     widget = MyWidget()
     widget.show()
     app.exec_()
+
+def Test():
+    app = QApplication([])
+    wgt = MyWidget()
+    wgt.draw()

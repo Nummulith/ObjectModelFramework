@@ -1,7 +1,6 @@
 web_services
 __pycache__/
 *.pem
-*.png
-test.py
 *.svg
 *.xml
+*.prof

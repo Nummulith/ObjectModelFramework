@@ -85,17 +85,17 @@ class AWS_Window(QDialog):
 
 class MyWidget(QWidget):
     prefix_map = {
-        "VPC"   : (cVpc, lambda self: None, lambda self: None),
-        "IGW"   : (cInternetGateway, lambda self: None, lambda self: None),
-        "VPCIGW": (cInternetGatewayAttachment, lambda self: None, lambda self: None),
-        "SN"    : (cSubnet, lambda self: None, lambda self: None),
-        "SG"    : (cSecurityGroup, lambda self: None, lambda self: None),
-        "RTB"   : (cRouteTable, lambda self: None, lambda self: None),
-        "RTBSN" : (cRouteTableAssociation, lambda self: None, lambda self: None),
-        "RT"    : (cRoute, lambda self: None, lambda self: None),
-        "EIP"   : (cElasticIP, lambda self: None, lambda self: None),
-        "NAT"   : (cNATGateway, lambda self: None, lambda self: None),
-        "KEY"   : (cKeyPair, lambda self: self.Val("KEY"), lambda self: self.Val("KEY")),
+        "VPC"   : (Vpc, lambda self: None, lambda self: None),
+        "IGW"   : (InternetGateway, lambda self: None, lambda self: None),
+        "VPCIGW": (InternetGatewayAttachment, lambda self: None, lambda self: None),
+        "SN"    : (Subnet, lambda self: None, lambda self: None),
+        "SG"    : (SecurityGroup, lambda self: None, lambda self: None),
+        "RTB"   : (RouteTable, lambda self: None, lambda self: None),
+        "RTBSN" : (RouteTableAssociation, lambda self: None, lambda self: None),
+        "RT"    : (Route, lambda self: None, lambda self: None),
+        "EIP"   : (ElasticIP, lambda self: None, lambda self: None),
+        "NAT"   : (NATGateway, lambda self: None, lambda self: None),
+        "KEY"   : (KeyPair, lambda self: self.Val("KEY"), lambda self: self.Val("KEY")),
     }
 
     def fullresponse(self):
@@ -214,12 +214,12 @@ class MyWidget(QWidget):
                 #vpc_id = response['Vpc']['VpcId']
                 #self.addTag(vpc_id, "Name", "vpc-Pavel-Eresko")
 
-                vpc_id = cVpc.create("vpc-Pavel-Eresko", '10.3.0.0/16')
+                vpc_id = Vpc.create("vpc-Pavel-Eresko", '10.3.0.0/16')
 
                 self.Val(field, vpc_id)
 
             elif pref == "IGW":
-                internet_gateway_id = cInternetGateway.create("Pavel-Eresko")
+                internet_gateway_id = InternetGateway.create("Pavel-Eresko")
 
                 #response = self.boto3ec2.create_internet_gateway()
                 #internet_gateway_id = response['InternetGateway']['InternetGatewayId']
@@ -229,7 +229,7 @@ class MyWidget(QWidget):
                 self.Val(field, internet_gateway_id)
 
             elif pref == "VPCIGW":
-                cInternetGatewayAttachment.create(self.Val("IGW"), self.Val("VPC"))
+                InternetGatewayAttachment.create(self.Val("IGW"), self.Val("VPC"))
                 #response = self.boto3ec2.attach_internet_gateway(
                 #    InternetGatewayId=self.Val("IGW"),
                 #    VpcId = self.Val("VPC")
@@ -238,7 +238,7 @@ class MyWidget(QWidget):
                 self.Val(field, True)
 
             elif pref == "SN":
-                subnet_id = cSubnet.create(
+                subnet_id = Subnet.create(
                     "Pavel-Eresko-" + field.replace("SN_", ""),
                     self.Val("VPC"),
                     self.Val(field.replace("SN_", "CIDR_"))
@@ -246,7 +246,7 @@ class MyWidget(QWidget):
                 self.Val(field, subnet_id)
 
             elif pref == "RTB":
-                route_table_id = cRouteTable.create("Pavel-Eresko-" + field.replace("RTB_", ""), self.Val("VPC"))
+                route_table_id = RouteTable.create("Pavel-Eresko-" + field.replace("RTB_", ""), self.Val("VPC"))
 
                 # response = self.boto3ec2.create_route_table(
                 #     VpcId = self.Val("VPC")
@@ -259,7 +259,7 @@ class MyWidget(QWidget):
                 self.Val(field, route_table_id)
 
             elif pref == "RTBSN":
-                cRouteTableAssociation.create(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
+                RouteTableAssociation.create(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
 #                response = self.boto3ec2.associate_route_table(
 #                    SubnetId = self.Val(field.replace("RTBSN_", "SN_")),
 #                    RouteTableId = self.Val(field.replace("RTBSN_", "RTB_"))
@@ -270,7 +270,7 @@ class MyWidget(QWidget):
             elif pref == "RT":
                 GatewayId    = self.Val("IGW") if field == "RT_Public" else None
                 NatGatewayId = self.Val("NAT") if field != "RT_Public" else None
-                cRoute.create(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0", GatewayId, NatGatewayId)
+                Route.create(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0", GatewayId, NatGatewayId)
 
                 #args = {
                 #    "RouteTableId": self.Val(field.replace("RT_", "RTB_")),
@@ -286,14 +286,14 @@ class MyWidget(QWidget):
                 self.Val(field, True)
 
             elif pref == "EIP":
-                id = cElasticIP.create("Pavel-Eresko-NAT")
+                id = ElasticIP.create("Pavel-Eresko-NAT")
                 #response = self.boto3ec2.allocate_address(Domain='vpc')
                 #eip_allocation_id = response['AllocationId']
                 #self.addTag(eip_allocation_id, "Name", "eipassoc-Pavel-Eresko-NAT")
                 self.Val(field, id)
 
             elif pref == "NAT":
-                id = cNATGateway("Pavel-Eresko", self.Val("SN_Public"), self.Val("EIP"))
+                id = NATGateway("Pavel-Eresko", self.Val("SN_Public"), self.Val("EIP"))
 
                 #response = self.boto3ec2.create_nat_gateway(
                 #    SubnetId = self.Val("SN_Public"),
@@ -309,7 +309,7 @@ class MyWidget(QWidget):
             elif pref == "KEY":
                 key_name = self.Val(field)
 
-                cKeyPair.create(key_name)
+                KeyPair.create(key_name)
 
             elif pref == "EC2":
 
@@ -323,7 +323,7 @@ class MyWidget(QWidget):
                 PrivateIpAddress = ("10.3.0.10" if field == "EC2_Public" else "10.3.1.10")
                 UserData = AWS.Const["EC2.UserData.Apache"]
 
-                instance_id = cEC2.create(
+                instance_id = EC2.create(
                     Name=Name,
                     ImageId=ImageId,
                     InstanceType=InstanceType,
@@ -339,9 +339,9 @@ class MyWidget(QWidget):
 
 
             elif pref == "SG":
-                sg = cSecurityGroup.create("Pavel-Eresko-SSH-HTTP" + field.replace("SG_", ""), self.Val("VPC"), "security group by Pavel Eresko")
-                cSecurityGroupRule.create(sg, 'tcp', 22, '0.0.0.0/0') # SSH (22)
-                cSecurityGroupRule.create(sg, 'tcp', 80, '0.0.0.0/0') # HTTP (80)
+                sg = SecurityGroup.create("Pavel-Eresko-SSH-HTTP" + field.replace("SG_", ""), self.Val("VPC"), "security group by Pavel Eresko")
+                SecurityGroupRule.create(sg, 'tcp', 22, '0.0.0.0/0') # SSH (22)
+                SecurityGroupRule.create(sg, 'tcp', 80, '0.0.0.0/0') # HTTP (80)
                 self.Val(field, sg)
 
         except Exception as e:
@@ -353,15 +353,15 @@ class MyWidget(QWidget):
 
         try:
             if pref == "VPC":
-                cVpc.delete(self.Val(field))
+                Vpc.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "IGW":
-                cInternetGateway.delete(self.Val(field))
+                InternetGateway.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "VPCIGW":
-                cInternetGatewayAttachment.delete(self.Val("IGW"), self.Val("VPC"))
+                InternetGatewayAttachment.delete(self.Val("IGW"), self.Val("VPC"))
                 #response = self.boto3ec2.detach_internet_gateway(
                 #        InternetGatewayId=self.Val("IGW"),
                 #        VpcId = self.Val("VPC")
@@ -369,15 +369,15 @@ class MyWidget(QWidget):
                 self.Val(field, False)
 
             elif pref == "SN":
-                cSubnet.delete(self.Val(field))
+                Subnet.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "RTB":
-                cRouteTable.delete(self.Val(field))
+                RouteTable.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "RTBSN":
-                cRouteTableAssociation.delete(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
+                RouteTableAssociation.delete(self.Val(field.replace("RTBSN_", "SN_")), self.Val(field.replace("RTBSN_", "RTB_")))
 
                 #response = self.boto3ec2.describe_route_tables(
                 #    RouteTableIds=[self.Val(field.replace("RTBSN_", "RTB_"))]
@@ -396,7 +396,7 @@ class MyWidget(QWidget):
                 self.Val(field, False)
 
             elif pref == "RT":
-                cRoute.delete(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0")
+                Route.delete(self.Val(field.replace("RT_", "RTB_")), "0.0.0.0/0")
                 #response = self.boto3ec2.delete_route(
                 #    RouteTableId = self.Val(field.replace("RT_", "RTB_")),
                 #    DestinationCidrBlock = "0.0.0.0/0"
@@ -404,14 +404,14 @@ class MyWidget(QWidget):
                 self.Val(field, False)
 
             elif pref == "KEY":
-                cKeyPair.delete(self.Val(field))
+                KeyPair.delete(self.Val(field))
 
             elif pref == "EC2":
-                cEC2.delete(self.Val(field))
+                EC2.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "SG":
-                cSecurityGroup.delete(self.Val(field))
+                SecurityGroup.delete(self.Val(field))
                 self.Val(field, "")
 
         except Exception as e:
