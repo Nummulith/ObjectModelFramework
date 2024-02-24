@@ -20,7 +20,7 @@ This repository comprises three interconnected projects that collectively empowe
     </div>
 </div>
 
-The [**Yet Another AWS Analyser**](docs\Yet_Another_AWS_Analyser.md) project extends the Object Model Framework to seamlessly incorporate AWS resources. Leveraging the Object Model Framework's dynamic class management, this project introduces specific AWS resource classes, enabling users to work with VPCs, subnets, RDS instances, AMIs, and other AWS entities in a unified manner.
+The [**Yet Another AWS Analyser**](docs/Yet_Another_AWS_Analyser.md) project extends the Object Model Framework to seamlessly incorporate AWS resources. Leveraging the Object Model Framework's dynamic class management, this project introduces specific AWS resource classes, enabling users to work with VPCs, subnets, RDS instances, AMIs, and other AWS entities in a unified manner.
 
 ### Key Features
 
@@ -38,7 +38,7 @@ The [**Yet Another AWS Analyser**](docs\Yet_Another_AWS_Analyser.md) project ext
 
 The Yet Another AWS Analyser extends and utilizes the principles of the Object Model Framework. AWS-specific classes are seamlessly integrated into the broader class management framework.
 
-For more details, refer to the [**Yet Another AWS Analyser**](docs\Yet_Another_AWS_Analyser.md) Readme.
+For more details, refer to the [**Yet Another AWS Analyser**](docs/Yet_Another_AWS_Analyser.md) Readme.
 
 
 <div id="Object_Model_Framework" style="display: flex; justify-content: space-between; width: 1000px;">
@@ -51,7 +51,7 @@ For more details, refer to the [**Yet Another AWS Analyser**](docs\Yet_Another_A
     </div>
 </div>
 
-The [**Object Model Framework**](docs\Object_Model_Framework.md) is a foundational Python-based program that facilitates the creation, management, and visualization of a network of user-defined classes. Users can dynamically define classes, establish relationships between objects, and interact with external systems. [The Graph Drawing Utility](#Graph_Drawing_Utility) is employed for visualizing object relationships.
+The [**Object Model Framework**](docs/Object_Model_Framework.md) is a foundational Python-based program that facilitates the creation, management, and visualization of a network of user-defined classes. Users can dynamically define classes, establish relationships between objects, and interact with external systems. [The Graph Drawing Utility](#Graph_Drawing_Utility) is employed for visualizing object relationships.
 
 ### Key Features
 
@@ -68,7 +68,7 @@ The [**Object Model Framework**](docs\Object_Model_Framework.md) is a foundation
 
 The Object Model Framework integrates the Graph Drawing Utility for visualizing object relationships. Users can dynamically manage classes and relationships within the framework, and the utility is employed to visualize the object graph.
 
-For more details, refer to the [**Object Model Framework**](docs\Object_Model_Framework.md) Readme.
+For more details, refer to the [**Object Model Framework**](docs/Object_Model_Framework.md) Readme.
 
 
 <div id="Graph_Drawing_Utility" style="display: flex; justify-content: space-between; width: 1000px;">
@@ -81,7 +81,7 @@ For more details, refer to the [**Object Model Framework**](docs\Object_Model_Fr
     </div>
 </div>
 
-The [**Graph Drawing Utility**](docs\Graph_Drawing_Utility.md) project provides a flexible tool for visualizing object relationships. This utility allows users to dynamically represent and explore connections between objects. With support for three relationship types (owner, link, and list), users can add, view, and establish relationships before rendering the object graph.
+The [**Graph Drawing Utility**](docs/Graph_Drawing_Utility.md) project provides a flexible tool for visualizing object relationships. This utility allows users to dynamically represent and explore connections between objects. With support for three relationship types (owner, link, and list), users can add, view, and establish relationships before rendering the object graph.
 
 ### Key Features
 
@@ -94,7 +94,7 @@ The [**Graph Drawing Utility**](docs\Graph_Drawing_Utility.md) project provides 
 - Graph Rendering:
     - Renders the constructed object graph for visualization.
 
-For more details, refer to the [**Graph Drawing Utility**](docs\Graph_Drawing_Utility.md) Readme.
+For more details, refer to the [**Graph Drawing Utility**](docs/Graph_Drawing_Utility.md) Readme.
 
 
 ## Example
@@ -108,14 +108,14 @@ For more details, refer to the [**Graph Drawing Utility**](docs\Graph_Drawing_Ut
 
 ## Contributing
 
-To contribute to diagram, check out [contribution guidelines](docs\CONTRIBUTING.md).
+To contribute to diagram, check out [contribution guidelines](docs/CONTRIBUTING.md).
 
 ## License
 
-This repository and its projects are licensed under the MIT License. Refer to the [LICENSE](docs\LICENSE.md) file for details.
+This repository and its projects are licensed under the MIT License. Refer to the [LICENSE](docs/LICENSE.md) file for details.
 
 ## Links
 
 | Yet Another AWS Analyser | Object Model Framework | Graph Drawing Utility |
 | ------------------------ | ---------------------- | --------------------- |
-| [<img src="img/Yet_Another_AWS_Analyser.png" width="100" height="100">](docs\Yet_Another_AWS_Analyser.md) | [<img src="img/Object_Model_Framework.png" width="100" height="100">](docs\Object_Model_Framework.md) | [<img src="img/Graph_Drawing_Utility.png" width="100" height="100">](docs\Graph_Drawing_Utility.md) |
+| [<img src="img/Yet_Another_AWS_Analyser.png" width="100" height="100">](docs/Yet_Another_AWS_Analyser.md) | [<img src="img/Object_Model_Framework.png" width="100" height="100">](docs/Object_Model_Framework.md) | [<img src="img/Graph_Drawing_Utility.png" width="100" height="100">](docs/Graph_Drawing_Utility.md) |
