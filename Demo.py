@@ -1,20 +1,20 @@
 """
-Demo Module
+Object Model Framework Demo Module
 
-This module representing a behaivour of demo objects
+This module representing a behaivour of Object Model Framework
 
 Classes:
     ParentClass, InheritedClass, Listed, Drawing, GraphViz, Picture
 
 Usage:
-    Run the module. See the Demo.png file as a graph.
+    Run the module. See the graph output in Demo.png file.
 
 Author: Pavel ERESKO
 """
 
 from ObjectModel import *
 
-class cParent(ObjectModelItem):
+class DemoItem(ObjectModelItem):
     Icon = "Demo\\Y3A-Icon"
     Color = "#e998ed"
 
@@ -28,7 +28,7 @@ class cParent(ObjectModelItem):
                     return [obj]
             return []
 
-class GraphViz(cParent):
+class GraphViz(DemoItem):
     Icon = "Demo\\GraphvizIcon"
     Color = "#adcdd9"
 
@@ -40,7 +40,7 @@ class GraphViz(cParent):
                     'Link': (Drawing, FIELD.LINK_OUT),
                 }
 
-class ParentClass(cParent):
+class ParentClass(DemoItem):
     Icon = "Demo\\ObjectModel-Icon"
     Name = "Object Model"
     Color = '#84def4'
@@ -53,7 +53,7 @@ class ParentClass(cParent):
                     'Owner': (InheritedClass, FIELD.OWNER),
                 }
 
-class Drawing(cParent):
+class Drawing(DemoItem):
     Icon = "Demo\\Drawing-Icon"
     Name = "Drawing"
     Color = '#c8b7ea'
@@ -66,7 +66,7 @@ class Drawing(cParent):
                     'Owner': (ParentClass, FIELD.OWNER),
                 }
 
-class Picture(cParent):
+class Picture(DemoItem):
     Icon = "Demo\\Demo"
     Draw = DRAW.ICON
 
@@ -77,7 +77,7 @@ class Picture(cParent):
                     'Link': (Drawing, FIELD.LINK_IN),
                 }
 
-class InheritedClass(cParent):
+class InheritedClass(DemoItem):
     Icon = "Demo\\Obj-Icon"
     Color = "#A9DFBF"
 
@@ -89,7 +89,7 @@ class InheritedClass(cParent):
                     'Icon': (ParentClass, FIELD.ICON),
                 }
 
-class Listed(cParent):
+class Listed(DemoItem):
     ListName = "Inherited"
     Color = "#ff9999"
 

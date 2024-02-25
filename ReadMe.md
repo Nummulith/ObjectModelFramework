@@ -55,18 +55,14 @@ The [**Object Model Framework**](docs/Object_Model_Framework.md) is a foundation
 
 ### Key Features
 
-- Diagram as Code:
-    - 123
 - Dynamic Object Creation:
     - Users can create classes and instances of those classes dynamically.
     - Integration with external systems for fetching data and managing objects.
-- Graph Representation:
+- Graph as Code:
     - Visualizes objects and their relationships in a graph.
     - Supports owner, link, and list relationships between objects.
 - External System Integration:
     - Seamless integration with external systems for data retrieval and object management.
-
-The Object Model Framework integrates the Graph Drawing Utility for visualizing object relationships. Users can dynamically manage classes and relationships within the framework, and the utility is employed to visualize the object graph.
 
 For more details, refer to the [**Object Model Framework**](docs/Object_Model_Framework.md) Readme.
 
@@ -100,19 +96,6 @@ For more details, refer to the [**Graph Drawing Utility**](docs/Graph_Drawing_Ut
 ## Example
 
 <img src="img/Demo.png">
-
-## Requirements
-
-- [**Python 3.7**](https://www.python.org/)
-- [**Graphviz**](https://graphviz.gitlab.io/download/)
-
-## Contributing
-
-To contribute to diagram, check out [contribution guidelines](docs/CONTRIBUTING.md).
-
-## License
-
-This repository and its projects are licensed under the MIT License. Refer to the [LICENSE](docs/LICENSE.md) file for details.
 
 ## Links
 

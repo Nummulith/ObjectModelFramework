@@ -70,7 +70,7 @@ def Wait(waiter_name, resource_param, resource_id):
 
 
 class cParent(ObjectModelItem):
-    Icon = "AWS"
+    Icon = "AWS/AWS"
     Prefix = ""
 
 
@@ -106,7 +106,7 @@ class cTag(cParent):
 
 
 class Reservation(cParent): 
-    Icon = "Res_Amazon-EC2_Instance_48"
+    Icon = "AWS/Res_Amazon-EC2_Instance_48"
     Show = False
     Color = "#FFC18A"
 
@@ -128,7 +128,7 @@ class Reservation(cParent):
 class EC2(cParent): 
     Prefix = "i"
     Draw = DRAW.ALL
-    Icon = "Arch_Amazon-EC2_48"
+    Icon = "AWS/Arch_Amazon-EC2_48"
     Color = "#FFC18A"
 
     @staticmethod
@@ -197,7 +197,7 @@ class EC2(cParent):
 
 class InternetGateway(cParent): 
     Prefix = "igw"
-    Icon = "Arch_Amazon-API-Gateway_48"
+    Icon = "AWS/Arch_Amazon-API-Gateway_48"
     Color = "#F9BBD9"
 
     @staticmethod
@@ -229,7 +229,7 @@ class InternetGateway(cParent):
 
 class InternetGatewayAttachment(cParent): 
     Prefix = "igw-attach"
-    Icon = "Gateway"
+    Icon = "AWS/Gateway"
     Draw = DRAW.VIEW
     Color = "#F488BB"
     DoNotFetch = True
@@ -268,7 +268,7 @@ class InternetGatewayAttachment(cParent):
 
 class NATGateway(cParent): 
     Prefix = "nat"
-    Icon = "Res_Amazon-VPC_NAT-Gateway_48"
+    Icon = "AWS/Res_Amazon-VPC_NAT-Gateway_48"
     Color = '#c19fff'
 
     @staticmethod
@@ -352,7 +352,7 @@ class ElasticIPAssociation(cParent):
 
 class SecurityGroup(cParent):
     Prefix = "sg"
-    Icon = "SecurityGroup"
+    Icon = "AWS/SecurityGroup"
     Color = "#ff9999"
 
     @staticmethod
@@ -475,7 +475,7 @@ class SecurityGroupRule(cParent):
 class Subnet(cParent): 
     Prefix = "subnet"
     Draw = DRAW.ALL
-    Icon = "Subnet"
+    Icon = "AWS/Subnet"
     Color = '#c8b7ea'
 
     @staticmethod
@@ -519,7 +519,7 @@ class Subnet(cParent):
 
 class NetworkAcl(cParent): 
     Prefix = "nacl"
-    Icon = "Res_Amazon-VPC_Network-Access-Control-List_48"
+    Icon = "AWS/Res_Amazon-VPC_Network-Access-Control-List_48"
     Color = "#d7c1ff"
 
     @staticmethod
@@ -541,7 +541,7 @@ class NetworkAcl(cParent):
 
 class NetworkAclEntry(cParent): 
     Prefix = "nacle"
-    Icon = "NetworkAccessControlList"
+    Icon = "AWS/NetworkAccessControlList"
     Color = '#d7c1ff'
     DoNotFetch = True
     ListName = "Entries"
@@ -569,7 +569,7 @@ class NetworkAclEntry(cParent):
 
 class RouteTable(cParent): 
     Prefix = "rtb"
-    Icon = "Res_Amazon-Route-53_Route-Table_48"
+    Icon = "AWS/Res_Amazon-Route-53_Route-Table_48"
     Color = '#c19fff'
 
     @staticmethod
@@ -659,7 +659,7 @@ class RouteTableAssociation(cParent):
 class Route(cParent):
     Prefix = "route"
     Draw = DRAW.ALL-DRAW.ID
-    Icon = "Route"
+    Icon = "AWS/Route"
     Color = '#c19fff'
     Index = None
     DoNotFetch = True
@@ -735,7 +735,7 @@ class Route(cParent):
 class Vpc(cParent): 
     Prefix = "vpc"
     Draw = DRAW.ALL
-    Icon = "VPC"
+    Icon = "AWS/VPC"
     Color = "#A9DFBF"
 
     @staticmethod
@@ -773,7 +773,7 @@ class Vpc(cParent):
 
 class NetworkInterface(cParent): 
     Prefix = "ni"
-    Icon = "Res_Amazon-VPC_Elastic-Network-Interface_48"
+    Icon = "AWS/Res_Amazon-VPC_Elastic-Network-Interface_48"
     Color = '#c19fff'
     ListName = "NetworkInterfaces"
 
@@ -799,7 +799,7 @@ class NetworkInterface(cParent):
 
 class S3(cParent): 
     Prefix = "s3"
-    Icon = "Arch_Amazon-Simple-Storage-Service_48"
+    Icon = "AWS/Arch_Amazon-Simple-Storage-Service_48"
     DoNotFetch = True
 
     @staticmethod
@@ -822,7 +822,7 @@ class S3(cParent):
 
 class ElasticIP(cParent):
     Prefix = "eipassoc"
-    Icon = "ElasticIP"
+    Icon = "AWS/ElasticIP"
     Color = "#ffc28c"
 
     @staticmethod
@@ -853,7 +853,7 @@ class ElasticIP(cParent):
 class KeyPair(cParent):
     Prefix = "key"
     DoNotFetch = True
-    Icon = "KeyPair"
+    Icon = "AWS/KeyPair"
     
     @staticmethod
     def fields():
@@ -917,7 +917,7 @@ class KeyPair(cParent):
 
 class SNS(cParent):
     DoNotFetch = True
-    Icon = "Arch_Amazon-Simple-Notification-Service_48"
+    Icon = "AWS/Arch_Amazon-Simple-Notification-Service_48"
 
     @staticmethod
     def create(Name):
@@ -926,7 +926,7 @@ class SNS(cParent):
 
 
 class User(cParent):
-    Icon = "Res_User_48_Light"
+    Icon = "AWS/Res_User_48_Light"
 
     @staticmethod
     def get_objects(id=None):
@@ -943,7 +943,7 @@ class User(cParent):
 
 
 class Group(cParent):
-    Icon = "Res_Users_48_Light"
+    Icon = "AWS/Res_Users_48_Light"
 
     @staticmethod
     def get_objects(id=None):
@@ -961,7 +961,7 @@ class Group(cParent):
 
 class Role(cParent):
     DoNotFetch = True
-    Icon = "Res_AWS-Identity-Access-Management_Role_48"
+    Icon = "AWS/Res_AWS-Identity-Access-Management_Role_48"
 
     @staticmethod
     def get_objects(id = None):
@@ -979,7 +979,7 @@ class Role(cParent):
 
     
 class Function(cParent):
-    Icon = "Arch_AWS-Lambda_48"
+    Icon = "AWS/Arch_AWS-Lambda_48"
     Color = "#ffc28c"
 
     @staticmethod
@@ -1043,7 +1043,7 @@ class Function(cParent):
 
 
 class DBInstance(cParent):
-    Icon = "Arch_Amazon-RDS_48"
+    Icon = "AWS/Arch_Amazon-RDS_48"
     Color = "#e998ed"
 
     @staticmethod
@@ -1089,7 +1089,7 @@ class DBInstance(cParent):
         )        
     
 class DBSubnetGroup(cParent):
-    Icon = "Arch_Amazon-RDS_48"
+    Icon = "AWS/Arch_Amazon-RDS_48"
     Color = "#f2c4f4"
 
     @staticmethod
@@ -1116,7 +1116,7 @@ class DBSubnetGroup(cParent):
 
     @staticmethod
     def delete(id):
-        response = bt('rds').delete_db_subnet_group(DBSubnetGroupName=db)
+        response = bt('rds').delete_db_subnet_group(DBSubnetGroupName=id)
         return
 
 class DBSubnetGroupSubnet(cParent):
@@ -1144,7 +1144,7 @@ class DBSubnetGroupSubnet(cParent):
         return DBSubnetGroup.get_objects_by_index(id, "Subnets", 'SubnetIdentifier')
 
 class DynamoDB(cParent):
-    Icon = "Arch_Amazon-DynamoDB_48"
+    Icon = "AWS/Arch_Amazon-DynamoDB_48"
     Color = "#e998ed"
 
     @staticmethod
