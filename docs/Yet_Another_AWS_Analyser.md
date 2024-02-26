@@ -1,4 +1,4 @@
-[ReadMe.md](..\ReadMe.md) \ [Yet Another AWS Analyser](Yet_Another_AWS_Analyser.md)
+[ReadMe.md](../ReadMe.md) \ [Yet Another AWS Analyser](Yet_Another_AWS_Analyser.md)
 
 <table style="width: 100%">
   <thead>
