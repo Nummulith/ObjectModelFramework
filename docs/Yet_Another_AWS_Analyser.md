@@ -66,7 +66,7 @@ Function (Lambda)
 
 ## Example
 
-[Source code](../Examples/NYTask.py)
+[Source code](../Examples/NYtask.py)
 
 <img src="../img/Y3A-Demo.png">
 
