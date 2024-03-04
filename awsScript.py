@@ -36,10 +36,10 @@ class MyWidget(QWidget):
         self.bDraw       .clicked.connect(self.draw)
         self.bDelete     .clicked.connect(self.delete)
 
-        self.leProfile.setText("TS") # TS, DCI
+        self.leProfile.setText("TS")
         self.leFile   .setText("awsScript")
-        self.leClasses.setText("ALL")
-        self.leExample.setText("NYTask")
+        self.leClasses.setText("KeyPair")
+        self.leExample.setText("Test")
 
         self.cbAWS .setChecked(True)
         self.cbLoad.setChecked(True)

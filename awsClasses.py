@@ -34,27 +34,44 @@ def Id17(id):
     return id[-17:]
 
 # id parameter passing
-pPar = 0
-pList = 1
-pFilter = 2
-pString = 3
+class PAR:
+    ''' Identyfiers for the param way '''
+    PAR    = 0
+    LIST   = 1
+    FILTER = 2
+    STRING = 3
 
-def idpar(field, id, ParType = pList):
-    params = {}
 
-    if id is not None:
-        if ParType == pPar:
-            params[field] = id
-        if ParType == pList:
-            params[field] = [id]
-        elif ParType == pFilter:
-            params["Filters"] = [{
-                'Name': field,
-                'Values': [id]
-            }]
-        elif ParType == pString:
-            params["Filter"] = f'{field}="{id}"'
+def idpar(field, id, ParType = PAR.LIST):
+    if id is None:
+        flt = {}
+    elif isinstance(id, str):
+        flt = {field : (id, ParType)}
+    else:
+        flt = id
     
+    params = {}
+    for key, val in flt.items():
+        i_val, i_type = val
+
+        if   i_type == PAR.PAR:
+            params[key] = i_val
+
+        elif i_type == PAR.LIST:
+            params[key] = [i_val]
+
+        elif i_type == PAR.FILTER:
+            if "Filters" not in params:
+                params["Filters"] = []
+
+            params["Filters"].append({
+                'Name': key,
+                'Values': i_val
+            })
+
+        elif i_type == PAR.STRING:
+            params["Filter"] = f'{key}="{i_val}"'
+
     return params
 
 def Wait(waiter_name, resource_param, resource_id):
@@ -69,43 +86,54 @@ def Wait(waiter_name, resource_param, resource_id):
     )
 
 
-class cParent(ObjectModelItem):
+class awsObject(ObjectModelItem):
     Icon = "AWS/AWS"
     Prefix = ""
 
+    @classmethod
+    def get_objects(cls, filter=None):
+        try:
+            return cls.aws_get_objects(filter)
+        except Exception as e:
+            ErrorCode = e.response['Error']['Code']
+            if ErrorCode[-9:] == '.NotFound' or ErrorCode == "AccessDenied":
+                return []
+            else:
+                print(f"{cls.get_class_view()}.get_objects: {e.args[0]}")
+                raise
 
-class cTag(cParent):
+class Tag(awsObject):
     @staticmethod
-    def create(id, Name, Value):
+    def create(id, name, Value):
         bt('ec2').create_tags(
             Resources=[id],
             Tags=[
                 {
-                    'Key': Name,
+                    'Key': name,
                     'Value': Value
                 },
             ]
         )
 
     @staticmethod
-    def delete(id, Name):
+    def delete(id, name):
         bt('ec2').delete_tags(
             Resources=[id],
             Tags=[
-                {'Key': Name}
+                {'Key': name}
             ]
         )
 
     @staticmethod
-    def cli_add(Name):
+    def cli_add(name):
         return f""
 
     @staticmethod
-    def cli_del(id, Name):
-        return f"aws ec2 delete-tags --resources {id} --tags Key={Name}"
+    def cli_del(id, name):
+        return f"aws ec2 delete-tags --resources {id} --tags Key={name}"
 
 
-class Reservation(cParent): 
+class Reservation(awsObject): 
     Icon = "AWS/Res_Amazon-EC2_Instance_48"
     Show = False
     Color = "#FFC18A"
@@ -120,12 +148,12 @@ class Reservation(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
-        resp = bt('ec2').describe_instances(**idpar('reservation-id', id, pFilter))
+    def aws_get_objects(id=None):
+        resp = bt('ec2').describe_instances(**idpar('reservation-id', id, PAR.FILTER))
         return resp['Reservations']
 
 
-class EC2(cParent): 
+class EC2(awsObject): 
     Prefix = "i"
     Draw = DRAW.ALL
     Icon = "AWS/Arch_Amazon-EC2_48"
@@ -145,7 +173,7 @@ class EC2(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         resp = bt('ec2').describe_instances(**idpar('InstanceIds', id))
         res = []
         for reservation in resp['Reservations']:
@@ -158,7 +186,7 @@ class EC2(cParent):
         return f"{getattr(self, 'PlatformDetails', '-')}"
 
     @staticmethod
-    def create(Name, ImageId, InstanceType, KeyPairId, SubnetId, Groups=[], PrivateIpAddress=None, UserData=""):
+    def create(name, ImageId, InstanceType, KeyPairId, SubnetId, Groups=[], PrivateIpAddress=None, UserData=""):
         id = bt('ec2').run_instances(
             ImageId = ImageId,
             InstanceType = InstanceType,
@@ -177,7 +205,7 @@ class EC2(cParent):
             MaxCount = 1
         )['Instances'][0]['InstanceId']
 
-        cTag.create(id, "Name", f"{EC2.Prefix}-{Name}")
+        Tag.create(id, "Name", f"{EC2.Prefix}-{name}")
 
         return id
     
@@ -189,13 +217,13 @@ class EC2(cParent):
 
         Wait('instance_terminated', "InstanceIds", id)
 
-    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
-        super().__init__(aws, id_query, Index, resp, do_auto_save)
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
 
         if hasattr(self, "KeyName"):
             setattr(self, "KeyPairId", KeyPair.NameToId(self.KeyName))
 
-class InternetGateway(cParent): 
+class InternetGateway(awsObject): 
     Prefix = "igw"
     Icon = "AWS/Arch_Amazon-API-Gateway_48"
     Color = "#F9BBD9"
@@ -209,15 +237,15 @@ class InternetGateway(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         resp = bt('ec2').describe_internet_gateways(**idpar('InternetGatewayIds', id))
         return resp['InternetGateways']
 
 
     @staticmethod
-    def create(Name):
+    def create(name):
         id = bt('ec2').create_internet_gateway()['InternetGateway']['InternetGatewayId']
-        cTag.create(id, "Name", f"{InternetGateway.Prefix}-{Name}")
+        Tag.create(id, "Name", f"{InternetGateway.Prefix}-{name}")
         return id
 
     @staticmethod
@@ -227,7 +255,7 @@ class InternetGateway(cParent):
         )
 
 
-class InternetGatewayAttachment(cParent): 
+class InternetGatewayAttachment(awsObject): 
     Prefix = "igw-attach"
     Icon = "AWS/Gateway"
     Draw = DRAW.VIEW
@@ -247,7 +275,7 @@ class InternetGatewayAttachment(cParent):
         return f"{Id17(self.VpcId)}"
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         return InternetGateway.get_objects_by_index(id, "Attachments", "VpcId")
     
     def get_id(self):
@@ -266,7 +294,7 @@ class InternetGatewayAttachment(cParent):
         )
 
 
-class NATGateway(cParent): 
+class NATGateway(awsObject): 
     Prefix = "nat"
     Icon = "AWS/Res_Amazon-VPC_NAT-Gateway_48"
     Color = '#c19fff'
@@ -283,7 +311,7 @@ class NATGateway(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         resp = bt('ec2').describe_nat_gateways(**idpar('NatGatewayIds', id))
         return resp['NatGateways']
     
@@ -291,10 +319,10 @@ class NATGateway(cParent):
         return f"NAT"
 
     @staticmethod
-    def create(Name, SubnetId, AllocationId):
+    def create(name, SubnetId, AllocationId):
         id = bt('ec2').create_nat_gateway(SubnetId = SubnetId, AllocationId = AllocationId)['NatGateway']['NatGatewayId']
 
-        cTag.create(id, "Name", f"{NATGateway.Prefix}-{Name}")
+        Tag.create(id, "Name", f"{NATGateway.Prefix}-{name}")
 
         Wait('nat_gateway_available', "NatGatewayIds", id)
 
@@ -307,7 +335,7 @@ class NATGateway(cParent):
         Wait('nat_gateway_deleted', "NatGatewayIds", id)
 
 
-class ElasticIPAssociation(cParent): 
+class ElasticIPAssociation(awsObject): 
     DoNotFetch = True
     ListName = "Addresses"
 
@@ -323,13 +351,13 @@ class ElasticIPAssociation(cParent):
                     'Tags'               : ({"Key" : "Value"}),
                 }
     
-    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
-        super().__init__(aws, id_query, Index, resp, do_auto_save)
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
         self.Id   = f"{self.ParentId}{ID_DV}{self.AssociationId}"
         self.View = f"{self.AssociationId}"
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         filters = []
         if id:
             filters.append({
@@ -350,7 +378,7 @@ class ElasticIPAssociation(cParent):
         RouteTableId, _, AssociationId = id.rpartition(ID_DV)
         bt('ec2').disassociate_address(AssociationId = AssociationId)
 
-class SecurityGroup(cParent):
+class SecurityGroup(awsObject):
     Prefix = "sg"
     Icon = "AWS/SecurityGroup"
     Color = "#ff9999"
@@ -365,23 +393,23 @@ class SecurityGroup(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         return bt('ec2').describe_security_groups(**idpar('GroupIds', id))['SecurityGroups']
 
     def get_view(self):
         return f"{self.GroupName}"
 
     @staticmethod
-    def create(Name, Description, Vpc):
-        sgName = f"{SecurityGroup.Prefix}-{Name}"
+    def create(name, Description, Vpc):
+        sgName = f"{SecurityGroup.Prefix}-{name}"
 
         id = bt('ec2').create_security_group(
-            GroupName = Name,
+            GroupName = name,
             Description = Description,
             VpcId = Vpc
         )['GroupId']
 
-        cTag.create(id, "Name", sgName)
+        Tag.create(id, "Name", sgName)
 
         return id
     
@@ -391,7 +419,7 @@ class SecurityGroup(cParent):
             GroupId=id
         )
 
-class SecurityGroupRule(cParent):
+class SecurityGroupRule(awsObject):
     Prefix = "sgr"
     ListName = "Rules"
 
@@ -434,30 +462,38 @@ class SecurityGroupRule(cParent):
         return f"{self.GroupId}{ID_DV}{self.SecurityGroupRuleId}"
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/describe_security_group_rules.html
         # security-group-rule-id - The ID of the security group rule.
         # group-id - The ID of the security group.
 
-        par_id = None; cur_id = None
-        if id is not None:
-            par_id, _, cur_id = id.rpartition(ID_DV)
+        flt = {}
+        if id == None:
+            pass
 
-        filters = []
-        if par_id:
-            filters.append({
-                'Name': 'group-id',
-                'Values': [par_id]
-            })
+        elif isinstance(id, str):
+            par_id = None; cur_id = None
+            if id is not None:
+                par_id, _, cur_id = id.rpartition(ID_DV)
 
-        cur_ids = []
-        if cur_id:
-            cur_ids.append(cur_id)
+            # filters = []
+            if par_id:
+            #     filters.append({
+            #         'Name': 'group-id',
+            #         'Values': [par_id]
+            #     })
+                flt["group-id"] = ([par_id], PAR.FILTER)
 
-        resp = bt('ec2').describe_security_group_rules(
-            Filters=filters,
-            SecurityGroupRuleIds=cur_ids
-        )
+            # cur_ids = []
+            if cur_id:
+                # cur_ids.append(cur_id)
+                flt["SecurityGroupRuleIds"] = ([cur_id], PAR.PAR)
+        
+        else:
+            flt = id
+
+        id_par_res = idpar("Name", flt, PAR.PAR)
+        resp = bt('ec2').describe_security_group_rules(**id_par_res)
         return resp['SecurityGroupRules']
 
     def get_view(self):
@@ -472,7 +508,7 @@ class SecurityGroupRule(cParent):
         return res
 
 
-class Subnet(cParent): 
+class Subnet(awsObject): 
     Prefix = "subnet"
     Draw = DRAW.ALL
     Icon = "AWS/Subnet"
@@ -490,7 +526,7 @@ class Subnet(cParent):
 
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         response = bt('ec2').describe_subnets(**idpar('SubnetIds', id))['Subnets']
         return response
     
@@ -498,14 +534,14 @@ class Subnet(cParent):
         return f"{getattr(self, 'CidrBlock', '-')}"
 
     @staticmethod
-    def create(Name, Vpc, CidrBlock):
+    def create(name, Vpc, CidrBlock):
         id = bt('ec2').create_subnet(
             VpcId = Vpc,
             CidrBlock = CidrBlock,
 #           AvailabilityZone='us-east-1a'
         )["Subnet"]["SubnetId"]
 
-        cTag.create(id, "Name", f"{Subnet.Prefix}-{Name}")
+        Tag.create(id, "Name", f"{Subnet.Prefix}-{name}")
 
         return id
     
@@ -517,7 +553,7 @@ class Subnet(cParent):
 
     
 
-class NetworkAcl(cParent): 
+class NetworkAcl(awsObject): 
     Prefix = "nacl"
     Icon = "AWS/Res_Amazon-VPC_Network-Access-Control-List_48"
     Color = "#d7c1ff"
@@ -535,11 +571,11 @@ class NetworkAcl(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         return bt('ec2').describe_network_acls(**idpar('NetworkAclIds', id))['NetworkAcls']
 
 
-class NetworkAclEntry(cParent): 
+class NetworkAclEntry(awsObject): 
     Prefix = "nacle"
     Icon = "AWS/NetworkAccessControlList"
     Color = '#d7c1ff'
@@ -557,17 +593,17 @@ class NetworkAclEntry(cParent):
         }
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         return NetworkAcl.get_objects_by_index(id, "Entries", "RuleNumber")
 
     
-    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
-        super().__init__(aws, id_query, Index, resp, do_auto_save)
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
         self.Id   = f"{self.ParentId}{ID_DV}{self.RuleNumber}"
         self.View = f"{self.RuleAction} - {getattr(self, 'CidrBlock', '*')}- {self.RuleNumber}:{self.Protocol} {getattr(self, 'PortRange', '')}"
 
 
-class RouteTable(cParent): 
+class RouteTable(awsObject): 
     Prefix = "rtb"
     Icon = "AWS/Res_Amazon-Route-53_Route-Table_48"
     Color = '#c19fff'
@@ -585,14 +621,14 @@ class RouteTable(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         return bt('ec2').describe_route_tables(**idpar('RouteTableIds', id))['RouteTables']
 
     @staticmethod
-    def create(Name, VpcId):
+    def create(name, VpcId):
         id = bt('ec2').create_route_table(VpcId = VpcId)['RouteTable']['RouteTableId']
 
-        cTag.create(id, "Name", f"{RouteTable.Prefix}-{Name}")
+        Tag.create(id, "Name", f"{RouteTable.Prefix}-{name}")
         return id
 
     @staticmethod
@@ -601,15 +637,15 @@ class RouteTable(cParent):
             RouteTableId = id
         )
 
-class RouteTableAssociation(cParent):
+class RouteTableAssociation(awsObject):
     Prefix = "rtba"
     Draw = DRAW.ALL
     Color = '#c19fff'
     ListName = "Associations"
-    Index = None
+    UseIndex = True
 
-    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
-        super().__init__(aws, id_query, Index, resp, do_auto_save)
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
         self.Id   = f"{self.RouteTableId}{ID_DV}{self.RouteTableAssociationId}"
         self.View = f"{Id17(self.SubnetId)}" if hasattr(self, "SubnetId") else "-"
         self.Ext  = f"{Id17(self.SubnetId)}" if hasattr(self, "SubnetId") else "-"
@@ -628,7 +664,7 @@ class RouteTableAssociation(cParent):
                 } # +
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         return RouteTable.get_objects_by_index(id, "Associations", 'RouteTableAssociationId')
 
     # def get_id(self):
@@ -656,12 +692,12 @@ class RouteTableAssociation(cParent):
         )
 
 
-class Route(cParent):
+class Route(awsObject):
     Prefix = "route"
     Draw = DRAW.ALL-DRAW.ID
     Icon = "AWS/Route"
     Color = '#c19fff'
-    Index = None
+    UseIndex = True
     DoNotFetch = True
     ListName = "Routes"
 
@@ -679,7 +715,7 @@ class Route(cParent):
                 } # +
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         return RouteTable.get_objects_by_index(id, "Routes", int)
     
     def get_id(self):
@@ -692,12 +728,12 @@ class Route(cParent):
     def get_ext(self):
         return f"{getattr(self, 'DestinationCidrBlock', '-')}"
 
-    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
-        super().__init__(aws, id_query, Index, resp, do_auto_save)
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
 
         if hasattr(self, "GatewayId") and self.GatewayId == "local":
             self.GatewayId = None
-            setattr(self, "GatewayId_local", RouteTable.get_objects(self.ParentId)[0]["VpcId"])
+            setattr(self, "GatewayId_local", RouteTable.aws_get_objects(self.ParentId)[0]["VpcId"])
 
     @staticmethod
     def create(RouteTableId, DestinationCidrBlock, GatewayId = None, NatGatewayId = None):
@@ -732,7 +768,7 @@ class Route(cParent):
                 raise # all other is not
 
 
-class Vpc(cParent): 
+class Vpc(awsObject): 
     Prefix = "vpc"
     Draw = DRAW.ALL
     Icon = "AWS/VPC"
@@ -748,7 +784,7 @@ class Vpc(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         resp = bt('ec2').describe_vpcs(**idpar('VpcIds', id))
         return resp['Vpcs']
     
@@ -756,9 +792,9 @@ class Vpc(cParent):
         return f"{getattr(self, 'CidrBlock', '-')}"
     
     @staticmethod
-    def create(Name, CidrBlock):
+    def create(name, CidrBlock):
         id = bt('ec2').create_vpc(CidrBlock=CidrBlock)['Vpc']['VpcId']
-        cTag.create(id, "Name", f"{Vpc.Prefix}-{Name}")
+        Tag.create(id, "Name", f"{Vpc.Prefix}-{name}")
         return id
     
     @staticmethod
@@ -768,10 +804,10 @@ class Vpc(cParent):
         )
     
     @staticmethod
-    def cli_add(Name, CidrBlock):
+    def cli_add(name, CidrBlock):
         return f"id000000001"
 
-class NetworkInterface(cParent): 
+class NetworkInterface(awsObject): 
     Prefix = "ni"
     Icon = "AWS/Res_Amazon-VPC_Elastic-Network-Interface_48"
     Color = '#c19fff'
@@ -789,15 +825,15 @@ class NetworkInterface(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         return bt('ec2').describe_network_interfaces(**idpar('NetworkInterfaceIds', id))['NetworkInterfaces']
 
     @staticmethod
-    def cli_add(Name, CidrBlock, fdrgtd):
+    def cli_add(name, CidrBlock, fdrgtd):
         return f"id000000002"
 
 
-class S3(cParent): 
+class S3(awsObject): 
     Prefix = "s3"
     Icon = "AWS/Arch_Amazon-Simple-Storage-Service_48"
     DoNotFetch = True
@@ -810,7 +846,7 @@ class S3(cParent):
                 }
     
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         if id is None:
             response = bt('s3').list_buckets()
             return response['Buckets']
@@ -820,7 +856,7 @@ class S3(cParent):
 
 
 
-class ElasticIP(cParent):
+class ElasticIP(awsObject):
     Prefix = "eipassoc"
     Icon = "AWS/ElasticIP"
     Color = "#ffc28c"
@@ -833,9 +869,9 @@ class ElasticIP(cParent):
                 }
     
     @staticmethod
-    def create(Name):
+    def create(name):
         id = bt('ec2').allocate_address(Domain='vpc')['AllocationId']
-        cTag.create(id, "Name", f"{ElasticIP.Prefix}-{Name}")
+        Tag.create(id, "Name", f"{ElasticIP.Prefix}-{name}")
         return id
     
     @staticmethod
@@ -845,14 +881,14 @@ class ElasticIP(cParent):
         )
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         resp = bt('ec2').describe_addresses(**idpar('AllocationIds', id))
         return resp['Addresses']
 
 
-class KeyPair(cParent):
+class KeyPair(awsObject):
     Prefix = "key"
-    DoNotFetch = True
+    # DoNotFetch = True
     Icon = "AWS/KeyPair"
     
     @staticmethod
@@ -866,22 +902,22 @@ class KeyPair(cParent):
         bt('ec2').delete_key_pair(KeyPairId = id)
 
     @staticmethod
-    def cli_add(Name):
-        return f"aws ec2 create-key-pair --key-name {Name} --query 'KeyMaterial' --output text > {Name}.pem"
+    def cli_add(name):
+        return f"aws ec2 create-key-pair --key-name {name} --query 'KeyMaterial' --output text > {name}.pem"
 
     @staticmethod
-    def cli_del(Name):
-        return f"aws ec2 delete-key-pair --key-name {Name}"
+    def cli_del(name):
+        return f"aws ec2 delete-key-pair --key-name {name}"
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         response = bt('ec2').describe_key_pairs(**idpar('KeyPairIds', id))
         return response['KeyPairs']
 
 
     @staticmethod
-    def create(Name):
-        KeyName = f"{KeyPair.Prefix}-{Name}"
+    def create(name):
+        KeyName = f"{KeyPair.Prefix}-{name}"
         resp = bt('ec2').create_key_pair(KeyName=KeyName)
 
         private_key = resp['KeyMaterial']
@@ -906,8 +942,8 @@ class KeyPair(cParent):
         return KeyName
     
     @staticmethod
-    def NameToId(Name):
-        resp = bt('ec2').describe_key_pairs(KeyNames=[Name])
+    def NameToId(name):
+        resp = bt('ec2').describe_key_pairs(KeyNames=[name])
         KeyPairId = resp['KeyPairs'][0]['KeyPairId']
         return KeyPairId
 
@@ -915,21 +951,21 @@ class KeyPair(cParent):
         return f"{self.KeyName}"
 
 
-class SNS(cParent):
+class SNS(awsObject):
     DoNotFetch = True
     Icon = "AWS/Arch_Amazon-Simple-Notification-Service_48"
 
     @staticmethod
-    def create(Name):
-        resp = bt('sns').create_topic(Name=Name)
+    def create(name):
+        resp = bt('sns').create_topic(Name=name)
         return resp['TopicArn']
 
 
-class User(cParent):
+class User(awsObject):
     Icon = "AWS/Res_User_48_Light"
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         if id is None:
             response = bt('iam').list_users()
             return response['Users']
@@ -942,11 +978,11 @@ class User(cParent):
         return f"{self.UserName}"
 
 
-class Group(cParent):
+class Group(awsObject):
     Icon = "AWS/Res_Users_48_Light"
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         if id is None:
             response = bt('iam').list_groups()
             return response['Groups']
@@ -959,12 +995,12 @@ class Group(cParent):
         return f"{self.GroupName}"
 
 
-class Role(cParent):
+class Role(awsObject):
     DoNotFetch = True
     Icon = "AWS/Res_AWS-Identity-Access-Management_Role_48"
 
     @staticmethod
-    def get_objects(id = None):
+    def aws_get_objects(id = None):
         if id is None:
             response = bt('iam').list_roles()
             return response['Roles']
@@ -978,7 +1014,7 @@ class Role(cParent):
 
 
     
-class Function(cParent):
+class Function(awsObject):
     Icon = "AWS/Arch_AWS-Lambda_48"
     Color = "#ffc28c"
 
@@ -990,7 +1026,7 @@ class Function(cParent):
                 }
 
     @staticmethod
-    def get_objects(id=None):
+    def aws_get_objects(id=None):
         if id is None:
             response = bt('lambda').list_functions()
             return response['Functions']
@@ -999,7 +1035,7 @@ class Function(cParent):
             return [response["Configuration"]]
         
     @staticmethod
-    def create(Name, Code):
+    def create(name, Code):
         handler = 'lambda_function.lambda_handler'
         runtime = 'python3.12'
         role_arn = 'arn:aws:iam::047989593255:role/lambda-s3-role'
@@ -1016,7 +1052,7 @@ class Function(cParent):
             zipped_data = zip_buffer.getvalue()
 
         response = bt('lambda').create_function(
-            FunctionName=Name,
+            FunctionName=name,
             Runtime=runtime,
             Role=role_arn,
             Handler=handler,
@@ -1042,7 +1078,7 @@ class Function(cParent):
         return result
 
 
-class DBInstance(cParent):
+class DBInstance(awsObject):
     Icon = "AWS/Arch_Amazon-RDS_48"
     Color = "#e998ed"
 
@@ -1055,20 +1091,20 @@ class DBInstance(cParent):
                 }
 
     @staticmethod
-    def get_objects(id = None):
-        response = bt('rds').describe_db_instances(**idpar('DBInstanceIdentifier', id, pPar))
+    def aws_get_objects(id = None):
+        response = bt('rds').describe_db_instances(**idpar('DBInstanceIdentifier', id, PAR.PAR))
         return response['DBInstances']
 
-    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
-        super().__init__(aws, id_query, Index, resp, do_auto_save)
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
 
         if hasattr(self, "DBSubnetGroup"):
             setattr(self, "DBSubnetGroupName", self.DBSubnetGroup["DBSubnetGroupName"])
     
     @staticmethod
-    def create(Name, DBSubnetGroupName, User, Pass):
+    def create(name, DBSubnetGroupName, User, Pass):
         response = bt('rds').create_db_instance(
-            DBInstanceIdentifier = Name,
+            DBInstanceIdentifier = name,
             DBInstanceClass = AWS.Const['RDS.InstanceType'],
             Engine = AWS.Const['RDS.Engine'],
             MasterUsername=User,
@@ -1088,7 +1124,7 @@ class DBInstance(cParent):
             SkipFinalSnapshot = SkipFinalSnapshot
         )        
     
-class DBSubnetGroup(cParent):
+class DBSubnetGroup(awsObject):
     Icon = "AWS/Arch_Amazon-RDS_48"
     Color = "#f2c4f4"
 
@@ -1101,14 +1137,14 @@ class DBSubnetGroup(cParent):
                 }
 
     @staticmethod
-    def get_objects(id = None):
-        response = bt('rds').describe_db_subnet_groups(**idpar('DBSubnetGroupName', id, pPar))
+    def aws_get_objects(id = None):
+        response = bt('rds').describe_db_subnet_groups(**idpar('DBSubnetGroupName', id, PAR.PAR))
         return response['DBSubnetGroups']
     
     @staticmethod
-    def create(Name, DBSubnetGroupDescription, SubnetIds):
+    def create(name, DBSubnetGroupDescription, SubnetIds):
         response = bt('rds').create_db_subnet_group(
-            DBSubnetGroupName = Name,
+            DBSubnetGroupName = name,
             DBSubnetGroupDescription=DBSubnetGroupDescription,
             SubnetIds = SubnetIds
         )
@@ -1119,8 +1155,8 @@ class DBSubnetGroup(cParent):
         response = bt('rds').delete_db_subnet_group(DBSubnetGroupName=id)
         return
 
-class DBSubnetGroupSubnet(cParent):
-    Index = None
+class DBSubnetGroupSubnet(awsObject):
+    UseIndex = True
     ListName = "Subnets"
     DoNotFetch = True
 
@@ -1134,16 +1170,16 @@ class DBSubnetGroupSubnet(cParent):
                     'View': (str, FIELD.VIEW),
                 }
 
-    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
-        super().__init__(aws, id_query, Index, resp, do_auto_save)
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
         self.Id   = f"{self.ParentId}{ID_DV}{self.SubnetIdentifier}"
         self.View = f"{self.SubnetIdentifier}"
 
     @staticmethod
-    def get_objects(id = None):
+    def aws_get_objects(id = None):
         return DBSubnetGroup.get_objects_by_index(id, "Subnets", 'SubnetIdentifier')
 
-class DynamoDB(cParent):
+class DynamoDB(awsObject):
     Icon = "AWS/Arch_Amazon-DynamoDB_48"
     Color = "#e998ed"
 
@@ -1154,12 +1190,12 @@ class DynamoDB(cParent):
                 }
 
     @staticmethod
-    def get_objects(id = None):
+    def aws_get_objects(id = None):
         if id is None:
             response = bt('dynamodb').list_tables()
             res = []
             for curid in response["TableNames"]:
-                res += DynamoDB.get_objects(curid)
+                res += DynamoDB.aws_get_objects(curid)
             return res
         
         else:
@@ -1205,7 +1241,9 @@ class AWS(ObjectModel):
                                 + "yum update -y\n"\
                                 + "yum install httpd -y\n"\
                                 + "systemctl start httpd\n"\
-                                + "systemctl enable httpd\n",
+                                + "systemctl enable httpd\n"\
+                                + 'echo "<html><body><h1>[Starting page]</h1></body></html>" > /var/www/html/index.html'\
+                            ,
                 'EC2.InstanceType' : 't2.micro',
                 'EC2.ImageId.Linux' : 'ami-0669b163befffbdfc',
 

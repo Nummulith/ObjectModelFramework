@@ -42,16 +42,17 @@ ID_DV = "|"
 
 class FIELD:
     ''' Identyfiers for the fields purposes '''
-    TYPE      = 0
-    OWNER     = 1
-    LIST_NAME = 2
-    LIST_ITEM = 3
-    ID        = 4
-    VIEW      = 5
-    EXT       = 6
-    ICON      = 7
-    LINK_OUT  = 8
-    LINK_IN   = 9
+    TYPE      =  0
+    FIELD     =  1
+    OWNER     =  2
+    LIST_NAME =  3
+    LIST_ITEM =  4
+    ID        =  5
+    VIEW      =  6
+    EXT       =  7
+    ICON      =  8
+    LINK_OUT  =  9
+    LINK_IN   = 10
 
 class DRAW:
     ''' Elements to draw '''
@@ -115,14 +116,17 @@ class ObjectModelItem:
     Show = True
     Draw = DRAW.DEF
     Color = "#A9DFBF"
+    UseIndex = False
 
     def __init__(self, model, id_query, index, resp, do_auto_save = True):
+        self.model = model
+
         if id_query is not None:
             par_id, _, _ = id_query.rpartition(ID_DV)
             if par_id != "":
                 setattr(self, "ParentId", par_id)
 
-        if hasattr(self, "Index"):
+        if getattr(self, "UseIndex", False):
             setattr(self, "Index", index)
 
         fields = type(self).fields()
@@ -155,6 +159,26 @@ class ObjectModelItem:
             else:
                 setattr(self, key, value)
 
+    def __getattribute__(self, name):
+        value = object.__getattribute__(self, name)
+
+        if name == "fields":
+            return value
+
+        fields = self.fields()
+        if name in fields:
+            field = fields[name]
+            if isinstance(field, tuple):
+                cls, role = field
+            else:
+                cls = field
+                role = FIELD.FIELD
+
+            if issubclass(cls, ObjectModelItem) and role != FIELD.ID:
+                value = self.model[cls][value]
+
+        return value
+
     def fields_of_a_kind(self, kind):
         ''' Getting all the fields of a kind '''
         return (key for key, value in self.fields().items()
@@ -181,9 +205,9 @@ class ObjectModelItem:
 
         clss = self.fields()[field][FIELD.TYPE]
 
-        if not node_id in model[clss].objects:
+        if not node_id in model[clss].map:
             return None
-        obj = model[clss].objects[node_id]
+        obj = model[clss].map[node_id]
         return obj
 
     def object_of_a_kind(self, model, kind):
@@ -310,17 +334,24 @@ class ObjectList:
     def __init__(self, model, clss):
         self.model = model
         self.Class = clss
-        self.objects = {}
+        self.map = {}
 
     def __getitem__(self, key):
-        return self.objects[key]
+        if key in self.map:
+            return self.map[key]
+        
+        objs = self.fetch(key)
+        return objs[0]
 
     def __setitem__(self, key, value):
-        self.objects[key] = value
+        self.map[key] = value
+
+    def objects(self):
+        return list(self.map.values())
 
     def count(self):
         ''' Getting the count of the objects in a list '''
-        return len(self.objects)
+        return len(self.map)
 
     def view(self):
         ''' Getting the class view '''
@@ -329,18 +360,24 @@ class ObjectList:
     def release(self, id_query = None, do_auto_save = True):
         ''' Releasing all the objects from the list '''
         if id_query is not None:
-            del self.objects[id_query]
+            del self.map[id_query]
         else:
-            self.objects.clear()
+            self.map.clear()
 
         if do_auto_save:
             self.model.auto_save()
 
-    def fetch(self, id_query = None, resp = None, do_auto_save = True):
+    def fetch(self, filter = None, resp = None, do_auto_save = True, create_par = None, refetch = False):
         ''' Fetching all the objects to the list '''
+
+        if isinstance(filter, str) and filter in self.map and not refetch:
+            return [self.map[filter]]
+
+        res = []
+
         if resp is None:
             try:
-                resp = self.Class.get_objects(id_query)
+                resp = self.Class.get_objects(filter)
             except Exception as e:
                 # ErrorCode = e.response['Error']['Code']
                 print(f"{self.Class.get_class_view()}.get_objects: {e.args[0]}")
@@ -348,12 +385,16 @@ class ObjectList:
                 #     return
                 # else:
                 #     raise
-                return
+                return res
+
+        if len(resp) == 0 and create_par is not None:
+            new_id = self.Class.create(**create_par)
+            resp = self.Class.get_objects(new_id)
 
         sg_id = ""
         ip_n = "*"
-        if id_query is not None:
-            sg_id, _, ip_n = id_query.rpartition(ID_DV)
+        if isinstance(filter, str):
+            sg_id, _, ip_n = filter.rpartition(ID_DV)
 
         index = -1
         for el in resp:
@@ -363,10 +404,15 @@ class ObjectList:
                 ip_nn = int(index)
 
             obj = self.Class(self.model, f"{sg_id}{ID_DV}{ip_nn}", index, el, do_auto_save)
-            self.objects[obj.get_id()] = obj
+            obj_id = obj.get_id()
+            self.map[obj_id] = obj
+
+            res.append(obj)
 
         if do_auto_save:
             self.model.auto_save()
+
+        return res
 
 
     def create(self, *args):
@@ -390,8 +436,8 @@ class ObjectList:
             return
 
         node_id = args[0]
-        if node_id in self.objects:
-            del self.objects[node_id]
+        if node_id in self.map:
+            del self.map[node_id]
             self.model.auto_save()
 
     def delete(self, *args):
@@ -400,7 +446,7 @@ class ObjectList:
 
     def delete_all(self):
         ''' Deleting all the objects in the list '''
-        keys_to_delete = list(self.objects.keys())
+        keys_to_delete = list(self.map.keys())
         index = len(keys_to_delete) - 1
         while index >= 0:
             node_id = keys_to_delete[index]
@@ -409,11 +455,11 @@ class ObjectList:
 
     def print(self):
         ''' Printing all the objects in the list '''
-        if len(self.objects) == 0:
+        if len(self.map) == 0:
             return
 
-        print(f"  {self.view()}: {len(self.objects)}")
-        for node_id, obj in self.objects:
+        print(f"  {self.view()}: {len(self.map)}")
+        for node_id, obj in self.map:
             print(f"{node_id}: {obj}")
 
 def node_label(obj):
@@ -612,7 +658,7 @@ class ObjectModel:
             wrapper = getattr(self, name)
 
             category_element = ET.SubElement(root, name)
-            for node_id, obj in wrapper.objects.items():
+            for node_id, obj in wrapper.map.items():
                 id_element = ET.SubElement(category_element, f"id")
                 id_element.text = str(node_id)
 
@@ -693,7 +739,7 @@ class ObjectModel:
         for clss in clsss:
             wrap = self[clss]
 
-            for _, obj in wrap.objects.items():
+            for _, obj in wrap.map.items():
                 owner = obj.object_of_a_kind(self, FIELD.OWNER)
                 if owner is not None:
                     isowned[obj] = owner
@@ -720,7 +766,7 @@ class ObjectModel:
             if not clss in clsss:
                 continue
 
-            for node_id, obj in wrap.objects.items():
+            for node_id, obj in wrap.map.items():
                 if obj in hasowned or node_id in haslisted:
                     drawing.add_item(node_id,
                         cluster = drawing.item_view(cluster_label(obj), style = 'filled', fillcolor = type(obj).Color),

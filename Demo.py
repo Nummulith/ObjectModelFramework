@@ -103,8 +103,8 @@ class Listed(DemoItem):
                     'ListName': (str, FIELD.LIST_NAME),
                     "Link": (ParentClass, FIELD.LINK_OUT),
                 }
-    def __init__(self, aws, id_query, Index, resp, do_auto_save=True):
-        super().__init__(aws, id_query, Index, resp, do_auto_save)
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
         self.ListItem = self.Id
     
 class DemoObjectModel(ObjectModel):
