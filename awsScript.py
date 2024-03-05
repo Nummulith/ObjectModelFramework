@@ -38,7 +38,7 @@ class MyWidget(QWidget):
 
         self.leProfile.setText("TS")
         self.leFile   .setText("awsScript")
-        self.leClasses.setText("KeyPair")
+        self.leClasses.setText("EC2SecurityGroups")
         self.leExample.setText("Test")
 
         self.cbAWS .setChecked(True)

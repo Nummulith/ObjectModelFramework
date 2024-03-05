@@ -137,54 +137,78 @@ class ObjectModelItem:
 
         for key, value in resp.items():
             cfg = fields.get(key, type(value))
-
             fieldtype = cfg[FIELD.TYPE] if isinstance(cfg, tuple) else cfg
 
-            if isinstance(fieldtype, list):
-                if len(fieldtype) == 0:
-                    continue
+            if isinstance(fieldtype, list) and len(fieldtype) != 0 and issubclass(fieldtype[0], ObjectModelItem):
+                # if len(fieldtype) == 0:
+                #     continue
 
-                if fieldtype[0] == str:
-                    continue
+                # if fieldtype[0] == str:
+                #     continue
 
                 model[fieldtype[0]].fetch(f"{self.get_id()}{ID_DV}*", value, do_auto_save)
 
-            elif fieldtype == list:
-                continue
+            # elif fieldtype == list:
+            #     continue
+
             elif isinstance(fieldtype, dict):
                 tkkey, tkval = next(iter(fieldtype.items()))
                 for pair in value:
                     setattr(self, "Tag_" + pair[tkkey], pair[tkval])
-                continue
+                # continue
+
             else:
                 setattr(self, key, value)
 
-    def __getattribute__(self, name):
-        value = object.__getattribute__(self, name)
+    # def __getattribute__(self, name):
+    #     value = object.__getattribute__(self, name)
 
-        if name == "fields":
-            return value
+    #     if name == "fields":
+    #         return value
+
+    #     fields = self.fields()
+    #     if name in fields:
+    #         field = fields[name]
+    #         if isinstance(field, tuple):
+    #             cls, role = field
+    #         else:
+    #             cls = field
+    #             role = FIELD.FIELD
+
+    #         if issubclass(cls, ObjectModelItem) and role != FIELD.ID:
+    #             value = self.model[cls][value]
+
+    #     return value
+
+    def __getitem__(self, name):
+        value = getattr(self, name, None)
+        if value == None:
+            return None
 
         fields = self.fields()
-        if name in fields:
-            field = fields[name]
-            if isinstance(field, tuple):
-                cls, role = field
-            else:
-                cls = field
-                role = FIELD.FIELD
+        if name not in fields:
+            return value
 
-            if issubclass(cls, ObjectModelItem) and role != FIELD.ID:
-                value = self.model[cls][value]
+        field = fields[name]
+        if isinstance(field, tuple):
+            cls, role = field
+        else:
+            cls = field
+            role = FIELD.FIELD
+
+        if issubclass(cls, ObjectModelItem) and role != FIELD.ID:
+            value = self.model[cls][value]
 
         return value
 
+    @classmethod
     def fields_of_a_kind(self, kind):
         ''' Getting all the fields of a kind '''
         return (key for key, value in self.fields().items()
                  if isinstance(value, tuple) and value[1] == kind
                )
 
+    @classmethod
     def field_of_a_kind(self, kind):
         ''' Getting the first field of a kind '''
         return next(self.fields_of_a_kind(kind), None)
@@ -266,17 +290,23 @@ class ObjectModelItem:
 
         pars = cls.get_objects(sg_id)
 
+        field = cls.field_of_a_kind(FIELD.ID)
+
         res = []
         for par in pars:
+            par_id = par[field]
+
             index = -1
-            for permission in par[list_field]:
+            for el in par[list_field]:
                 index += 1
 
+                el["ParentId"] = par_id
+
                 if ip_n is not None and ip_n != "" and ip_n != "*":
-                    if ip_n != (str(index) if filter_field == int else str(permission[filter_field])):
+                    if ip_n != (str(index) if filter_field == int else str(el[filter_field])):
                         continue
 
-                res.append(permission)
+                res.append(el)
 
         return res
 

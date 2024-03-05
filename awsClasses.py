@@ -153,6 +153,28 @@ class Reservation(awsObject):
         return resp['Reservations']
 
 
+class EC2SecurityGroups(awsObject):
+    ListName = "SecurityGroups"
+
+    @staticmethod
+    def fields():
+        return {
+                    "ParentId" : (EC2, FIELD.LIST_ITEM),
+                    "ListName" : (str, FIELD.LIST_NAME),
+                    "GroupName" : (str, FIELD.VIEW),
+                    'GroupId': (SecurityGroup, FIELD.LINK_IN),
+                }
+
+    def get_id(self):
+        return f"{self.ParentId}{ID_DV}{self.GroupId}"
+
+    @staticmethod
+    def aws_get_objects(id=None):
+        return EC2.get_objects_by_index(id, "SecurityGroups", "GroupId")
+
+        resp = bt('ec2').describe_instances(**idpar('reservation-id', id, PAR.FILTER))
+        return resp['Reservations']
+
 class EC2(awsObject): 
     Prefix = "i"
     Draw = DRAW.ALL
@@ -168,7 +190,7 @@ class EC2(awsObject):
                     'Tags' : ({"Key" : "Value"}),
                     'VpcId': Vpc,
                     'KeyPairId': (KeyPair, FIELD.LINK_IN),
-                    # 'SecurityGroups': [{'GroupName': 'secgrup-antony', 'GroupId': 'sg-0e050b1cd54e6fcc8'}]
+                    'SecurityGroups': [EC2SecurityGroups]
                     # 'NetworkInterfaces': [{'Attachment': {...}, 'Description': '', 'Groups': [...], 'Ipv6Addresses': [...], 'MacAddress': '06:02:cb:61:9c:7b', 'NetworkInterfaceId': 'eni-06ef5645d896ee146', 'OwnerId': '047989593255', 'PrivateIpAddress': '10.222.2.11', 'PrivateIpAddresses': [...], ...}]
                 }
     
@@ -485,7 +507,7 @@ class SecurityGroupRule(awsObject):
                 flt["group-id"] = ([par_id], PAR.FILTER)
 
             # cur_ids = []
-            if cur_id:
+            if cur_id and cur_id != "*":
                 # cur_ids.append(cur_id)
                 flt["SecurityGroupRuleIds"] = ([cur_id], PAR.PAR)
         
@@ -1267,7 +1289,7 @@ class AWS(ObjectModel):
                 'RDS' : [DBSubnetGroup, DBSubnetGroupSubnet, DBInstance, DynamoDB],
                 'AMI' : [User, Group, Role],
                 'OTHER' : [
-                    Reservation, EC2, NetworkInterface,
+                    Reservation, EC2, EC2SecurityGroups, NetworkInterface,
                     S3,
                     SNS,
                     Function,
