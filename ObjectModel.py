@@ -669,7 +669,9 @@ class ObjectModel:
         root = ET.fromstring(xml_string)
 
         for element in root:
-            wrapper = getattr(self, element.tag)
+            wrapper = getattr(self, element.tag, None)
+            if wrapper == None:
+                continue
             for child in element:
                 node_id = child.text
                 wrapper.fetch(node_id, None, False)

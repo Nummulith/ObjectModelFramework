@@ -112,10 +112,10 @@ def Test2(aws):
 
     print("---)")
 
-def Test(aws):
+def Test3(aws):
     print("(---")
 
-    objs = aws.EC2SecurityGroups.fetch(None, None, True)
+    objs = aws.EC2SecurityGroup.fetch(None, None, True)
     for obj in objs:
         ec2 = obj["ParentId"]
         sg  = obj["GroupId"]
@@ -126,5 +126,19 @@ def Test(aws):
                 continue
             
             print(f"{ec2.InstanceId} - {getattr(ec2, "PublicIpAddress", "x")} - {ec2.Tag_Name} - {sg.VpcId} - {obj.GroupName} - {sgr.FromPort}")
+
+    print("---)")
+
+def Test(aws):
+    print("(---")
+
+    objs = aws.AvailabilityZone.fetch()
+    for obj in objs:
+        print(f"{obj.ZoneId} - {obj.ZoneName}")
+    
+
+    objs = aws.Subnet.fetch(None, None, True)
+    for obj in objs:
+        print(f"{obj} - {obj}")
 
     print("---)")

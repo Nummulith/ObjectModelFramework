@@ -153,7 +153,7 @@ class Reservation(awsObject):
         return resp['Reservations']
 
 
-class EC2SecurityGroups(awsObject):
+class EC2SecurityGroup(awsObject):
     ListName = "SecurityGroups"
 
     @staticmethod
@@ -190,7 +190,7 @@ class EC2(awsObject):
                     'Tags' : ({"Key" : "Value"}),
                     'VpcId': Vpc,
                     'KeyPairId': (KeyPair, FIELD.LINK_IN),
-                    'SecurityGroups': [EC2SecurityGroups]
+                    'SecurityGroups': [EC2SecurityGroup]
                     # 'NetworkInterfaces': [{'Attachment': {...}, 'Description': '', 'Groups': [...], 'Ipv6Addresses': [...], 'MacAddress': '06:02:cb:61:9c:7b', 'NetworkInterfaceId': 'eni-06ef5645d896ee146', 'OwnerId': '047989593255', 'PrivateIpAddress': '10.222.2.11', 'PrivateIpAddresses': [...], ...}]
                 }
     
@@ -542,10 +542,9 @@ class Subnet(awsObject):
                     "SubnetId" : (Subnet, FIELD.ID),
                     "VpcId" : (Vpc, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
+                    'AvailabilityZoneId' : (AvailabilityZone, FIELD.LINK_OUT),
                 }
 # 'Ipv6CidrBlockAssociationSet': []
-# 'PrivateDnsNameOptionsOnLaunch': {'HostnameType': 'ip-name', 'EnableResourceNameDnsARecord': False, 'EnableResourceNameDn...AAAARecord': False}
-
 
     @staticmethod
     def aws_get_objects(id=None):
@@ -1248,6 +1247,70 @@ class DynamoDB(awsObject):
         return
 
 
+class AMI(awsObject):
+    Icon = "AWS/Arch_Amazon-DynamoDB_48"
+    Color = "#e998ed"
+
+    @staticmethod
+    def fields():
+        return {
+                    'ImageId': (AMI, FIELD.ID),
+                }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        # filters = [
+        #     {'Name': 'owner-id', 'Values': ['your_account_id']},
+        #     {'Name': 'state', 'Values': ['available']}
+        # ]
+        response = bt('ec2').describe_images(**idpar('ImageIds', id, PAR.LIST))
+        return response["Images"]
+
+
+class AvailabilityZone(awsObject):
+    @staticmethod
+    def fields():
+        return {
+                    'ZoneId': (AvailabilityZone, FIELD.ID),
+                    'ZoneName': (str, FIELD.VIEW),
+                    'RegionName': (Region, FIELD.LINK_OUT),
+                }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        response = bt('ec2').describe_availability_zones()
+
+        if id == None:
+            return response["AvailabilityZones"]
+
+        return [next((zone for zone in response['AvailabilityZones'] if zone['ZoneId'] == id), None)]
+
+
+class Region(awsObject):
+    @staticmethod
+    def fields():
+        return {
+                    'RegionId': (Region, FIELD.ID),
+                }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        response = bt('ec2').describe_availability_zones()
+
+        if id != None:
+            return [{"RegionId" : id}]
+
+        keys = []
+        regions = []
+        for az in response["AvailabilityZones"]:
+            reg = az["RegionName"]
+            if not reg in keys:
+                regions.append({"RegionId" : reg})
+                keys.append(reg)
+
+        return regions
+
+
 class AWS(ObjectModel):
     def __init__(self, profile, path, do_auto_load = True, do_auto_save = True):
 
@@ -1287,12 +1350,16 @@ class AWS(ObjectModel):
                     NATGateway, ElasticIPAssociation, 
                 ],
                 'RDS' : [DBSubnetGroup, DBSubnetGroupSubnet, DBInstance, DynamoDB],
-                'AMI' : [User, Group, Role],
+                'IAM' : [User, Group, Role],
                 'OTHER' : [
-                    Reservation, EC2, EC2SecurityGroups, NetworkInterface,
+                    Reservation, EC2, EC2SecurityGroup, NetworkInterface,
                     S3,
                     SNS,
                     Function,
+                    AMI,
+                    Region, AvailabilityZone,
                 ],
             }
         )
+
+        self.Classes["All"] = [x for x in self.Classes["ALL"] if x not in [Reservation, AMI]]
