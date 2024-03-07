@@ -129,7 +129,7 @@ def Test3(aws):
 
     print("---)")
 
-def Test(aws):
+def Test4(aws):
     print("(---")
 
     objs = aws.AvailabilityZone.fetch()
@@ -140,5 +140,14 @@ def Test(aws):
     objs = aws.Subnet.fetch(None, None, True)
     for obj in objs:
         print(f"{obj} - {obj}")
+
+    print("---)")
+
+def Test(aws):
+    print("(---")
+
+    objs = aws.Listener.fetch()
+    for obj in objs:
+        print(f"{obj}")
 
     print("---)")

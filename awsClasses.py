@@ -1311,6 +1311,91 @@ class Region(awsObject):
         return regions
 
 
+class LoadBalancer(awsObject):
+    @staticmethod
+    def fields():
+        return {
+                    'DNSName': str,
+                    'LoadBalancerArn': str,
+                    'LoadBalancerName': (LoadBalancer, FIELD.ID),
+                    'VpcId': (Vpc, FIELD.OWNER),
+                    'AvailabilityZones': [LoadBalancerAvailabilityZone],
+                    # 'SecurityGroups': ['sg-0cd135d2e4a0df03e']
+                }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        response = bt('elbv2').describe_load_balancers(**idpar('Names', id, PAR.LIST))
+        return response['LoadBalancers']
+
+
+class LoadBalancerAvailabilityZone(awsObject):
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
+        self.Id  = f"{self.ParentId}{ID_DV}{self.SubnetId}"
+
+    @staticmethod
+    def fields():
+        return {
+                    'Id'  : (LoadBalancerAvailabilityZone, FIELD.ID),
+                    'ZoneName': 'eu-central-1a',
+                    'SubnetId': (Subnet, FIELD.LINK_OUT),
+                    # 'LoadBalancerAddresses': [],
+                    'ParentId': (LoadBalancer, FIELD.OWNER),
+                }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        response = LoadBalancer.get_objects_by_index(id, "AvailabilityZones", 'SubnetIdentifier')
+        return response
+
+
+class TargetGroup(awsObject):
+    @staticmethod
+    def fields():
+        return {
+            'TargetGroupName': (TargetGroup, FIELD.ID),
+            'VpcId': (Vpc, FIELD.LINK_OUT),
+            # 'LoadBalancerArns': ['arn:aws:elasticloadbalancing:eu-central-1:047989593255:loadbalancer/app/ALB-Frederick/211b0083ba139ccd']
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        response = bt('elbv2').describe_target_groups(**idpar('Names', id, PAR.LIST))
+        return response['TargetGroups']
+
+
+class Listener(awsObject):
+    @staticmethod
+    def fields():
+        return {
+            'ListenerArn': (Listener, FIELD.ID),
+            "LoadBalancerName": (LoadBalancer, FIELD.OWNER),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        if id == None:
+            lbs = LoadBalancer.aws_get_objects()
+            res = []
+            for lb in lbs:
+                response = bt('elbv2').describe_listeners(LoadBalancerArn = lb["LoadBalancerArn"])["Listeners"]
+
+                for ls in response:
+                    ls["LoadBalancerName"] = lb["LoadBalancerName"]
+
+                res += response
+
+        else:
+            res = bt('elbv2').describe_listeners(ListenerArns = [id])["Listeners"]
+
+            lb = LoadBalancer.get_objects({'LoadBalancerArns': (res[0]["LoadBalancerArn"], PAR.LIST)})
+
+            res[0]["LoadBalancerName"] = lb[0]["LoadBalancerName"]
+
+        return res
+
+
 class AWS(ObjectModel):
     def __init__(self, profile, path, do_auto_load = True, do_auto_save = True):
 
@@ -1358,6 +1443,7 @@ class AWS(ObjectModel):
                     Function,
                     AMI,
                     Region, AvailabilityZone,
+                    LoadBalancer, LoadBalancerAvailabilityZone, TargetGroup, Listener,
                 ],
             }
         )

@@ -36,9 +36,9 @@ class MyWidget(QWidget):
         self.bDraw       .clicked.connect(self.draw)
         self.bDelete     .clicked.connect(self.delete)
 
-        self.leProfile.setText("PE")
+        self.leProfile.setText("TS")
         self.leFile   .setText("awsScript")
-        self.leClasses.setText("AvailabilityZone")
+        self.leClasses.setText("Listener")
         self.leExample.setText("Test")
 
         self.cbAWS .setChecked(True)
