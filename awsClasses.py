@@ -1273,7 +1273,7 @@ class AvailabilityZone(awsObject):
         return {
                     'ZoneId': (AvailabilityZone, FIELD.ID),
                     'ZoneName': (str, FIELD.VIEW),
-                    'RegionName': (Region, FIELD.LINK_OUT),
+                    'RegionName': (Region, FIELD.OWNER),
                 }
 
     @staticmethod
@@ -1396,6 +1396,34 @@ class Listener(awsObject):
         return res
 
 
+class LaunchTemplate(awsObject):
+    @staticmethod
+    def fields():
+        return {
+            'LaunchTemplateId': (LaunchTemplate, FIELD.ID),
+            'LaunchTemplateName': (str, FIELD.VIEW),
+            'CreatedBy': (User, FIELD.LINK_IN),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        response = bt('ec2').describe_launch_templates(**idpar('LaunchTemplateIds', id, PAR.LIST))
+        return response['LaunchTemplates']
+
+
+class AutoScalingGroup(awsObject):
+    @staticmethod
+    def fields():
+        return {
+            'AutoScalingGroupName': (AutoScalingGroup, FIELD.ID),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        response = bt('autoscaling').describe_auto_scaling_groups(**idpar('AutoScalingGroupNames', id, PAR.LIST))
+        return response['AutoScalingGroups']
+
+
 class AWS(ObjectModel):
     def __init__(self, profile, path, do_auto_load = True, do_auto_save = True):
 
@@ -1434,16 +1462,16 @@ class AWS(ObjectModel):
                     ElasticIP, 
                     NATGateway, ElasticIPAssociation, 
                 ],
-                'RDS' : [DBSubnetGroup, DBSubnetGroupSubnet, DBInstance, DynamoDB],
-                'IAM' : [User, Group, Role],
+                'RDS'   : [DBSubnetGroup, DBSubnetGroupSubnet, DBInstance, DynamoDB],
+                'IAM'   : [User, Group, Role],
+                'LB'    : [LoadBalancer, LoadBalancerAvailabilityZone, TargetGroup, Listener, LaunchTemplate, AutoScalingGroup],
+                'RAZ'    : [Region, AvailabilityZone],
                 'OTHER' : [
                     Reservation, EC2, EC2SecurityGroup, NetworkInterface,
                     S3,
                     SNS,
                     Function,
                     AMI,
-                    Region, AvailabilityZone,
-                    LoadBalancer, LoadBalancerAvailabilityZone, TargetGroup, Listener,
                 ],
             }
         )
