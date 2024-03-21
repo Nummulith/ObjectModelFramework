@@ -9,6 +9,8 @@
     </div>
 </div>
 
+<img src="img/Title_Small.png">
+
 This repository comprises three interconnected projects that collectively empower users in managing, visualizing, and interacting with diverse infrastructures. 
 
 <hr>
