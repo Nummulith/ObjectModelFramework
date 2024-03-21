@@ -38,7 +38,7 @@ class MyWidget(QWidget):
 
         self.leProfile.setText("DCI")
         self.leFile   .setText("awsScript")
-        self.leClasses.setText("All")
+        self.leClasses.setText("VPC, SN, SG, EC2")
         self.leExample.setText("Test")
 
         self.cbAWS .setChecked(True)

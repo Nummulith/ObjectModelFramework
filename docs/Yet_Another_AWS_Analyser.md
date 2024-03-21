@@ -56,7 +56,7 @@ User, Group, Role
 
 OTHER Resources:
 ```
-Reservation
+EC2Reservation
 Instance
 NetworkInterface
 S3

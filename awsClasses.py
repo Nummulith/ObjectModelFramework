@@ -133,7 +133,7 @@ class Tag(awsObject):
         return f"aws ec2 delete-tags --resources {id} --tags Key={name}"
 
 
-class Reservation(awsObject): 
+class EC2Reservation(awsObject): 
     Icon = "AWS/Res_Amazon-EC2_Instance_48"
     Show = False
     Color = "#FFC18A"
@@ -141,10 +141,10 @@ class Reservation(awsObject):
     @staticmethod
     def fields():
         return {
-                    "ReservationId" : (Reservation, FIELD.ID),
+                    "ReservationId" : (EC2Reservation, FIELD.ID),
                     "OwnerId"       : str,
                     "Groups"        : ([str]), # !!!
-                    "Instances"     : ([EC2]),
+                    "Instances"     : ([EC2Instance]),
                 }
     
     @staticmethod
@@ -159,7 +159,7 @@ class EC2SecurityGroup(awsObject):
     @staticmethod
     def fields():
         return {
-                    "ParentId" : (EC2, FIELD.LIST_ITEM),
+                    "ParentId" : (EC2Instance, FIELD.LIST_ITEM),
                     "ListName" : (str, FIELD.LIST_NAME),
                     "GroupName" : (str, FIELD.VIEW),
                     'GroupId': (SecurityGroup, FIELD.LINK_IN),
@@ -170,12 +170,12 @@ class EC2SecurityGroup(awsObject):
 
     @staticmethod
     def aws_get_objects(id=None):
-        return EC2.get_objects_by_index(id, "SecurityGroups", "GroupId")
+        return EC2Instance.get_objects_by_index(id, "SecurityGroups", "GroupId")
 
         resp = bt('ec2').describe_instances(**idpar('reservation-id', id, PAR.FILTER))
         return resp['Reservations']
 
-class EC2(awsObject): 
+class EC2Instance(awsObject): 
     Prefix = "i"
     Draw = DRAW.ALL
     Icon = "AWS/Arch_Amazon-EC2_48"
@@ -184,8 +184,8 @@ class EC2(awsObject):
     @staticmethod
     def fields():
         return {
-                    "ParentId" : (Reservation, FIELD.LINK_OUT),
-                    "InstanceId" : (EC2, FIELD.ID),
+                    "ParentId" : (EC2Reservation, FIELD.LINK_OUT),
+                    "InstanceId" : (EC2Instance, FIELD.ID),
                     "SubnetId" : (Subnet, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
                     'VpcId': Vpc,
@@ -227,7 +227,7 @@ class EC2(awsObject):
             MaxCount = 1
         )['Instances'][0]['InstanceId']
 
-        Tag.create(id, "Name", f"{EC2.Prefix}-{name}")
+        Tag.create(id, "Name", f"{EC2Instance.Prefix}-{name}")
 
         return id
     
@@ -326,7 +326,7 @@ class NATGateway(awsObject):
         return {
                     "NatGatewayId"        : (NATGateway, FIELD.ID),
                     "SubnetId"            : (Subnet    , FIELD.OWNER),
-                    "VpcId"               : (Vpc       , FIELD.LINK_IN),
+                    # "VpcId"               : (Vpc       , FIELD.LINK_IN),
                     'Tags'                : ({"Key" : "Value"}),
                     "NatGatewayAddresses" : ([ElasticIPAssociation], FIELD.LINK_IN),
                     # 'CreateTime': datetime.datetime(2024, 1, 30, 16, 38, 41, tzinfo=tzutc())
@@ -366,17 +366,17 @@ class ElasticIPAssociation(awsObject):
         return {
                     'ParentId'           : (NATGateway, FIELD.LIST_ITEM),
                     'ListName'           : (str, FIELD.LIST_NAME),
-                    "Id"      : (ElasticIPAssociation, FIELD.ID),
-                    "View"    : (str, FIELD.VIEW),
-                    "AllocationId"       : (ElasticIP, FIELD.LINK_IN),
+                    "Id"                 : (ElasticIPAssociation, FIELD.ID),
+                    "View"               : (str, FIELD.VIEW),
+                    "AllocationId"       : (ElasticIP, FIELD.LINK_OUT),
                     "NetworkInterfaceId" : (NetworkInterface, FIELD.LINK_IN),
                     'Tags'               : ({"Key" : "Value"}),
                 }
     
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)
-        self.Id   = f"{self.ParentId}{ID_DV}{self.AssociationId}"
-        self.View = f"{self.AssociationId}"
+        self.Id   = f"{self.ParentId}{ID_DV}{getattr(self, 'AssociationId', '-')}"
+        self.View = f"{getattr(self, 'AssociationId', '-')}"
 
     @staticmethod
     def aws_get_objects(id=None):
@@ -728,11 +728,11 @@ class Route(awsObject):
                     'ListName'             : (RouteTable      , FIELD.LIST_NAME),
                     "ParentId"             : (RouteTable      , FIELD.LIST_ITEM),
                     "GatewayId"            : (InternetGateway , FIELD.LINK_OUT),
-                    "InstanceId"           : (EC2             , FIELD.LINK_OUT),
+                    "InstanceId"           : (EC2Instance     , FIELD.LINK_OUT),
                     "NatGatewayId"         : (NATGateway      , FIELD.LINK_OUT),
                     "NetworkInterfaceId"   : (NetworkInterface, FIELD.LINK_OUT),
 
-                    "GatewayId_local"      : (Vpc             , FIELD.LINK_IN),
+#                    "GatewayId_local"      : (Vpc             , FIELD.LINK_OUT),
                 } # +
 
     @staticmethod
@@ -743,6 +743,9 @@ class Route(awsObject):
         return f"{self.ParentId}{ID_DV}{self.DestinationCidrBlock}"
 
     def get_view(self):
+        if hasattr(self, "GatewayId_local"):
+            return 'local'
+
 #        return f"{self.Index}"
         return f"{getattr(self, 'DestinationCidrBlock', '-')}"
 
@@ -754,7 +757,8 @@ class Route(awsObject):
 
         if hasattr(self, "GatewayId") and self.GatewayId == "local":
             self.GatewayId = None
-            setattr(self, "GatewayId_local", RouteTable.aws_get_objects(self.ParentId)[0]["VpcId"])
+#            setattr(self, "GatewayId_local", RouteTable.aws_get_objects(self.ParentId)[0]["VpcId"])
+            setattr(self, "GatewayId_local", True)
 
     @staticmethod
     def create(RouteTableId, DestinationCidrBlock, GatewayId = None, NatGatewayId = None):
@@ -1452,22 +1456,28 @@ class AWS(ObjectModel):
             {
                 'VPC' : [
                     KeyPair,
-                    Vpc, SecurityGroup, SecurityGroupRule,
+                    Vpc,
                     InternetGateway, InternetGatewayAttachment,
-                    NetworkAcl, NetworkAclEntry,
                 ],
-                'SUBNET' : [
+                'SN' : [
                     Subnet,
                     RouteTable, Route, RouteTableAssociation,
                     ElasticIP, 
                     NATGateway, ElasticIPAssociation, 
                 ],
+                'SG' : [
+                    SecurityGroup, SecurityGroupRule,
+                ],
+                'NACL' : [
+                    NetworkAcl, NetworkAclEntry,
+                ],
+                'EC2'   : [EC2Instance, EC2SecurityGroup, ],
                 'RDS'   : [DBSubnetGroup, DBSubnetGroupSubnet, DBInstance, DynamoDB],
                 'IAM'   : [User, Group, Role],
                 'LB'    : [LoadBalancer, LoadBalancerAvailabilityZone, TargetGroup, Listener, LaunchTemplate, AutoScalingGroup],
                 'RAZ'    : [Region, AvailabilityZone],
                 'OTHER' : [
-                    Reservation, EC2, EC2SecurityGroup, NetworkInterface,
+                    EC2Reservation, NetworkInterface,
                     S3,
                     SNS,
                     Function,
@@ -1476,4 +1486,4 @@ class AWS(ObjectModel):
             }
         )
 
-        self.Classes["All"] = [x for x in self.Classes["ALL"] if x not in [Reservation, AMI]]
+        self.Classes["All"] = [x for x in self.Classes["ALL"] if x not in [EC2Reservation, AMI]]

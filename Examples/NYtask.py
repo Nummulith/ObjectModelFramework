@@ -21,7 +21,7 @@ def NYTask(aws):
     aws.RouteTableAssociation.create(rtbPublic, snPublic)
     aws.Route.create(rtbPublic, "0.0.0.0/0", igw)
 
-    ec20 = aws.EC2.create(Name0,
+    ec20 = aws.EC2Instance.create(Name0,
         aws.Const["EC2.ImageId.Linux"], aws.Const["EC2.InstanceType"],
         key, snPublic, [sg], "10.3.0.10", aws.Const["EC2.UserData.Apache"],
     )
@@ -38,7 +38,7 @@ def NYTask(aws):
     aws.RouteTableAssociation.create(rtbPrivate, snPrivate)
     aws.Route.create(rtbPrivate, "0.0.0.0/0", None, nat)
 
-    ec21 = aws.EC2.create(Name1,
+    ec21 = aws.EC2Instance.create(Name1,
         aws.Const["EC2.ImageId.Linux"], aws.Const["EC2.InstanceType"],
         key, snPrivate, [sg], "10.3.1.10", aws.Const["EC2.UserData.Apache"],
     )

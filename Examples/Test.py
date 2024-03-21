@@ -99,12 +99,12 @@ def Test2(aws):
     for obj in objs:
         print(f"{obj.KeyPairId} - {obj.KeyName}")
 
-    # objs = aws.EC2.fetch(
+    # objs = aws.EC2Instance.fetch(
     #     {"instance-state-name" : (['running'], PAR.FILTER)}
     # )
-    # objs = aws.EC2.fetch({"key-name" : ([key_pair_name], PAR.FILTER)})
-    objs = aws.EC2.fetch("i-0091b120c539d10e8")
-    # objs = aws.EC2.objects()
+    # objs = aws.EC2Instance.fetch({"key-name" : ([key_pair_name], PAR.FILTER)})
+    objs = aws.EC2Instance.fetch("i-0091b120c539d10e8")
+    # objs = aws.EC2Instance.objects()
 
     # for obj in objs:
     #     cur_key_pair_name = obj["KeyPairId"].KeyName if hasattr(obj, "KeyPairId") else "-"

@@ -323,7 +323,7 @@ class MyWidget(QWidget):
                 PrivateIpAddress = ("10.3.0.10" if field == "EC2_Public" else "10.3.1.10")
                 UserData = AWS.Const["EC2.UserData.Apache"]
 
-                instance_id = EC2.create(
+                instance_id = EC2Instance.create(
                     Name=Name,
                     ImageId=ImageId,
                     InstanceType=InstanceType,
@@ -407,7 +407,7 @@ class MyWidget(QWidget):
                 KeyPair.delete(self.Val(field))
 
             elif pref == "EC2":
-                EC2.delete(self.Val(field))
+                EC2Instance.delete(self.Val(field))
                 self.Val(field, "")
 
             elif pref == "SG":
