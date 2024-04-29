@@ -28,40 +28,40 @@ The Yet Another AWS Analyser project extends the functionality of the [Object Mo
 
 VPC Resources:
 ```
-Vpc, KeyPairInfo
-SecurityGroup, SecurityGroupRule
-InternetGateway, InternetGatewayAttachment
-NetworkAcl, NetworkAclEntry
+EC2_VPC, KeyPairInfo
+EC2_SecurityGroup, EC2_SecurityGroup_Rule
+EC2_InternetGateway, EC2_VPCGatewayAttachment
+EC2_NetworkAcl, EC2_NetworkAclEntry
 ```
 
 SUBNET Resources:
 ```
-Subnet
-RouteTable, Route, RouteTableAssociation
-ElasticIP
-NATGateway, ElasticIPAssociation
+EC2_Subnet
+EC2_RouteTable, EC2_Route, EC2_RouteTable_Association
+EC2_EIP
+EC2_NatGateway, EC2_EIPAssociation
 ```
 
 RDS Resources:
 ```
-DBSubnetGroup, DBSubnetGroupSubnet,
-DBInstance,
-DynamoDB
+RDS_DBSubnetGroup, RDS_DBSubnetGroup_Subnet,
+RDS_DBInstance,
+DynamoDB_Table
 ```
 
-AMI Resources:
+AWS_AMI Resources:
 ```
-User, Group, Role
+IAM_User, IAM_Group, IAM_Role
 ```
 
 OTHER Resources:
 ```
-EC2Reservation
+EC2_Reservation
 Instance
-NetworkInterface
-S3
-SNS
-Function (Lambda)
+EC2_NetworkInterface
+S3_Bucket
+SNS_Topic
+Lambda_Function (Lambda)
 ```
 
 ## Example

@@ -36,9 +36,9 @@ class MyWidget(QWidget):
         self.bDraw       .clicked.connect(self.draw)
         self.bDelete     .clicked.connect(self.delete)
 
-        self.leProfile.setText("DCI")
+        self.leProfile.setText("TS")
         self.leFile   .setText("awsScript")
-        self.leClasses.setText("VPC, SN, SG, EC2")
+        self.leClasses.setText("CloudFormation_StackResource, CloudFormation_Stack")
         self.leExample.setText("Test")
 
         self.cbAWS .setChecked(True)

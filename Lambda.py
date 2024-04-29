@@ -96,8 +96,8 @@ def get_user_email(principal_id) -> str:
 
 def lambda_handler(event, context) -> None:
     """
-    This functions processes CloudTrail logs from S3, filters events from the AWS Console, and publishes to SNS
-    :param event: List of S3 Events
+    This functions processes CloudTrail logs from S3_Bucket, filters events from the AWS Console, and publishes to SNS_Topic
+    :param event: List of S3_Bucket Events
     :param context: AWS Lambda Context Object
     :return: None
     """

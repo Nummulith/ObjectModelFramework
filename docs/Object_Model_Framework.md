@@ -26,12 +26,12 @@ Upon creating the object model instance, users pass a collection of classes as p
 Each of classes defines the properties (fields) that objects of these classes will possess.
 For each field, the user specifies its type (e.g., a class from those passed during the creation of ObjectModel). Subsequent relationships are defined using the IDs of objects of that type. Additionally, a field can possess roles, such as:
 
-- ID Role: The object ID, allowing easy identification.
-- Owner Role: Signifying that the object "belongs" to the specified ID, and during graph visualization, it will be displayed within the cluster of the owning object.
-- List Name Role: In this case, the field's value is used as the name of a list displayed in the owner's cluster.
-- List Item Role: The value of the field in this list. These two field settings are used in tandem.
-- Link In Role: An arrow pointing from the specified ID to this object.
-- Link Out Role: An arrow pointing from this object to the specified ID.
+- ID IAM_Role: The object ID, allowing easy identification.
+- Owner IAM_Role: Signifying that the object "belongs" to the specified ID, and during graph visualization, it will be displayed within the cluster of the owning object.
+- List Name IAM_Role: In this case, the field's value is used as the name of a list displayed in the owner's cluster.
+- List Item IAM_Role: The value of the field in this list. These two field settings are used in tandem.
+- Link In IAM_Role: An arrow pointing from the specified ID to this object.
+- Link Out IAM_Role: An arrow pointing from this object to the specified ID.
 
 Not all fields need to be filled for a specific object, allowing selective visualization of relationships based on the object's properties.
 
@@ -63,7 +63,7 @@ The implementation of integration functions is delegated to user-defined classes
 ## Graph Visualization
 Upon constructing the object model within the Object Model Framework, a powerful graph visualization function is available. This feature provides valuable insights and a visual representation of the intricate relationships between objects, serving as a potent tool for analysis.
 
-Graph Drawing Function
+Graph Drawing Lambda_Function
 The draw_graph function facilitates the visualization of the entire object structure, showcasing the connections and dependencies between different entities. This function leverages the relationships and properties defined within the object model, offering a comprehensive overview.
 
 The Object Model Framework integrates the [**Graph Drawing Utility**](Graph_Drawing_Utility.md) for visualizing object relationships. The utility is employed to visualize the object graph.

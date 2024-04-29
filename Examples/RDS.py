@@ -1,18 +1,18 @@
 def RDS(aws):
-    aws.Vpc.fetch()
-    aws.Subnet.fetch()
-    aws.DBSubnetGroup.fetch()
-    aws.DBInstance.fetch()
+    aws.EC2_VPC.fetch()
+    aws.EC2_Subnet.fetch()
+    aws.RDS_DBSubnetGroup.fetch()
+    aws.RDS_DBInstance.fetch()
 
     dbsgname = "default-vpc-0525cb89b520dc144"
-    aws.DBSubnetGroup.create( 
+    aws.RDS_DBSubnetGroup.create( 
         dbsgname,
         "dbsg Description",
         ["subnet-0a0e70b2c10a4c152","subnet-01c500e6d13f52a29"]
     )
 
     dbi = "dbinstance-pavel-1"
-    aws.DBInstance.create(
+    aws.RDS_DBInstance.create(
         dbi,
         dbsgname,
         "DBAdmin",
@@ -21,4 +21,4 @@ def RDS(aws):
 
     aws.draw()
 
-    aws.DBInstance.delete(dbi)
+    aws.RDS_DBInstance.delete(dbi)

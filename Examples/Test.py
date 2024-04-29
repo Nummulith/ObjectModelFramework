@@ -76,35 +76,35 @@ def Test2(aws):
 
     aws.save()
 
-    # objs = aws.SecurityGroup.fetch("sg-031f7e69b595ae094", None, True)
+    # objs = aws.EC2_SecurityGroup.fetch("sg-031f7e69b595ae094", None, True)
     
-    # objs = aws.SecurityGroupRule.fetch(None, None, True)
-    objs = aws.SecurityGroupRule.objects()
+    # objs = aws.EC2_SecurityGroup_Rule.fetch(None, None, True)
+    objs = aws.EC2_SecurityGroup_Rule.objects()
 
     for grr in objs:
         if not grr.IsEgress and grr.IpProtocol == "tcp" and grr.FromPort == 80:
             print(f"{grr.GroupId} \\ {grr.IsEgress} {grr.IpProtocol} / {grr.FromPort} -> {grr.ToPort}")
             sg = grr['GroupId']
         else:
-            aws.SecurityGroupRule.release(grr.get_id())
+            aws.EC2_SecurityGroup_Rule.release(grr.get_id())
 
     # key_pair_name = "Pavel"
 
-    # objs = aws.KeyPair.fetch(
+    # objs = aws.EC2_KeyPair.fetch(
     #     filter = {"KeyNames" : (["key-" + key_pair_name], PAR.PAR)},
     #     create_par = {"name": key_pair_name}
     # )
-    objs = aws.KeyPair.objects()
+    objs = aws.EC2_KeyPair.objects()
 
     for obj in objs:
         print(f"{obj.KeyPairId} - {obj.KeyName}")
 
-    # objs = aws.EC2Instance.fetch(
+    # objs = aws.EC2_Instance.fetch(
     #     {"instance-state-name" : (['running'], PAR.FILTER)}
     # )
-    # objs = aws.EC2Instance.fetch({"key-name" : ([key_pair_name], PAR.FILTER)})
-    objs = aws.EC2Instance.fetch("i-0091b120c539d10e8")
-    # objs = aws.EC2Instance.objects()
+    # objs = aws.EC2_Instance.fetch({"key-name" : ([key_pair_name], PAR.FILTER)})
+    objs = aws.EC2_Instance.fetch("i-0091b120c539d10e8")
+    # objs = aws.EC2_Instance.objects()
 
     # for obj in objs:
     #     cur_key_pair_name = obj["KeyPairId"].KeyName if hasattr(obj, "KeyPairId") else "-"
@@ -115,11 +115,11 @@ def Test2(aws):
 def Test3(aws):
     print("(---")
 
-    objs = aws.EC2SecurityGroup.fetch(None, None, True)
+    objs = aws.EC2_SecurityGroup.fetch(None, None, True)
     for obj in objs:
         ec2 = obj["ParentId"]
         sg  = obj["GroupId"]
-        sgrs = aws.SecurityGroupRule.fetch(f"{obj.GroupId}|*", None, True)
+        sgrs = aws.EC2_SecurityGroup_Rule.fetch(f"{obj.GroupId}|*", None, True)
 
         for sgr in sgrs:
             if sgr.FromPort != 80:
@@ -132,12 +132,12 @@ def Test3(aws):
 def Test4(aws):
     print("(---")
 
-    objs = aws.AvailabilityZone.fetch()
+    objs = aws.AWS_AvailabilityZone.fetch()
     for obj in objs:
         print(f"{obj.ZoneId} - {obj.ZoneName}")
     
 
-    objs = aws.Subnet.fetch(None, None, True)
+    objs = aws.EC2_Subnet.fetch(None, None, True)
     for obj in objs:
         print(f"{obj} - {obj}")
 
@@ -146,7 +146,7 @@ def Test4(aws):
 def Test(aws):
     print("(---")
 
-    objs = aws.Listener.fetch()
+    objs = aws.ELB_Listener.fetch()
     for obj in objs:
         print(f"{obj}")
 

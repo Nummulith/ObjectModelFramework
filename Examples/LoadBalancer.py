@@ -1,2 +1,2 @@
-def LoadBalancer(aws):
+def ELB_LoadBalancer(aws):
     pass

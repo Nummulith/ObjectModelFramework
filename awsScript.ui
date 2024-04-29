@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>AWS Script</string>
+   <string>Object Model Framework: AWS</string>
   </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>

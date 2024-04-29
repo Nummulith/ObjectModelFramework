@@ -1,22 +1,22 @@
 def Lambda(aws):
-    # aws.SNS.create(Name)
+    # aws.SNS_Topic.create(Name)
 
-    aws.Function.fetch()
+    aws.Lambda_Function.fetch()
 
     # Lambda = "demo0"
     #
     # with open("./Lambda.py", 'r') as file: Code = file.read()
-    # aws.Function.create(Lambda, Code)
+    # aws.Lambda_Function.create(Lambda, Code)
     #
     # payload = {
     #     "key1": "value1",
     #     "key2": "value2"
     # }
-    # res = aws.Function.Class.Invoke(Lambda, payload)
+    # res = aws.Lambda_Function.Class.Invoke(Lambda, payload)
     # print(res)
 
-    #res = aws.Role.Class.query('list_item/AssumeRolePolicyDocument/Statement/list_item/Principal/Service')
-    # res = aws.Subnet.Class.query('list_item')
+    #res = aws.IAM_Role.Class.query('list_item/AssumeRolePolicyDocument/Statement/list_item/Principal/Service')
+    # res = aws.EC2_Subnet.Class.query('list_item')
     # for key, dict in res.items():
     #     print(f"{key}: {dict}")
 

@@ -1,4 +1,4 @@
 def AIM(aws):
-    aws.User.fetch()
-    aws.Group.fetch()
-    aws.Role.fetch()
+    aws.IAM_User.fetch()
+    aws.IAM_Group.fetch()
+    aws.IAM_Role.fetch()

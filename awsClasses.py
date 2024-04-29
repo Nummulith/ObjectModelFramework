@@ -133,7 +133,7 @@ class Tag(awsObject):
         return f"aws ec2 delete-tags --resources {id} --tags Key={name}"
 
 
-class EC2Reservation(awsObject): 
+class EC2_Reservation(awsObject): 
     Icon = "AWS/Res_Amazon-EC2_Instance_48"
     Show = False
     Color = "#FFC18A"
@@ -141,10 +141,10 @@ class EC2Reservation(awsObject):
     @staticmethod
     def fields():
         return {
-                    "ReservationId" : (EC2Reservation, FIELD.ID),
+                    "ReservationId" : (EC2_Reservation, FIELD.ID),
                     "OwnerId"       : str,
                     "Groups"        : ([str]), # !!!
-                    "Instances"     : ([EC2Instance]),
+                    "Instances"     : ([EC2_Instance]),
                 }
     
     @staticmethod
@@ -153,16 +153,16 @@ class EC2Reservation(awsObject):
         return resp['Reservations']
 
 
-class EC2SecurityGroup(awsObject):
+class EC2_SecurityGroup(awsObject):
     ListName = "SecurityGroups"
 
     @staticmethod
     def fields():
         return {
-                    "ParentId" : (EC2Instance, FIELD.LIST_ITEM),
+                    "ParentId" : (EC2_Instance, FIELD.LIST_ITEM),
                     "ListName" : (str, FIELD.LIST_NAME),
                     "GroupName" : (str, FIELD.VIEW),
-                    'GroupId': (SecurityGroup, FIELD.LINK_IN),
+                    'GroupId': (EC2_SecurityGroup, FIELD.LINK_IN),
                 }
 
     def get_id(self):
@@ -170,12 +170,12 @@ class EC2SecurityGroup(awsObject):
 
     @staticmethod
     def aws_get_objects(id=None):
-        return EC2Instance.get_objects_by_index(id, "SecurityGroups", "GroupId")
+        return EC2_Instance.get_objects_by_index(id, "SecurityGroups", "GroupId")
 
         resp = bt('ec2').describe_instances(**idpar('reservation-id', id, PAR.FILTER))
         return resp['Reservations']
 
-class EC2Instance(awsObject): 
+class EC2_Instance(awsObject): 
     Prefix = "i"
     Draw = DRAW.ALL
     Icon = "AWS/Arch_Amazon-EC2_48"
@@ -184,13 +184,13 @@ class EC2Instance(awsObject):
     @staticmethod
     def fields():
         return {
-                    "ParentId" : (EC2Reservation, FIELD.LINK_OUT),
-                    "InstanceId" : (EC2Instance, FIELD.ID),
-                    "SubnetId" : (Subnet, FIELD.OWNER),
+                    "ParentId" : (EC2_Reservation, FIELD.LINK_OUT),
+                    "InstanceId" : (EC2_Instance, FIELD.ID),
+                    "SubnetId" : (EC2_Subnet, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
-                    'VpcId': Vpc,
-                    'KeyPairId': (KeyPair, FIELD.LINK_IN),
-                    'SecurityGroups': [EC2SecurityGroup]
+                    'VpcId': EC2_VPC,
+                    'KeyPairId': (EC2_KeyPair, FIELD.LINK_IN),
+                    'SecurityGroups': [EC2_SecurityGroup]
                     # 'NetworkInterfaces': [{'Attachment': {...}, 'Description': '', 'Groups': [...], 'Ipv6Addresses': [...], 'MacAddress': '06:02:cb:61:9c:7b', 'NetworkInterfaceId': 'eni-06ef5645d896ee146', 'OwnerId': '047989593255', 'PrivateIpAddress': '10.222.2.11', 'PrivateIpAddresses': [...], ...}]
                 }
     
@@ -212,7 +212,7 @@ class EC2Instance(awsObject):
         id = bt('ec2').run_instances(
             ImageId = ImageId,
             InstanceType = InstanceType,
-            KeyName = KeyPair.IdToName(KeyPairId),
+            KeyName = EC2_KeyPair.IdToName(KeyPairId),
             NetworkInterfaces=[
                 {
                     'SubnetId': SubnetId,
@@ -227,7 +227,7 @@ class EC2Instance(awsObject):
             MaxCount = 1
         )['Instances'][0]['InstanceId']
 
-        Tag.create(id, "Name", f"{EC2Instance.Prefix}-{name}")
+        Tag.create(id, "Name", f"{EC2_Instance.Prefix}-{name}")
 
         return id
     
@@ -243,9 +243,9 @@ class EC2Instance(awsObject):
         super().__init__(aws, id_query, index, resp, do_auto_save)
 
         if hasattr(self, "KeyName"):
-            setattr(self, "KeyPairId", KeyPair.NameToId(self.KeyName))
+            setattr(self, "KeyPairId", EC2_KeyPair.NameToId(self.KeyName))
 
-class InternetGateway(awsObject): 
+class EC2_InternetGateway(awsObject): 
     Prefix = "igw"
     Icon = "AWS/Arch_Amazon-API-Gateway_48"
     Color = "#F9BBD9"
@@ -253,8 +253,8 @@ class InternetGateway(awsObject):
     @staticmethod
     def fields():
         return {
-                    "InternetGatewayId" : (InternetGateway, FIELD.ID),
-                    'Attachments' : ([InternetGatewayAttachment]),
+                    "InternetGatewayId" : (EC2_InternetGateway, FIELD.ID),
+                    'Attachments' : ([EC2_VPCGatewayAttachment]),
                     'Tags' : ({"Key" : "Value"}),
                 }
     
@@ -266,8 +266,8 @@ class InternetGateway(awsObject):
 
     @staticmethod
     def create(name):
-        id = bt('ec2').create_internet_gateway()['InternetGateway']['InternetGatewayId']
-        Tag.create(id, "Name", f"{InternetGateway.Prefix}-{name}")
+        id = bt('ec2').create_internet_gateway()['EC2_InternetGateway']['InternetGatewayId']
+        Tag.create(id, "Name", f"{EC2_InternetGateway.Prefix}-{name}")
         return id
 
     @staticmethod
@@ -277,7 +277,7 @@ class InternetGateway(awsObject):
         )
 
 
-class InternetGatewayAttachment(awsObject): 
+class EC2_VPCGatewayAttachment(awsObject): 
     Prefix = "igw-attach"
     Icon = "AWS/Gateway"
     Draw = DRAW.VIEW
@@ -288,9 +288,9 @@ class InternetGatewayAttachment(awsObject):
     @staticmethod
     def fields():
         return {
-                    "ParentId" : (InternetGateway, FIELD.LIST_ITEM),
+                    "ParentId" : (EC2_InternetGateway, FIELD.LIST_ITEM),
                     "ListName" : (str, FIELD.LIST_NAME),
-                    "VpcId" : (Vpc, FIELD.LINK_IN),
+                    "VpcId" : (EC2_VPC, FIELD.LINK_IN),
                 }
     
     def get_view(self):
@@ -298,7 +298,7 @@ class InternetGatewayAttachment(awsObject):
 
     @staticmethod
     def aws_get_objects(id=None):
-        return InternetGateway.get_objects_by_index(id, "Attachments", "VpcId")
+        return EC2_InternetGateway.get_objects_by_index(id, "Attachments", "VpcId")
     
     def get_id(self):
         return f"{self.ParentId}{ID_DV}{self.VpcId}"
@@ -311,12 +311,10 @@ class InternetGatewayAttachment(awsObject):
     @staticmethod
     def delete(id):
         InternetGatewayId, _, VpcId = id.rpartition(ID_DV)
-        bt('ec2').detach_internet_gateway(
-            InternetGatewayId=InternetGatewayId, VpcId=VpcId
-        )
+        bt('ec2').detach_internet_gateway(InternetGatewayId=InternetGatewayId, VpcId=VpcId)
 
 
-class NATGateway(awsObject): 
+class EC2_NatGateway(awsObject): 
     Prefix = "nat"
     Icon = "AWS/Res_Amazon-VPC_NAT-Gateway_48"
     Color = '#c19fff'
@@ -324,11 +322,11 @@ class NATGateway(awsObject):
     @staticmethod
     def fields():
         return {
-                    "NatGatewayId"        : (NATGateway, FIELD.ID),
-                    "SubnetId"            : (Subnet    , FIELD.OWNER),
-                    # "VpcId"               : (Vpc       , FIELD.LINK_IN),
+                    "NatGatewayId"        : (EC2_NatGateway, FIELD.ID),
+                    "SubnetId"            : (EC2_Subnet    , FIELD.OWNER),
+                    # "VpcId"               : (EC2_VPC       , FIELD.LINK_IN),
                     'Tags'                : ({"Key" : "Value"}),
-                    "NatGatewayAddresses" : ([ElasticIPAssociation], FIELD.LINK_IN),
+                    "NatGatewayAddresses" : ([EC2_EIPAssociation], FIELD.LINK_IN),
                     # 'CreateTime': datetime.datetime(2024, 1, 30, 16, 38, 41, tzinfo=tzutc())
                 }
     
@@ -344,7 +342,7 @@ class NATGateway(awsObject):
     def create(name, SubnetId, AllocationId):
         id = bt('ec2').create_nat_gateway(SubnetId = SubnetId, AllocationId = AllocationId)['NatGateway']['NatGatewayId']
 
-        Tag.create(id, "Name", f"{NATGateway.Prefix}-{name}")
+        Tag.create(id, "Name", f"{EC2_NatGateway.Prefix}-{name}")
 
         Wait('nat_gateway_available', "NatGatewayIds", id)
 
@@ -357,19 +355,19 @@ class NATGateway(awsObject):
         Wait('nat_gateway_deleted', "NatGatewayIds", id)
 
 
-class ElasticIPAssociation(awsObject): 
+class EC2_EIPAssociation(awsObject): 
     DoNotFetch = True
     ListName = "Addresses"
 
     @staticmethod
     def fields():
         return {
-                    'ParentId'           : (NATGateway, FIELD.LIST_ITEM),
+                    'ParentId'           : (EC2_NatGateway, FIELD.LIST_ITEM),
                     'ListName'           : (str, FIELD.LIST_NAME),
-                    "Id"                 : (ElasticIPAssociation, FIELD.ID),
+                    "Id"                 : (EC2_EIPAssociation, FIELD.ID),
                     "View"               : (str, FIELD.VIEW),
-                    "AllocationId"       : (ElasticIP, FIELD.LINK_OUT),
-                    "NetworkInterfaceId" : (NetworkInterface, FIELD.LINK_IN),
+                    "AllocationId"       : (EC2_EIP, FIELD.LINK_OUT),
+                    "NetworkInterfaceId" : (EC2_NetworkInterface, FIELD.LINK_IN),
                     'Tags'               : ({"Key" : "Value"}),
                 }
     
@@ -400,18 +398,18 @@ class ElasticIPAssociation(awsObject):
         RouteTableId, _, AssociationId = id.rpartition(ID_DV)
         bt('ec2').disassociate_address(AssociationId = AssociationId)
 
-class SecurityGroup(awsObject):
+class EC2_SecurityGroup(awsObject):
     Prefix = "sg"
-    Icon = "AWS/SecurityGroup"
+    Icon = "AWS/EC2_SecurityGroup"
     Color = "#ff9999"
 
     @staticmethod
     def fields():
         return {
                     "GroupId"    : (str , FIELD.ID),
-                    "VpcId"      : (Vpc, FIELD.OWNER),
-#                    "IpPermissions"       : ([SecurityGroupRule]),
-#                    "IpPermissionsEgress" : ([SecurityGroupRule]),
+                    "VpcId"      : (EC2_VPC, FIELD.OWNER),
+#                    "IpPermissions"       : ([EC2_SecurityGroup_Rule]),
+#                    "IpPermissionsEgress" : ([EC2_SecurityGroup_Rule]),
                 }
     
     @staticmethod
@@ -422,13 +420,13 @@ class SecurityGroup(awsObject):
         return f"{self.GroupName}"
 
     @staticmethod
-    def create(name, Description, Vpc):
-        sgName = f"{SecurityGroup.Prefix}-{name}"
+    def create(name, Description, EC2_VPC):
+        sgName = f"{EC2_SecurityGroup.Prefix}-{name}"
 
         id = bt('ec2').create_security_group(
             GroupName = name,
             Description = Description,
-            VpcId = Vpc
+            VpcId = EC2_VPC
         )['GroupId']
 
         Tag.create(id, "Name", sgName)
@@ -441,15 +439,15 @@ class SecurityGroup(awsObject):
             GroupId=id
         )
 
-class SecurityGroupRule(awsObject):
+class EC2_SecurityGroup_Rule(awsObject):
     Prefix = "sgr"
     ListName = "Rules"
 
     @staticmethod
     def fields():
         return {
-                    'SecurityGroupRuleId': SecurityGroupRule,
-                    'GroupId': (SecurityGroup, FIELD.LIST_ITEM),
+                    'SecurityGroupRuleId': EC2_SecurityGroup_Rule,
+                    'GroupId': (EC2_SecurityGroup, FIELD.LIST_ITEM),
                     'ListName': (str, FIELD.LIST_NAME),
                 }
     
@@ -498,17 +496,10 @@ class SecurityGroupRule(awsObject):
             if id is not None:
                 par_id, _, cur_id = id.rpartition(ID_DV)
 
-            # filters = []
             if par_id:
-            #     filters.append({
-            #         'Name': 'group-id',
-            #         'Values': [par_id]
-            #     })
                 flt["group-id"] = ([par_id], PAR.FILTER)
 
-            # cur_ids = []
             if cur_id and cur_id != "*":
-                # cur_ids.append(cur_id)
                 flt["SecurityGroupRuleIds"] = ([cur_id], PAR.PAR)
         
         else:
@@ -530,19 +521,19 @@ class SecurityGroupRule(awsObject):
         return res
 
 
-class Subnet(awsObject): 
+class EC2_Subnet(awsObject): 
     Prefix = "subnet"
     Draw = DRAW.ALL
-    Icon = "AWS/Subnet"
+    Icon = "AWS/EC2_Subnet"
     Color = '#c8b7ea'
 
     @staticmethod
     def fields():
         return {
-                    "SubnetId" : (Subnet, FIELD.ID),
-                    "VpcId" : (Vpc, FIELD.OWNER),
+                    "SubnetId" : (EC2_Subnet, FIELD.ID),
+                    "VpcId" : (EC2_VPC, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
-                    'AvailabilityZoneId' : (AvailabilityZone, FIELD.LINK_OUT),
+                    'AvailabilityZoneId' : (AWS_AvailabilityZone, FIELD.LINK_OUT),
                 }
 # 'Ipv6CidrBlockAssociationSet': []
 
@@ -555,14 +546,14 @@ class Subnet(awsObject):
         return f"{getattr(self, 'CidrBlock', '-')}"
 
     @staticmethod
-    def create(name, Vpc, CidrBlock):
+    def create(name, EC2_VPC, CidrBlock):
         id = bt('ec2').create_subnet(
-            VpcId = Vpc,
+            VpcId = EC2_VPC,
             CidrBlock = CidrBlock,
-#           AvailabilityZone='us-east-1a'
-        )["Subnet"]["SubnetId"]
+#           AWS_AvailabilityZone='us-east-1a'
+        )["EC2_Subnet"]["SubnetId"]
 
-        Tag.create(id, "Name", f"{Subnet.Prefix}-{name}")
+        Tag.create(id, "Name", f"{EC2_Subnet.Prefix}-{name}")
 
         return id
     
@@ -574,7 +565,7 @@ class Subnet(awsObject):
 
     
 
-class NetworkAcl(awsObject): 
+class EC2_NetworkAcl(awsObject): 
     Prefix = "nacl"
     Icon = "AWS/Res_Amazon-VPC_Network-Access-Control-List_48"
     Color = "#d7c1ff"
@@ -582,10 +573,10 @@ class NetworkAcl(awsObject):
     @staticmethod
     def fields():
         return {
-                    "NetworkAclId" : (NetworkAcl, FIELD.ID),
-                    'VpcId': (Vpc, FIELD.OWNER),
+                    "NetworkAclId" : (EC2_NetworkAcl, FIELD.ID),
+                    'VpcId': (EC2_VPC, FIELD.OWNER),
                     'OwnerId': (str, FIELD.OWNER),
-                    'Entries': ([NetworkAclEntry], FIELD.OWNER),
+                    'Entries': ([EC2_NetworkAclEntry], FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
                     #),[{'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': True, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'allow', 'RuleNumber': 100}, {'CidrBlock': '0.0.0.0/0', 'Egress': False, 'Protocol': '-1', 'RuleAction': 'deny', 'RuleNumber': 32767}]
                     # 'Associations': [{'NetworkAclAssociationId': 'aclassoc-0c867a11b811c5be1', 'NetworkAclId': 'acl-0334606b00fe7551c', 'SubnetId': 'subnet-06678d33e23eba72f'}]
@@ -596,7 +587,7 @@ class NetworkAcl(awsObject):
         return bt('ec2').describe_network_acls(**idpar('NetworkAclIds', id))['NetworkAcls']
 
 
-class NetworkAclEntry(awsObject): 
+class EC2_NetworkAclEntry(awsObject): 
     Prefix = "nacle"
     Icon = "AWS/NetworkAccessControlList"
     Color = '#d7c1ff'
@@ -606,16 +597,16 @@ class NetworkAclEntry(awsObject):
     @staticmethod
     def fields():
         return {
-            "ParentId": (NetworkAcl, FIELD.LIST_ITEM),
-            "ListName": (NetworkAcl, FIELD.LIST_NAME),
-            "Id"      : (NetworkAclEntry, FIELD.ID),
+            "ParentId": (EC2_NetworkAcl, FIELD.LIST_ITEM),
+            "ListName": (EC2_NetworkAcl, FIELD.LIST_NAME),
+            "Id"      : (EC2_NetworkAclEntry, FIELD.ID),
             "Ext"     : (str, FIELD.EXT ),
             "View"    : (str, FIELD.VIEW),
         }
 
     @staticmethod
     def aws_get_objects(id=None):
-        return NetworkAcl.get_objects_by_index(id, "Entries", "RuleNumber")
+        return EC2_NetworkAcl.get_objects_by_index(id, "Entries", "RuleNumber")
 
     
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
@@ -624,18 +615,18 @@ class NetworkAclEntry(awsObject):
         self.View = f"{self.RuleAction} - {getattr(self, 'CidrBlock', '*')}- {self.RuleNumber}:{self.Protocol} {getattr(self, 'PortRange', '')}"
 
 
-class RouteTable(awsObject): 
+class EC2_RouteTable(awsObject): 
     Prefix = "rtb"
-    Icon = "AWS/Res_Amazon-Route-53_Route-Table_48"
+    Icon = "AWS/Res_Amazon-EC2_Route-53_Route-Table_48"
     Color = '#c19fff'
 
     @staticmethod
     def fields():
         return {
-                    "RouteTableId" : (RouteTable, FIELD.ID),
-                    "VpcId" : (Vpc, FIELD.OWNER),
-                    "Routes" : ([Route]),
-                    "Associations" : ([RouteTableAssociation]),
+                    "RouteTableId" : (EC2_RouteTable, FIELD.ID),
+                    "VpcId" : (EC2_VPC, FIELD.OWNER),
+                    "Routes" : ([EC2_Route]),
+                    "Associations" : ([EC2_RouteTable_Association]),
                     'OwnerId': (str, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
                     # 'PropagatingVgws': []
@@ -647,9 +638,9 @@ class RouteTable(awsObject):
 
     @staticmethod
     def create(name, VpcId):
-        id = bt('ec2').create_route_table(VpcId = VpcId)['RouteTable']['RouteTableId']
+        id = bt('ec2').create_route_table(VpcId = VpcId)['EC2_RouteTable']['RouteTableId']
 
-        Tag.create(id, "Name", f"{RouteTable.Prefix}-{name}")
+        Tag.create(id, "Name", f"{EC2_RouteTable.Prefix}-{name}")
         return id
 
     @staticmethod
@@ -658,7 +649,7 @@ class RouteTable(awsObject):
             RouteTableId = id
         )
 
-class RouteTableAssociation(awsObject):
+class EC2_RouteTable_Association(awsObject):
     Prefix = "rtba"
     Draw = DRAW.ALL
     Color = '#c19fff'
@@ -674,19 +665,19 @@ class RouteTableAssociation(awsObject):
     @staticmethod
     def fields():
         return {
-#                    "ParentId"               : (RouteTable, fList),
+#                    "ParentId"               : (EC2_RouteTable, fList),
                     'Id'  : (str, FIELD.ID),
                     'Ext' : (str, FIELD.EXT),
                     'View': (str, FIELD.VIEW),
-                    'RouteTableId'           : (RouteTable, FIELD.LIST_ITEM),
-                    'ListName'               : (RouteTable, FIELD.LIST_NAME),
-                    'SubnetId'               : (Subnet, FIELD.LINK_IN),
+                    'RouteTableId'           : (EC2_RouteTable, FIELD.LIST_ITEM),
+                    'ListName'               : (EC2_RouteTable, FIELD.LIST_NAME),
+                    'SubnetId'               : (EC2_Subnet, FIELD.LINK_IN),
 #                    'AssociationState'       : str, #!!!
                 } # +
 
     @staticmethod
     def aws_get_objects(id=None):
-        return RouteTable.get_objects_by_index(id, "Associations", 'RouteTableAssociationId')
+        return EC2_RouteTable.get_objects_by_index(id, "Associations", 'RouteTableAssociationId')
 
     # def get_id(self):
     #     return f"{self.RouteTableId}{ID_DV}{self.RouteTableAssociationId}"
@@ -697,7 +688,7 @@ class RouteTableAssociation(awsObject):
     #     return "-"
     
     # def get_view(self):
-    #     return f"Route[{self.Index}]"
+    #     return f"EC2_Route[{self.Index}]"
     
 
     @staticmethod
@@ -708,15 +699,13 @@ class RouteTableAssociation(awsObject):
     @staticmethod
     def delete(id):
         RouteTableId, _, AssociationId = id.rpartition(ID_DV)
-        bt('ec2').disassociate_route_table(
-            AssociationId = AssociationId
-        )
+        bt('ec2').disassociate_route_table(AssociationId = AssociationId)
 
 
-class Route(awsObject):
+class EC2_Route(awsObject):
     Prefix = "route"
     Draw = DRAW.ALL-DRAW.ID
-    Icon = "AWS/Route"
+    Icon = "AWS/EC2_Route"
     Color = '#c19fff'
     UseIndex = True
     DoNotFetch = True
@@ -725,19 +714,19 @@ class Route(awsObject):
     @staticmethod
     def fields():
         return {
-                    'ListName'             : (RouteTable      , FIELD.LIST_NAME),
-                    "ParentId"             : (RouteTable      , FIELD.LIST_ITEM),
-                    "GatewayId"            : (InternetGateway , FIELD.LINK_OUT),
-                    "InstanceId"           : (EC2Instance     , FIELD.LINK_OUT),
-                    "NatGatewayId"         : (NATGateway      , FIELD.LINK_OUT),
-                    "NetworkInterfaceId"   : (NetworkInterface, FIELD.LINK_OUT),
+                    'ListName'             : (EC2_RouteTable      , FIELD.LIST_NAME),
+                    "ParentId"             : (EC2_RouteTable      , FIELD.LIST_ITEM),
+                    "GatewayId"            : (EC2_InternetGateway , FIELD.LINK_OUT),
+                    "InstanceId"           : (EC2_Instance     , FIELD.LINK_OUT),
+                    "NatGatewayId"         : (EC2_NatGateway      , FIELD.LINK_OUT),
+                    "NetworkInterfaceId"   : (EC2_NetworkInterface, FIELD.LINK_OUT),
 
-#                    "GatewayId_local"      : (Vpc             , FIELD.LINK_OUT),
+#                    "GatewayId_local"      : (EC2_VPC             , FIELD.LINK_OUT),
                 } # +
 
     @staticmethod
     def aws_get_objects(id=None):
-        return RouteTable.get_objects_by_index(id, "Routes", int)
+        return EC2_RouteTable.get_objects_by_index(id, "Routes", int)
     
     def get_id(self):
         return f"{self.ParentId}{ID_DV}{self.DestinationCidrBlock}"
@@ -757,7 +746,7 @@ class Route(awsObject):
 
         if hasattr(self, "GatewayId") and self.GatewayId == "local":
             self.GatewayId = None
-#            setattr(self, "GatewayId_local", RouteTable.aws_get_objects(self.ParentId)[0]["VpcId"])
+#            setattr(self, "GatewayId_local", EC2_RouteTable.aws_get_objects(self.ParentId)[0]["VpcId"])
             setattr(self, "GatewayId_local", True)
 
     @staticmethod
@@ -793,7 +782,7 @@ class Route(awsObject):
                 raise # all other is not
 
 
-class Vpc(awsObject): 
+class EC2_VPC(awsObject): 
     Prefix = "vpc"
     Draw = DRAW.ALL
     Icon = "AWS/VPC"
@@ -802,8 +791,8 @@ class Vpc(awsObject):
     @staticmethod
     def fields():
         return {
-                    "VpcId"           : (Vpc, FIELD.ID),
-                    "NetworkAclId"    : (NetworkAcl),
+                    "VpcId"           : (EC2_VPC, FIELD.ID),
+                    "NetworkAclId"    : (EC2_NetworkAcl),
                     'Tags'            : ({"Key" : "Value"})
 #                    'CidrBlockAssociationSet' : [{'AssociationId': 'vpc-cidr-assoc-070bb...bcc9c9695b', 'CidrBlock': '10.222.0.0/16', 'CidrBlockState': {...}}],
                 }
@@ -818,8 +807,8 @@ class Vpc(awsObject):
     
     @staticmethod
     def create(name, CidrBlock):
-        id = bt('ec2').create_vpc(CidrBlock=CidrBlock)['Vpc']['VpcId']
-        Tag.create(id, "Name", f"{Vpc.Prefix}-{name}")
+        id = bt('ec2').create_vpc(CidrBlock=CidrBlock)['EC2_VPC']['VpcId']
+        Tag.create(id, "Name", f"{EC2_VPC.Prefix}-{name}")
         return id
     
     @staticmethod
@@ -832,7 +821,7 @@ class Vpc(awsObject):
     def cli_add(name, CidrBlock):
         return f"id000000001"
 
-class NetworkInterface(awsObject): 
+class EC2_NetworkInterface(awsObject): 
     Prefix = "ni"
     Icon = "AWS/Res_Amazon-VPC_Elastic-Network-Interface_48"
     Color = '#c19fff'
@@ -841,10 +830,10 @@ class NetworkInterface(awsObject):
     @staticmethod
     def fields():
         return {
-                    "NetworkInterfaceId" : (NetworkInterface, FIELD.ID),
-                    "VpcId"              : Vpc,
-                    "SubnetId"           : (Subnet, FIELD.LIST_ITEM),
-                    "ListName"           : (Subnet, FIELD.LIST_NAME),
+                    "NetworkInterfaceId" : (EC2_NetworkInterface, FIELD.ID),
+                    "VpcId"              : EC2_VPC,
+                    "SubnetId"           : (EC2_Subnet, FIELD.LIST_ITEM),
+                    "ListName"           : (EC2_Subnet, FIELD.LIST_NAME),
 #                    "PrivateIpAddresses" : str, # print("Private IP Addresses:", [private_ip['PrivateIpAddress'] for private_ip in network_interface['PrivateIpAddresses']])
 #                    "Attachment"         : str, #    print("Attachment ID:", network_interface['Attachment']['AttachmentId'])
                 }
@@ -858,7 +847,7 @@ class NetworkInterface(awsObject):
         return f"id000000002"
 
 
-class S3(awsObject): 
+class S3_Bucket(awsObject): 
     Prefix = "s3"
     Icon = "AWS/Arch_Amazon-Simple-Storage-Service_48"
     DoNotFetch = True
@@ -866,7 +855,7 @@ class S3(awsObject):
     @staticmethod
     def fields():
         return {
-                    "Name" : (S3, FIELD.ID),
+                    "Name" : (S3_Bucket, FIELD.ID),
 #                    'CreationDate': datetime.datetime(2023, 9, 29, 12, 28, 16, tzinfo=tzutc())
                 }
     
@@ -881,22 +870,22 @@ class S3(awsObject):
 
 
 
-class ElasticIP(awsObject):
+class EC2_EIP(awsObject):
     Prefix = "eipassoc"
-    Icon = "AWS/ElasticIP"
+    Icon = "AWS/EC2_EIP"
     Color = "#ffc28c"
 
     @staticmethod
     def fields():
         return {
-                    'AllocationId': (ElasticIP, FIELD.ID),
+                    'AllocationId': (EC2_EIP, FIELD.ID),
                     'Tags': ({"Key" : "Value"}),
                 }
     
     @staticmethod
     def create(name):
         id = bt('ec2').allocate_address(Domain='vpc')['AllocationId']
-        Tag.create(id, "Name", f"{ElasticIP.Prefix}-{name}")
+        Tag.create(id, "Name", f"{EC2_EIP.Prefix}-{name}")
         return id
     
     @staticmethod
@@ -911,15 +900,15 @@ class ElasticIP(awsObject):
         return resp['Addresses']
 
 
-class KeyPair(awsObject):
+class EC2_KeyPair(awsObject):
     Prefix = "key"
     # DoNotFetch = True
-    Icon = "AWS/KeyPair"
+    Icon = "AWS/EC2_KeyPair"
     
     @staticmethod
     def fields():
         return {
-                    'KeyPairId': (KeyPair, FIELD.ID),
+                    'KeyPairId': (EC2_KeyPair, FIELD.ID),
                     'Tags': ({"Key" : "Value"}),
                 }
     
@@ -942,14 +931,14 @@ class KeyPair(awsObject):
 
     @staticmethod
     def create(name):
-        KeyName = f"{KeyPair.Prefix}-{name}"
+        KeyName = f"{EC2_KeyPair.Prefix}-{name}"
         resp = bt('ec2').create_key_pair(KeyName=KeyName)
 
         private_key = resp['KeyMaterial']
         try:
             with open(f'PrivateKeys\\{KeyName}.pem', 'w') as key_file: key_file.write(private_key)
         except Exception as e:
-            print(f"KeyPair.create: An exception occurred: {type(e).__name__} - {e}")
+            print(f"EC2_KeyPair.create: An exception occurred: {type(e).__name__} - {e}")
 
         id = resp['KeyPairId']
 
@@ -961,7 +950,7 @@ class KeyPair(awsObject):
 
     @staticmethod
     def IdToName(KeyPairId):
-    #   KeyName = boto3.resource('ec2').KeyPair(KeyPairId).key_name # does not work
+    #   KeyName = boto3.resource('ec2').EC2_KeyPair(KeyPairId).key_name # does not work
         resp = bt('ec2').describe_key_pairs(KeyPairIds=[KeyPairId])
         KeyName = resp['KeyPairs'][0]['KeyName']
         return KeyName
@@ -976,7 +965,7 @@ class KeyPair(awsObject):
         return f"{self.KeyName}"
 
 
-class SNS(awsObject):
+class SNS_Topic(awsObject):
     DoNotFetch = True
     Icon = "AWS/Arch_Amazon-Simple-Notification-Service_48"
 
@@ -986,7 +975,7 @@ class SNS(awsObject):
         return resp['TopicArn']
 
 
-class User(awsObject):
+class IAM_User(awsObject):
     Icon = "AWS/Res_User_48_Light"
 
     @staticmethod
@@ -997,13 +986,13 @@ class User(awsObject):
         
         else:
             response = bt('iam').get_user(UserName=id)
-            return [response['User']]
+            return [response['IAM_User']]
 
     def get_id(self):
         return f"{self.UserName}"
 
 
-class Group(awsObject):
+class IAM_Group(awsObject):
     Icon = "AWS/Res_Users_48_Light"
 
     @staticmethod
@@ -1014,13 +1003,13 @@ class Group(awsObject):
         
         else:
             response = bt('iam').get_group(GroupName=id)
-            return [response['Group']]
+            return [response['IAM_Group']]
 
     def get_id(self):
         return f"{self.GroupName}"
 
 
-class Role(awsObject):
+class IAM_Role(awsObject):
     DoNotFetch = True
     Icon = "AWS/Res_AWS-Identity-Access-Management_Role_48"
 
@@ -1032,21 +1021,21 @@ class Role(awsObject):
         
         else:
             response = bt('iam').get_role(RoleName=id)
-            return [response['Role']]
+            return [response['IAM_Role']]
 
     def get_id(self):
         return f"{self.RoleName}"
 
 
     
-class Function(awsObject):
+class Lambda_Function(awsObject):
     Icon = "AWS/Arch_AWS-Lambda_48"
     Color = "#ffc28c"
 
     @staticmethod
     def fields():
         return {
-                    'FunctionName': (Function, FIELD.ID),
+                    'FunctionName': (Lambda_Function, FIELD.ID),
                     'Tags': ({"Key" : "Value"}),
                 }
 
@@ -1079,7 +1068,7 @@ class Function(awsObject):
         response = bt('lambda').create_function(
             FunctionName=name,
             Runtime=runtime,
-            Role=role_arn,
+            IAM_Role=role_arn,
             Handler=handler,
             Code={'ZipFile': zipped_data},
             Timeout=30,
@@ -1103,15 +1092,15 @@ class Function(awsObject):
         return result
 
 
-class DBInstance(awsObject):
+class RDS_DBInstance(awsObject):
     Icon = "AWS/Arch_Amazon-RDS_48"
     Color = "#e998ed"
 
     @staticmethod
     def fields():
         return {
-                    'DBInstanceIdentifier': (DBInstance, FIELD.ID),
-                    'DBSubnetGroupName': (DBSubnetGroup, FIELD.OWNER),
+                    'DBInstanceIdentifier': (RDS_DBInstance, FIELD.ID),
+                    'DBSubnetGroupName': (RDS_DBSubnetGroup, FIELD.OWNER),
                     'Tags': ({"Key" : "Value"}),
                 }
 
@@ -1123,16 +1112,16 @@ class DBInstance(awsObject):
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)
 
-        if hasattr(self, "DBSubnetGroup"):
-            setattr(self, "DBSubnetGroupName", self.DBSubnetGroup["DBSubnetGroupName"])
+        if hasattr(self, "RDS_DBSubnetGroup"):
+            setattr(self, "DBSubnetGroupName", self.RDS_DBSubnetGroup["DBSubnetGroupName"])
     
     @staticmethod
-    def create(name, DBSubnetGroupName, User, Pass):
+    def create(name, DBSubnetGroupName, IAM_User, Pass):
         response = bt('rds').create_db_instance(
             DBInstanceIdentifier = name,
             DBInstanceClass = AWS.Const['RDS.InstanceType'],
             Engine = AWS.Const['RDS.Engine'],
-            MasterUsername=User,
+            MasterUsername=IAM_User,
             MasterUserPassword=Pass,
             AllocatedStorage=20,
             DBSubnetGroupName=DBSubnetGroupName,
@@ -1140,7 +1129,7 @@ class DBInstance(awsObject):
             PubliclyAccessible=True,
         )
 
-        return response['DBInstance']['DBInstanceIdentifier']
+        return response['RDS_DBInstance']['DBInstanceIdentifier']
 
     @staticmethod
     def delete(id, SkipFinalSnapshot = True):
@@ -1149,16 +1138,16 @@ class DBInstance(awsObject):
             SkipFinalSnapshot = SkipFinalSnapshot
         )        
     
-class DBSubnetGroup(awsObject):
+class RDS_DBSubnetGroup(awsObject):
     Icon = "AWS/Arch_Amazon-RDS_48"
     Color = "#f2c4f4"
 
     @staticmethod
     def fields():
         return {
-                    'DBSubnetGroupName': (DBSubnetGroup, FIELD.ID),
-                    'VpcId': (Vpc, FIELD.OWNER),
-                    'Subnets': [DBSubnetGroupSubnet],
+                    'DBSubnetGroupName': (RDS_DBSubnetGroup, FIELD.ID),
+                    'VpcId': (EC2_VPC, FIELD.OWNER),
+                    'Subnets': [RDS_DBSubnetGroup_Subnet],
                 }
 
     @staticmethod
@@ -1173,14 +1162,14 @@ class DBSubnetGroup(awsObject):
             DBSubnetGroupDescription=DBSubnetGroupDescription,
             SubnetIds = SubnetIds
         )
-        return response['DBSubnetGroup']['DBSubnetGroupName']
+        return response['RDS_DBSubnetGroup']['DBSubnetGroupName']
 
     @staticmethod
     def delete(id):
         response = bt('rds').delete_db_subnet_group(DBSubnetGroupName=id)
         return
 
-class DBSubnetGroupSubnet(awsObject):
+class RDS_DBSubnetGroup_Subnet(awsObject):
     UseIndex = True
     ListName = "Subnets"
     DoNotFetch = True
@@ -1189,8 +1178,8 @@ class DBSubnetGroupSubnet(awsObject):
     def fields():
         return {
                     'Id'  : (str, FIELD.ID),
-                    'SubnetIdentifier': (Subnet, FIELD.LINK_IN),
-                    'ParentId': (DBSubnetGroup, FIELD.LIST_ITEM),
+                    'SubnetIdentifier': (EC2_Subnet, FIELD.LINK_IN),
+                    'ParentId': (RDS_DBSubnetGroup, FIELD.LIST_ITEM),
                     'ListName': (str, FIELD.LIST_NAME),
                     'View': (str, FIELD.VIEW),
                 }
@@ -1202,16 +1191,16 @@ class DBSubnetGroupSubnet(awsObject):
 
     @staticmethod
     def aws_get_objects(id = None):
-        return DBSubnetGroup.get_objects_by_index(id, "Subnets", 'SubnetIdentifier')
+        return RDS_DBSubnetGroup.get_objects_by_index(id, "Subnets", 'SubnetIdentifier')
 
-class DynamoDB(awsObject):
+class DynamoDB_Table(awsObject):
     Icon = "AWS/Arch_Amazon-DynamoDB_48"
     Color = "#e998ed"
 
     @staticmethod
     def fields():
         return {
-                    'TableName': (DynamoDB, FIELD.ID),
+                    'TableName': (DynamoDB_Table, FIELD.ID),
                 }
 
     @staticmethod
@@ -1220,7 +1209,7 @@ class DynamoDB(awsObject):
             response = bt('dynamodb').list_tables()
             res = []
             for curid in response["TableNames"]:
-                res += DynamoDB.aws_get_objects(curid)
+                res += DynamoDB_Table.aws_get_objects(curid)
             return res
         
         else:
@@ -1251,14 +1240,14 @@ class DynamoDB(awsObject):
         return
 
 
-class AMI(awsObject):
+class AWS_AMI(awsObject):
     Icon = "AWS/Arch_Amazon-DynamoDB_48"
     Color = "#e998ed"
 
     @staticmethod
     def fields():
         return {
-                    'ImageId': (AMI, FIELD.ID),
+                    'ImageId': (AWS_AMI, FIELD.ID),
                 }
 
     @staticmethod
@@ -1271,13 +1260,13 @@ class AMI(awsObject):
         return response["Images"]
 
 
-class AvailabilityZone(awsObject):
+class AWS_AvailabilityZone(awsObject):
     @staticmethod
     def fields():
         return {
-                    'ZoneId': (AvailabilityZone, FIELD.ID),
+                    'ZoneId': (AWS_AvailabilityZone, FIELD.ID),
                     'ZoneName': (str, FIELD.VIEW),
-                    'RegionName': (Region, FIELD.OWNER),
+                    'RegionName': (AWS_Region, FIELD.OWNER),
                 }
 
     @staticmethod
@@ -1290,11 +1279,11 @@ class AvailabilityZone(awsObject):
         return [next((zone for zone in response['AvailabilityZones'] if zone['ZoneId'] == id), None)]
 
 
-class Region(awsObject):
+class AWS_Region(awsObject):
     @staticmethod
     def fields():
         return {
-                    'RegionId': (Region, FIELD.ID),
+                    'RegionId': (AWS_Region, FIELD.ID),
                 }
 
     @staticmethod
@@ -1315,15 +1304,15 @@ class Region(awsObject):
         return regions
 
 
-class LoadBalancer(awsObject):
+class ELB_LoadBalancer(awsObject):
     @staticmethod
     def fields():
         return {
                     'DNSName': str,
                     'LoadBalancerArn': str,
-                    'LoadBalancerName': (LoadBalancer, FIELD.ID),
-                    'VpcId': (Vpc, FIELD.OWNER),
-                    'AvailabilityZones': [LoadBalancerAvailabilityZone],
+                    'LoadBalancerName': (ELB_LoadBalancer, FIELD.ID),
+                    'VpcId': (EC2_VPC, FIELD.OWNER),
+                    'AvailabilityZones': [ELB_LoadBalancer_AvailabilityZone],
                     # 'SecurityGroups': ['sg-0cd135d2e4a0df03e']
                 }
 
@@ -1333,7 +1322,7 @@ class LoadBalancer(awsObject):
         return response['LoadBalancers']
 
 
-class LoadBalancerAvailabilityZone(awsObject):
+class ELB_LoadBalancer_AvailabilityZone(awsObject):
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)
         self.Id  = f"{self.ParentId}{ID_DV}{self.SubnetId}"
@@ -1341,25 +1330,25 @@ class LoadBalancerAvailabilityZone(awsObject):
     @staticmethod
     def fields():
         return {
-                    'Id'  : (LoadBalancerAvailabilityZone, FIELD.ID),
+                    'Id'  : (ELB_LoadBalancer_AvailabilityZone, FIELD.ID),
                     'ZoneName': 'eu-central-1a',
-                    'SubnetId': (Subnet, FIELD.LINK_OUT),
+                    'SubnetId': (EC2_Subnet, FIELD.LINK_OUT),
                     # 'LoadBalancerAddresses': [],
-                    'ParentId': (LoadBalancer, FIELD.OWNER),
+                    'ParentId': (ELB_LoadBalancer, FIELD.OWNER),
                 }
 
     @staticmethod
     def aws_get_objects(id = None):
-        response = LoadBalancer.get_objects_by_index(id, "AvailabilityZones", 'SubnetIdentifier')
+        response = ELB_LoadBalancer.get_objects_by_index(id, "AvailabilityZones", 'SubnetIdentifier')
         return response
 
 
-class TargetGroup(awsObject):
+class ELB_TargetGroup(awsObject):
     @staticmethod
     def fields():
         return {
-            'TargetGroupName': (TargetGroup, FIELD.ID),
-            'VpcId': (Vpc, FIELD.LINK_OUT),
+            'TargetGroupName': (ELB_TargetGroup, FIELD.ID),
+            'VpcId': (EC2_VPC, FIELD.LINK_OUT),
             # 'LoadBalancerArns': ['arn:aws:elasticloadbalancing:eu-central-1:047989593255:loadbalancer/app/ALB-Frederick/211b0083ba139ccd']
         }
 
@@ -1369,18 +1358,18 @@ class TargetGroup(awsObject):
         return response['TargetGroups']
 
 
-class Listener(awsObject):
+class ELB_Listener(awsObject):
     @staticmethod
     def fields():
         return {
-            'ListenerArn': (Listener, FIELD.ID),
-            "LoadBalancerName": (LoadBalancer, FIELD.OWNER),
+            'ListenerArn': (ELB_Listener, FIELD.ID),
+            "LoadBalancerName": (ELB_LoadBalancer, FIELD.OWNER),
         }
 
     @staticmethod
     def aws_get_objects(id = None):
         if id == None:
-            lbs = LoadBalancer.aws_get_objects()
+            lbs = ELB_LoadBalancer.aws_get_objects()
             res = []
             for lb in lbs:
                 response = bt('elbv2').describe_listeners(LoadBalancerArn = lb["LoadBalancerArn"])["Listeners"]
@@ -1393,20 +1382,20 @@ class Listener(awsObject):
         else:
             res = bt('elbv2').describe_listeners(ListenerArns = [id])["Listeners"]
 
-            lb = LoadBalancer.get_objects({'LoadBalancerArns': (res[0]["LoadBalancerArn"], PAR.LIST)})
+            lb = ELB_LoadBalancer.get_objects({'LoadBalancerArns': (res[0]["LoadBalancerArn"], PAR.LIST)})
 
             res[0]["LoadBalancerName"] = lb[0]["LoadBalancerName"]
 
         return res
 
 
-class LaunchTemplate(awsObject):
+class AutoScaling_LaunchConfiguration(awsObject):
     @staticmethod
     def fields():
         return {
-            'LaunchTemplateId': (LaunchTemplate, FIELD.ID),
+            'LaunchTemplateId': (AutoScaling_LaunchConfiguration, FIELD.ID),
             'LaunchTemplateName': (str, FIELD.VIEW),
-            'CreatedBy': (User, FIELD.LINK_IN),
+            'CreatedBy': (IAM_User, FIELD.LINK_IN),
         }
 
     @staticmethod
@@ -1415,17 +1404,68 @@ class LaunchTemplate(awsObject):
         return response['LaunchTemplates']
 
 
-class AutoScalingGroup(awsObject):
+class AutoScaling_AutoScalingGroup(awsObject):
     @staticmethod
     def fields():
         return {
-            'AutoScalingGroupName': (AutoScalingGroup, FIELD.ID),
+            'AutoScalingGroupName': (AutoScaling_AutoScalingGroup, FIELD.ID),
         }
 
     @staticmethod
     def aws_get_objects(id = None):
         response = bt('autoscaling').describe_auto_scaling_groups(**idpar('AutoScalingGroupNames', id, PAR.LIST))
         return response['AutoScalingGroups']
+
+
+class CloudFormation_Stack(awsObject):
+    @staticmethod
+    def fields():
+        return {
+            'StackName': (CloudFormation_Stack, FIELD.ID),
+            'Tags': ({"Key" : "Value"}),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        response = bt('cloudformation').describe_stacks(**idpar('StackName', id, PAR.PAR))
+        return response['Stacks']
+
+
+class CloudFormation_StackResource(awsObject):
+    @staticmethod
+    def fields():
+        return {
+            'StackName': (CloudFormation_Stack, FIELD.OWNER),
+            'Id': (CloudFormation_StackResource, FIELD.ID),
+            'View': (CloudFormation_StackResource, FIELD.VIEW),
+        }
+
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
+        PhysicalResourceId = self.PhysicalResourceId.replace(ID_DV, "_")
+        self.Id   = f"{self.StackName}{ID_DV}{PhysicalResourceId}"
+        self.View = f"{self.ResourceType}::{self.PhysicalResourceId}"
+
+    # @staticmethod
+    # def aws_get_objects(id = None):
+    #     response = bt('cloudformation').describe_stack_resources() # **idpar('StackName', id, PAR.PAR)
+    #     return response['StackResources']
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        StackId = None
+        StackResourceId = None
+        if id:
+            StackId, _, StackResourceId = id.rpartition(ID_DV)
+
+        res = []
+        for stack in CloudFormation_Stack.aws_get_objects(StackId):
+            for resource in bt('cloudformation').describe_stack_resources(**idpar('StackName', stack['StackName'], PAR.PAR))['StackResources']:
+                if StackResourceId and resource['PhysicalResourceId'] != StackResourceId:
+                    continue
+                res.append(resource)
+
+        return res
 
 
 class AWS(ObjectModel):
@@ -1451,39 +1491,40 @@ class AWS(ObjectModel):
 
                 'RDS.InstanceType' : 'db.t3.micro',
                 'RDS.Engine' : 'mysql',
-                'DrawRDS' : 'Vpc, Subnet, RDS'
+                'DrawRDS' : 'EC2_VPC, EC2_Subnet, RDS'
             },
             {
                 'VPC' : [
-                    KeyPair,
-                    Vpc,
-                    InternetGateway, InternetGatewayAttachment,
+                    EC2_KeyPair,
+                    EC2_VPC,
+                    EC2_InternetGateway, EC2_VPCGatewayAttachment,
                 ],
                 'SN' : [
-                    Subnet,
-                    RouteTable, Route, RouteTableAssociation,
-                    ElasticIP, 
-                    NATGateway, ElasticIPAssociation, 
+                    EC2_Subnet,
+                    EC2_RouteTable, EC2_Route, EC2_RouteTable_Association,
+                    EC2_EIP, 
+                    EC2_NatGateway, EC2_EIPAssociation, 
                 ],
                 'SG' : [
-                    SecurityGroup, SecurityGroupRule,
+                    EC2_SecurityGroup, EC2_SecurityGroup_Rule,
                 ],
                 'NACL' : [
-                    NetworkAcl, NetworkAclEntry,
+                    EC2_NetworkAcl, EC2_NetworkAclEntry,
                 ],
-                'EC2'   : [EC2Instance, EC2SecurityGroup, ],
-                'RDS'   : [DBSubnetGroup, DBSubnetGroupSubnet, DBInstance, DynamoDB],
-                'IAM'   : [User, Group, Role],
-                'LB'    : [LoadBalancer, LoadBalancerAvailabilityZone, TargetGroup, Listener, LaunchTemplate, AutoScalingGroup],
-                'RAZ'    : [Region, AvailabilityZone],
+                'EC2'   : [EC2_Instance, EC2_SecurityGroup, ],
+                'RDS'   : [RDS_DBSubnetGroup, RDS_DBSubnetGroup_Subnet, RDS_DBInstance, DynamoDB_Table],
+                'IAM'   : [IAM_User, IAM_Group, IAM_Role],
+                'LB'    : [ELB_LoadBalancer, ELB_LoadBalancer_AvailabilityZone, ELB_TargetGroup, ELB_Listener, AutoScaling_LaunchConfiguration, AutoScaling_AutoScalingGroup],
+                'RAZ'   : [AWS_Region, AWS_AvailabilityZone],
                 'OTHER' : [
-                    EC2Reservation, NetworkInterface,
-                    S3,
-                    SNS,
-                    Function,
-                    AMI,
+                    EC2_Reservation, EC2_NetworkInterface,
+                    S3_Bucket,
+                    SNS_Topic,
+                    Lambda_Function,
+                    AWS_AMI,
+                    CloudFormation_Stack, CloudFormation_StackResource
                 ],
             }
         )
 
-        self.Classes["All"] = [x for x in self.Classes["ALL"] if x not in [EC2Reservation, AMI]]
+        self.Classes["All"] = [x for x in self.Classes["ALL"] if x not in [EC2_Reservation, AWS_AMI, AWS_Region, AWS_AvailabilityZone, EC2_KeyPair, EC2_SecurityGroup, EC2_SecurityGroup_Rule]]

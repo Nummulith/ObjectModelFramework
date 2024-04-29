@@ -38,7 +38,7 @@ The [**Yet Another AWS Analyser**](docs/Yet_Another_AWS_Analyser.md) project ext
     - Supported AWS Resource Categories:
 
 ```
-`KeyPair`, `Vpc`, `SecurityGroup`, `SecurityGroupRule`, `InternetGateway`, `InternetGatewayAttachment`, `NetworkAcl`, `NetworkAclEntry`, `Subnet`, `RouteTable`, `Route`, `RouteTableAssociation`, `ElasticIP`, `NATGateway`, `ElasticIPAssociation`, `DBSubnetGroup`, `DBSubnetGroupSubnet`, `DBInstance`, `DynamoDB`, `User`, `Group`, `Role`, `Reservation`, `EC2`, `NetworkInterface`, `S3`, `SNS`, `Function`
+`EC2_KeyPair`, `EC2_VPC`, `EC2_SecurityGroup`, `EC2_SecurityGroup_Rule`, `EC2_InternetGateway`, `EC2_VPCGatewayAttachment`, `EC2_NetworkAcl`, `EC2_NetworkAclEntry`, `EC2_Subnet`, `EC2_RouteTable`, `EC2_Route`, `EC2_RouteTable_Association`, `EC2_EIP`, `EC2_NatGateway`, `EC2_EIPAssociation`, `RDS_DBSubnetGroup`, `RDS_DBSubnetGroup_Subnet`, `RDS_DBInstance`, `DynamoDB_Table`, `IAM_User`, `IAM_Group`, `IAM_Role`, `Reservation`, `EC2`, `EC2_NetworkInterface`, `S3_Bucket`, `SNS_Topic`, `Lambda_Function`
 ```
 
 The Yet Another AWS Analyser extends and utilizes the principles of the Object Model Framework. AWS-specific classes are seamlessly integrated into the broader class management framework.
