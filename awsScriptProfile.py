@@ -1,5 +1,5 @@
 import cProfile
-from awsScript import Test
+from omf_aws import Test
 
 profile = cProfile.Profile()
 profile.enable()

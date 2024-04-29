@@ -28,7 +28,7 @@ class MyWidget(QWidget):
 
     def __init__(self):
         super(MyWidget, self).__init__()
-        loadUi('awsScript.ui', self)
+        loadUi('omf_aws.ui', self)
 
         self.bExample    .clicked.connect(self.example)
         self.bFetch      .clicked.connect(self.fetch)
@@ -37,7 +37,7 @@ class MyWidget(QWidget):
         self.bDelete     .clicked.connect(self.delete)
 
         self.leProfile.setText("TS")
-        self.leFile   .setText("awsScript")
+        self.leFile   .setText("omf_aws")
         self.leClasses.setText("CloudFormation_StackResource, CloudFormation_Stack")
         self.leExample.setText("Test")
 
