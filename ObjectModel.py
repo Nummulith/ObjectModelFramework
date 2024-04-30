@@ -97,15 +97,15 @@ def plain_query(tree, path, pref = "/", res = [], parfields = None):
     result = tree.findall(pref + ths)
 
     for item in result:
-        fields = {} if parfields is None else parfields.copy()
+        query_fields = {} if parfields is None else parfields.copy()
 
         for child in item:
-            fields[child.tag] = child.text
+            query_fields[child.tag] = child.text
 
         if nxt:
-            plain_query(item, nxt, "./", res, fields)
+            plain_query(item, nxt, "./", res, query_fields)
         else:
-            res.append(fields)
+            res.append(query_fields)
 
     return res
 
@@ -160,26 +160,6 @@ class ObjectModelItem:
             else:
                 setattr(self, key, value)
 
-    # def __getattribute__(self, name):
-    #     value = object.__getattribute__(self, name)
-
-    #     if name == "fields":
-    #         return value
-
-    #     fields = self.fields()
-    #     if name in fields:
-    #         field = fields[name]
-    #         if isinstance(field, tuple):
-    #             cls, role = field
-    #         else:
-    #             cls = field
-    #             role = FIELD.FIELD
-
-    #         if issubclass(cls, ObjectModelItem) and role != FIELD.ID:
-    #             value = self.model[cls][value]
-
-    #     return value
-
     def __getitem__(self, name):
         value = getattr(self, name, None)
         if value == None:
@@ -218,6 +198,9 @@ class ObjectModelItem:
         field = self.field_of_a_kind(kind)
         return getattr(self, field, None)
 
+    def get_actual_field_type(self, field):
+        return self.fields()[field][FIELD.TYPE]
+
     def get_object(self, model, field):
         ''' Getting the object of the field '''
         if field is None:
@@ -227,10 +210,11 @@ class ObjectModelItem:
         if node_id is None:
             return None
 
-        clss = self.fields()[field][FIELD.TYPE]
+        clss = self.get_actual_field_type(field)
 
-        if not node_id in model[clss].map:
+        if clss == None or not node_id in model[clss].map:
             return None
+        
         obj = model[clss].map[node_id]
         return obj
 
@@ -834,20 +818,12 @@ class ObjectModel:
                 idlink = obj.get_link(self)
 
                 for field in obj.fields_of_a_kind(FIELD.LINK_OUT):
-                    # corr = getattr(obj, field, None)
-                    # if corr is None:
-                    #   continue
-                    # drawing.add_link(idlink, corr, field)
                     corr = obj.get_object(self, field)
                     if corr is None:
                         continue
                     drawing.add_link(idlink, corr.get_link(self), field)
 
                 for field in obj.fields_of_a_kind(FIELD.LINK_IN):
-                    # corr = getattr(obj, field, None)
-                    # if corr is None:
-                    #   continue
-                    # drawing.add_link(corr, idlink, field + "<")
                     corr = obj.get_object(self, field)
                     if corr is None:
                         continue

@@ -38,7 +38,7 @@ class MyWidget(QWidget):
 
         self.leProfile.setText("TS")
         self.leFile   .setText("omf_aws")
-        self.leClasses.setText("CloudFormation_StackResource, CloudFormation_Stack")
+        self.leClasses.setText("EC2_VPC, EC2_Instance, CloudFormation_StackResource, CloudFormation_Stack")
         self.leExample.setText("Test")
 
         self.cbAWS .setChecked(True)

@@ -134,7 +134,7 @@ class Tag(awsObject):
 
 
 class EC2_Reservation(awsObject): 
-    Icon = "AWS/Res_Amazon-EC2_Instance_48"
+    Icon = "AWS/Res_Amazon-Instance_48"
     Show = False
     Color = "#FFC18A"
 
@@ -400,7 +400,7 @@ class EC2_EIPAssociation(awsObject):
 
 class EC2_SecurityGroup(awsObject):
     Prefix = "sg"
-    Icon = "AWS/EC2_SecurityGroup"
+    Icon = "AWS/SecurityGroup"
     Color = "#ff9999"
 
     @staticmethod
@@ -524,7 +524,7 @@ class EC2_SecurityGroup_Rule(awsObject):
 class EC2_Subnet(awsObject): 
     Prefix = "subnet"
     Draw = DRAW.ALL
-    Icon = "AWS/EC2_Subnet"
+    Icon = "AWS/Subnet"
     Color = '#c8b7ea'
 
     @staticmethod
@@ -617,7 +617,7 @@ class EC2_NetworkAclEntry(awsObject):
 
 class EC2_RouteTable(awsObject): 
     Prefix = "rtb"
-    Icon = "AWS/Res_Amazon-EC2_Route-53_Route-Table_48"
+    Icon = "AWS/Res_Amazon-Route-53_Route-Table_48"
     Color = '#c19fff'
 
     @staticmethod
@@ -705,7 +705,7 @@ class EC2_RouteTable_Association(awsObject):
 class EC2_Route(awsObject):
     Prefix = "route"
     Draw = DRAW.ALL-DRAW.ID
-    Icon = "AWS/EC2_Route"
+    Icon = "AWS/Route"
     Color = '#c19fff'
     UseIndex = True
     DoNotFetch = True
@@ -872,7 +872,7 @@ class S3_Bucket(awsObject):
 
 class EC2_EIP(awsObject):
     Prefix = "eipassoc"
-    Icon = "AWS/EC2_EIP"
+    Icon = "AWS/ElasticIP"
     Color = "#ffc28c"
 
     @staticmethod
@@ -903,7 +903,7 @@ class EC2_EIP(awsObject):
 class EC2_KeyPair(awsObject):
     Prefix = "key"
     # DoNotFetch = True
-    Icon = "AWS/EC2_KeyPair"
+    Icon = "AWS/KeyPair"
     
     @staticmethod
     def fields():
@@ -1432,24 +1432,35 @@ class CloudFormation_Stack(awsObject):
 
 
 class CloudFormation_StackResource(awsObject):
+    ListName = "Resources"
+
     @staticmethod
     def fields():
         return {
-            'StackName': (CloudFormation_Stack, FIELD.OWNER),
+            'StackName': (CloudFormation_Stack, FIELD.LIST_ITEM),
+            "ListName" : (str, FIELD.LIST_NAME),
             'Id': (CloudFormation_StackResource, FIELD.ID),
             'View': (CloudFormation_StackResource, FIELD.VIEW),
+            'PhysicalResourceId': (None, FIELD.LINK_OUT),
         }
 
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)
         PhysicalResourceId = self.PhysicalResourceId.replace(ID_DV, "_")
         self.Id   = f"{self.StackName}{ID_DV}{PhysicalResourceId}"
-        self.View = f"{self.ResourceType}::{self.PhysicalResourceId}"
+        self.View = f"{self.ResourceType.replace('AWS::', '')}::{self.PhysicalResourceId}"
 
-    # @staticmethod
-    # def aws_get_objects(id = None):
-    #     response = bt('cloudformation').describe_stack_resources() # **idpar('StackName', id, PAR.PAR)
-    #     return response['StackResources']
+        clss = self.ResourceType
+        clss = clss.replace('AWS::', "")
+        clss = clss.replace('::', "_")
+        clss = globals()[clss] if clss in globals() else None
+        self.ResourceType = clss
+
+    def get_actual_field_type(self, field):
+        if field == 'PhysicalResourceId':
+            return self.ResourceType
+
+        return super().get_actual_field_type(field)
 
     @staticmethod
     def aws_get_objects(id = None):
