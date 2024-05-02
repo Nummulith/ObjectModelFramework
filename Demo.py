@@ -37,7 +37,7 @@ class GraphViz(DemoItem):
         return {
                     'Id': (ParentClass, FIELD.ID),
                     'Name': (ParentClass, FIELD.VIEW),
-                    'Link': (Drawing, FIELD.LINK_OUT),
+                    'Link': (Drawing, FIELD.LINK),
                 }
 
 class ParentClass(DemoItem):
@@ -101,7 +101,7 @@ class Listed(DemoItem):
                     # 'ListOwner': (ParentClass, FIELD.OWNER),
                     'ListOwner': (ParentClass, FIELD.LIST_ITEM),
                     'ListName': (str, FIELD.LIST_NAME),
-                    "Link": (ParentClass, FIELD.LINK_OUT),
+                    "Link": (ParentClass, FIELD.LINK),
                 }
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)

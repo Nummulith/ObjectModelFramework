@@ -51,7 +51,7 @@ class FIELD:
     VIEW      =  6
     EXT       =  7
     ICON      =  8
-    LINK_OUT  =  9
+    LINK  =  9
     LINK_IN   = 10
 
 class DRAW:
@@ -246,7 +246,7 @@ class ObjectModelItem:
         if field is not None and hasattr(self, field):
             return getattr(self, field)
 
-        return f"{getattr(self, 'Tag_Name', self.get_id())}"
+        return self.get_id()
 
     def get_ext(self):
         '''Getting extended view of object'''
@@ -280,8 +280,21 @@ class ObjectModelItem:
         for par in pars:
             par_id = par[field]
 
+            if type(list_field) is str:
+                children = par[list_field]
+            else:
+                try:
+                    children = list_field.get_objects_of_parent(par_id)
+                except Exception as e:
+                    ErrorCode = e.response['Error']['Code']
+                    if ErrorCode[-9:] == '.NotFound' or ErrorCode == "AccessDenied":
+                        children = []
+                    else:
+                        print(f"{cls.get_class_view()}.get_objects: {e.args[0]}")
+                        raise
+
             index = -1
-            for el in par[list_field]:
+            for el in children:
                 index += 1
 
                 el["ParentId"] = par_id
@@ -817,7 +830,7 @@ class ObjectModel:
 
                 idlink = obj.get_link(self)
 
-                for field in obj.fields_of_a_kind(FIELD.LINK_OUT):
+                for field in obj.fields_of_a_kind(FIELD.LINK):
                     corr = obj.get_object(self, field)
                     if corr is None:
                         continue

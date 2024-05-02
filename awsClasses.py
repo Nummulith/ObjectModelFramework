@@ -41,6 +41,14 @@ class PAR:
     FILTER = 2
     STRING = 3
 
+# id parameter passing
+class COLOR:
+    ''' Identyfiers for the param way '''
+    ORANGE = "#FFC18A"
+    RED    = "#F9BBD9"
+    LILA   = "#f2c4f4"
+    BLUE   = "#d7c1ff"
+    BLUE_DARK = "#c19fff"
 
 def idpar(field, id, ParType = PAR.LIST):
     if id is None:
@@ -102,6 +110,12 @@ class awsObject(ObjectModelItem):
                 print(f"{cls.get_class_view()}.get_objects: {e.args[0]}")
                 raise
 
+
+    def get_view(self):
+        '''Getting view of object'''
+        return f"{getattr(self, 'Tag_Name', super().get_view())}"
+
+
 class Tag(awsObject):
     @staticmethod
     def create(id, name, Value):
@@ -136,7 +150,7 @@ class Tag(awsObject):
 class EC2_Reservation(awsObject): 
     Icon = "AWS/Res_Amazon-Instance_48"
     Show = False
-    Color = "#FFC18A"
+    Color = COLOR.ORANGE
 
     @staticmethod
     def fields():
@@ -179,12 +193,12 @@ class EC2_Instance(awsObject):
     Prefix = "i"
     Draw = DRAW.ALL
     Icon = "AWS/Arch_Amazon-EC2_48"
-    Color = "#FFC18A"
+    Color = COLOR.ORANGE
 
     @staticmethod
     def fields():
         return {
-                    "ParentId" : (EC2_Reservation, FIELD.LINK_OUT),
+                    "ParentId" : (EC2_Reservation, FIELD.LINK),
                     "InstanceId" : (EC2_Instance, FIELD.ID),
                     "SubnetId" : (EC2_Subnet, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
@@ -248,7 +262,7 @@ class EC2_Instance(awsObject):
 class EC2_InternetGateway(awsObject): 
     Prefix = "igw"
     Icon = "AWS/Arch_Amazon-API-Gateway_48"
-    Color = "#F9BBD9"
+    Color = COLOR.RED
 
     @staticmethod
     def fields():
@@ -279,9 +293,7 @@ class EC2_InternetGateway(awsObject):
 
 class EC2_VPCGatewayAttachment(awsObject): 
     Prefix = "igw-attach"
-    Icon = "AWS/Gateway"
     Draw = DRAW.VIEW
-    Color = "#F488BB"
     DoNotFetch = True
     ListName = "Attachments"
 
@@ -317,7 +329,7 @@ class EC2_VPCGatewayAttachment(awsObject):
 class EC2_NatGateway(awsObject): 
     Prefix = "nat"
     Icon = "AWS/Res_Amazon-VPC_NAT-Gateway_48"
-    Color = '#c19fff'
+    Color = COLOR.BLUE
 
     @staticmethod
     def fields():
@@ -366,7 +378,7 @@ class EC2_EIPAssociation(awsObject):
                     'ListName'           : (str, FIELD.LIST_NAME),
                     "Id"                 : (EC2_EIPAssociation, FIELD.ID),
                     "View"               : (str, FIELD.VIEW),
-                    "AllocationId"       : (EC2_EIP, FIELD.LINK_OUT),
+                    "AllocationId"       : (EC2_EIP, FIELD.LINK),
                     "NetworkInterfaceId" : (EC2_NetworkInterface, FIELD.LINK_IN),
                     'Tags'               : ({"Key" : "Value"}),
                 }
@@ -401,7 +413,7 @@ class EC2_EIPAssociation(awsObject):
 class EC2_SecurityGroup(awsObject):
     Prefix = "sg"
     Icon = "AWS/SecurityGroup"
-    Color = "#ff9999"
+    Color = COLOR.RED
 
     @staticmethod
     def fields():
@@ -525,7 +537,7 @@ class EC2_Subnet(awsObject):
     Prefix = "subnet"
     Draw = DRAW.ALL
     Icon = "AWS/Subnet"
-    Color = '#c8b7ea'
+    Color = COLOR.BLUE
 
     @staticmethod
     def fields():
@@ -533,7 +545,7 @@ class EC2_Subnet(awsObject):
                     "SubnetId" : (EC2_Subnet, FIELD.ID),
                     "VpcId" : (EC2_VPC, FIELD.OWNER),
                     'Tags' : ({"Key" : "Value"}),
-                    'AvailabilityZoneId' : (AWS_AvailabilityZone, FIELD.LINK_OUT),
+                    'AvailabilityZoneId' : (AWS_AvailabilityZone, FIELD.LINK),
                 }
 # 'Ipv6CidrBlockAssociationSet': []
 
@@ -568,7 +580,7 @@ class EC2_Subnet(awsObject):
 class EC2_NetworkAcl(awsObject): 
     Prefix = "nacl"
     Icon = "AWS/Res_Amazon-VPC_Network-Access-Control-List_48"
-    Color = "#d7c1ff"
+    Color = COLOR.BLUE
 
     @staticmethod
     def fields():
@@ -590,7 +602,7 @@ class EC2_NetworkAcl(awsObject):
 class EC2_NetworkAclEntry(awsObject): 
     Prefix = "nacle"
     Icon = "AWS/NetworkAccessControlList"
-    Color = '#d7c1ff'
+    Color = COLOR.BLUE
     DoNotFetch = True
     ListName = "Entries"
 
@@ -618,7 +630,7 @@ class EC2_NetworkAclEntry(awsObject):
 class EC2_RouteTable(awsObject): 
     Prefix = "rtb"
     Icon = "AWS/Res_Amazon-Route-53_Route-Table_48"
-    Color = '#c19fff'
+    Color = COLOR.BLUE
 
     @staticmethod
     def fields():
@@ -652,7 +664,7 @@ class EC2_RouteTable(awsObject):
 class EC2_RouteTable_Association(awsObject):
     Prefix = "rtba"
     Draw = DRAW.ALL
-    Color = '#c19fff'
+    Color = COLOR.BLUE
     ListName = "Associations"
     UseIndex = True
 
@@ -706,7 +718,7 @@ class EC2_Route(awsObject):
     Prefix = "route"
     Draw = DRAW.ALL-DRAW.ID
     Icon = "AWS/Route"
-    Color = '#c19fff'
+    Color = COLOR.BLUE
     UseIndex = True
     DoNotFetch = True
     ListName = "Routes"
@@ -716,12 +728,12 @@ class EC2_Route(awsObject):
         return {
                     'ListName'             : (EC2_RouteTable      , FIELD.LIST_NAME),
                     "ParentId"             : (EC2_RouteTable      , FIELD.LIST_ITEM),
-                    "GatewayId"            : (EC2_InternetGateway , FIELD.LINK_OUT),
-                    "InstanceId"           : (EC2_Instance     , FIELD.LINK_OUT),
-                    "NatGatewayId"         : (EC2_NatGateway      , FIELD.LINK_OUT),
-                    "NetworkInterfaceId"   : (EC2_NetworkInterface, FIELD.LINK_OUT),
+                    "GatewayId"            : (EC2_InternetGateway , FIELD.LINK),
+                    "InstanceId"           : (EC2_Instance     , FIELD.LINK),
+                    "NatGatewayId"         : (EC2_NatGateway      , FIELD.LINK),
+                    "NetworkInterfaceId"   : (EC2_NetworkInterface, FIELD.LINK),
 
-#                    "GatewayId_local"      : (EC2_VPC             , FIELD.LINK_OUT),
+#                    "GatewayId_local"      : (EC2_VPC             , FIELD.LINK),
                 } # +
 
     @staticmethod
@@ -785,8 +797,8 @@ class EC2_Route(awsObject):
 class EC2_VPC(awsObject): 
     Prefix = "vpc"
     Draw = DRAW.ALL
-    Icon = "AWS/VPC"
-    Color = "#A9DFBF"
+    Icon = "AWS/Arch_Amazon-Virtual-Private-Cloud_48"
+    Color = COLOR.BLUE_DARK
 
     @staticmethod
     def fields():
@@ -824,7 +836,7 @@ class EC2_VPC(awsObject):
 class EC2_NetworkInterface(awsObject): 
     Prefix = "ni"
     Icon = "AWS/Res_Amazon-VPC_Elastic-Network-Interface_48"
-    Color = '#c19fff'
+    Color = COLOR.BLUE
     ListName = "NetworkInterfaces"
 
     @staticmethod
@@ -873,7 +885,7 @@ class S3_Bucket(awsObject):
 class EC2_EIP(awsObject):
     Prefix = "eipassoc"
     Icon = "AWS/ElasticIP"
-    Color = "#ffc28c"
+    Color = COLOR.ORANGE
 
     @staticmethod
     def fields():
@@ -1030,7 +1042,7 @@ class IAM_Role(awsObject):
     
 class Lambda_Function(awsObject):
     Icon = "AWS/Arch_AWS-Lambda_48"
-    Color = "#ffc28c"
+    Color = COLOR.ORANGE
 
     @staticmethod
     def fields():
@@ -1094,7 +1106,7 @@ class Lambda_Function(awsObject):
 
 class RDS_DBInstance(awsObject):
     Icon = "AWS/Arch_Amazon-RDS_48"
-    Color = "#e998ed"
+    Color = COLOR.LILA
 
     @staticmethod
     def fields():
@@ -1140,7 +1152,7 @@ class RDS_DBInstance(awsObject):
     
 class RDS_DBSubnetGroup(awsObject):
     Icon = "AWS/Arch_Amazon-RDS_48"
-    Color = "#f2c4f4"
+    Color = COLOR.LILA
 
     @staticmethod
     def fields():
@@ -1195,7 +1207,7 @@ class RDS_DBSubnetGroup_Subnet(awsObject):
 
 class DynamoDB_Table(awsObject):
     Icon = "AWS/Arch_Amazon-DynamoDB_48"
-    Color = "#e998ed"
+    Color = COLOR.LILA
 
     @staticmethod
     def fields():
@@ -1241,8 +1253,8 @@ class DynamoDB_Table(awsObject):
 
 
 class AWS_AMI(awsObject):
-    Icon = "AWS/Arch_Amazon-DynamoDB_48"
-    Color = "#e998ed"
+    Icon = "AWS/Res_Amazon-EC2_Instance_48"
+    Color = COLOR.ORANGE
 
     @staticmethod
     def fields():
@@ -1305,6 +1317,9 @@ class AWS_Region(awsObject):
 
 
 class ELB_LoadBalancer(awsObject):
+    Icon = "AWS/Arch_Elastic-Load-Balancing_48"
+    Color = COLOR.BLUE
+
     @staticmethod
     def fields():
         return {
@@ -1332,7 +1347,7 @@ class ELB_LoadBalancer_AvailabilityZone(awsObject):
         return {
                     'Id'  : (ELB_LoadBalancer_AvailabilityZone, FIELD.ID),
                     'ZoneName': 'eu-central-1a',
-                    'SubnetId': (EC2_Subnet, FIELD.LINK_OUT),
+                    'SubnetId': (EC2_Subnet, FIELD.LINK),
                     # 'LoadBalancerAddresses': [],
                     'ParentId': (ELB_LoadBalancer, FIELD.OWNER),
                 }
@@ -1348,7 +1363,7 @@ class ELB_TargetGroup(awsObject):
     def fields():
         return {
             'TargetGroupName': (ELB_TargetGroup, FIELD.ID),
-            'VpcId': (EC2_VPC, FIELD.LINK_OUT),
+            'VpcId': (EC2_VPC, FIELD.LINK),
             # 'LoadBalancerArns': ['arn:aws:elasticloadbalancing:eu-central-1:047989593255:loadbalancer/app/ALB-Frederick/211b0083ba139ccd']
         }
 
@@ -1390,6 +1405,9 @@ class ELB_Listener(awsObject):
 
 
 class AutoScaling_LaunchConfiguration(awsObject):
+    Icon = "AWS/Arch_Elastic-Load-Balancing_48"
+    Color = COLOR.BLUE
+
     @staticmethod
     def fields():
         return {
@@ -1405,6 +1423,9 @@ class AutoScaling_LaunchConfiguration(awsObject):
 
 
 class AutoScaling_AutoScalingGroup(awsObject):
+    Icon = "AWS/Arch_Elastic-Load-Balancing_48"
+    Color = COLOR.BLUE
+
     @staticmethod
     def fields():
         return {
@@ -1418,6 +1439,9 @@ class AutoScaling_AutoScalingGroup(awsObject):
 
 
 class CloudFormation_Stack(awsObject):
+    Icon = "AWS/Arch_AWS-CloudFormation_48"
+    Color = COLOR.RED
+
     @staticmethod
     def fields():
         return {
@@ -1441,7 +1465,7 @@ class CloudFormation_StackResource(awsObject):
             "ListName" : (str, FIELD.LIST_NAME),
             'Id': (CloudFormation_StackResource, FIELD.ID),
             'View': (CloudFormation_StackResource, FIELD.VIEW),
-            'PhysicalResourceId': (None, FIELD.LINK_OUT),
+            'PhysicalResourceId': (None, FIELD.LINK),
         }
 
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
@@ -1477,7 +1501,123 @@ class CloudFormation_StackResource(awsObject):
                 res.append(resource)
 
         return res
+    
 
+class ApiGateway_RestApi(awsObject):
+    Icon = "AWS/Arch_Amazon-API-Gateway_48"
+    Color = COLOR.RED
+
+    @staticmethod
+    def fields():
+        return {
+            'id': (ApiGateway_RestApi, FIELD.ID),
+            'name': (str, FIELD.VIEW),
+            'Tags': ({"Key" : "Value"}),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        if id == None:
+            return bt('apigateway').get_rest_apis()['items']
+        else:
+            response = bt('apigateway').get_rest_api(restApiId = id)
+            del response['ResponseMetadata']
+            return [response]
+
+
+class ApiGateway_DomainName(awsObject):
+    Icon = "AWS/domain_name"
+    Color = COLOR.RED
+
+    @staticmethod
+    def fields():
+        return {
+            'domainName': (ApiGateway_DomainName, FIELD.ID),
+            'Tags': ({"Key" : "Value"}),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        response = bt('apigateway').get_domain_names()['items']
+        if id != None:
+            for domainName in response:
+                if domainName['domainName'] == id:
+                    return [domainName]
+            return []
+        else:
+            return response
+
+
+class ApiGateway_BasePathMapping(awsObject):
+    ListName = "API mappings"
+
+    @staticmethod
+    def fields():
+        return {
+            'Id': (ApiGateway_BasePathMapping, FIELD.ID),
+            "ListName" : (str, FIELD.LIST_NAME),
+            'ParentId': (ApiGateway_DomainName, FIELD.LIST_ITEM),
+            'restApiId': (ApiGateway_RestApi, FIELD.LINK),
+        }
+
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
+        self.Id  = f"{self.ParentId}{ID_DV}{self.restApiId}"
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        return ApiGateway_DomainName.get_objects_by_index(id, ApiGateway_BasePathMapping, "restApiId")
+
+    @staticmethod
+    def get_objects_of_parent(parent):
+        return bt('apigateway').get_base_path_mappings(domainName=parent)["items"]
+    
+
+class Route53_HostedZone(awsObject):
+    Icon = "AWS/Arch_Amazon-Route-53_48"
+    Color = COLOR.BLUE
+
+    @staticmethod
+    def fields():
+        return {
+            'Id': (Route53_HostedZone, FIELD.ID),
+            'name': (str, FIELD.VIEW),
+            'Tags': ({"Key" : "Value"}),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        if id == None:
+            return bt('route53').list_hosted_zones()['HostedZones']
+        
+        else:
+            response = bt('route53').get_hosted_zone(Id=id)
+            return [response['HostedZone']]
+
+
+class Route53_RecordSet(awsObject):
+    ListName = "Records"
+
+    @staticmethod
+    def fields():
+        return {
+            "ListName" : (str, FIELD.LIST_NAME),
+            'ParentId': (Route53_HostedZone, FIELD.LIST_ITEM),
+            'Id': (Route53_RecordSet, FIELD.ID),
+            'Name': (str, FIELD.VIEW),
+        }
+
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
+        self.Id  = f"{self.ParentId}{ID_DV}{self.Name}"
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        return Route53_HostedZone.get_objects_by_index(id, Route53_RecordSet, "Name")
+
+    @staticmethod
+    def get_objects_of_parent(parent):
+        return bt('route53').list_resource_record_sets(HostedZoneId=parent)["ResourceRecordSets"]
 
 class AWS(ObjectModel):
     def __init__(self, profile, path, do_auto_load = True, do_auto_save = True):
@@ -1525,15 +1665,17 @@ class AWS(ObjectModel):
                 'EC2'   : [EC2_Instance, EC2_SecurityGroup, ],
                 'RDS'   : [RDS_DBSubnetGroup, RDS_DBSubnetGroup_Subnet, RDS_DBInstance, DynamoDB_Table],
                 'IAM'   : [IAM_User, IAM_Group, IAM_Role],
-                'LB'    : [ELB_LoadBalancer, ELB_LoadBalancer_AvailabilityZone, ELB_TargetGroup, ELB_Listener, AutoScaling_LaunchConfiguration, AutoScaling_AutoScalingGroup],
+                'ELB'   : [ELB_LoadBalancer, ELB_LoadBalancer_AvailabilityZone, ELB_TargetGroup, ELB_Listener, AutoScaling_LaunchConfiguration, AutoScaling_AutoScalingGroup],
                 'RAZ'   : [AWS_Region, AWS_AvailabilityZone],
+                'CF'    : [CloudFormation_Stack, CloudFormation_StackResource],
+                'API'   : [ApiGateway_RestApi, ApiGateway_DomainName, ApiGateway_BasePathMapping],
                 'OTHER' : [
                     EC2_Reservation, EC2_NetworkInterface,
                     S3_Bucket,
                     SNS_Topic,
                     Lambda_Function,
                     AWS_AMI,
-                    CloudFormation_Stack, CloudFormation_StackResource
+                    Route53_HostedZone, Route53_RecordSet,
                 ],
             }
         )
