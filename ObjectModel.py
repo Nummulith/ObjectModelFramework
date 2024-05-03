@@ -265,47 +265,45 @@ class ObjectModelItem:
         return ""
 
     @classmethod
-    def get_objects_by_index(cls, node_id, list_field, filter_field):
+    def get_objects_by_index(cls, query, list_field, filter_field):
         '''Getting children object by id'''
-        sg_id = None
-        ip_n = None
-        if node_id is not None:
-            sg_id, _, ip_n = node_id.rpartition(ID_DV)
+        par_query = None
+        kind_query = None
+        if query is not None:
+            par_query, _, kind_query = query.rpartition(ID_DV)
 
-        pars = cls.get_objects(sg_id)
-
-        field = cls.field_of_a_kind(FIELD.ID)
-
-        res = []
+        par_id_field = cls.field_of_a_kind(FIELD.ID)
+        pars = cls.get_objects(par_query)
+        result = []
         for par in pars:
-            par_id = par[field]
+            par_id = par[par_id_field]
 
             if type(list_field) is str:
-                children = par[list_field]
+                kinder = par[list_field]
             else:
                 try:
-                    children = list_field.get_objects_of_parent(par_id)
+                    kinder = list_field.get_objects_of_parent(par_id, kind_query)
                 except Exception as e:
-                    ErrorCode = e.response['Error']['Code']
+                    ErrorCode = e.response['Error']['Code'] if hasattr(e, "response") else ""
                     if ErrorCode[-9:] == '.NotFound' or ErrorCode == "AccessDenied":
-                        children = []
+                        kinder = []
                     else:
                         print(f"{cls.get_class_view()}.get_objects: {e.args[0]}")
                         raise
 
             index = -1
-            for el in children:
+            for kind in kinder:
                 index += 1
 
-                el["ParentId"] = par_id
+                kind["ParentId"] = par_id
 
-                if ip_n is not None and ip_n != "" and ip_n != "*":
-                    if ip_n != (str(index) if filter_field == int else str(el[filter_field])):
+                if kind_query is not None and kind_query != "" and kind_query != "*":
+                    if kind_query != (str(index) if filter_field == int else str(kind[filter_field])):
                         continue
 
-                res.append(el)
+                result.append(kind)
 
-        return res
+        return result
 
     @classmethod
     def query(cls, query):
@@ -406,7 +404,7 @@ class ObjectList:
             try:
                 resp = self.Class.get_objects(filter)
             except Exception as e:
-                # ErrorCode = e.response['Error']['Code']
+                # ErrorCode = e.response['Error']['Code'] if hasattr(e, "response") else ""
                 print(f"{self.Class.get_class_view()}.get_objects: {e.args[0]}")
                 # if ErrorCode[-9:] == '.NotFound' or ErrorCode == "AccessDenied":
                 #     return

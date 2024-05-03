@@ -14,6 +14,7 @@ Author: Pavel ERESKO
 """
 
 import boto3
+from arnparse import arnparse
 from botocore.exceptions import ClientError
 
 import io
@@ -23,15 +24,6 @@ import stat
 
 from ObjectModel import *
 
-def bt(aws_service):
-    return boto3.Session(
-        profile_name = AWS.PROFILE
-    ).client(
-        aws_service
-    )
-
-def Id17(id):
-    return id[-17:]
 
 # id parameter passing
 class PAR:
@@ -50,17 +42,44 @@ class COLOR:
     BLUE   = "#d7c1ff"
     BLUE_DARK = "#c19fff"
 
-def idpar(field, id, ParType = PAR.LIST):
+
+def bt(aws_service):
+    return boto3.Session(
+        profile_name = AWS.PROFILE
+    ).client(
+        aws_service
+    )
+
+def Id17(id):
+    return id[-17:]
+
+def str_to_class(strtype):
+    clss = strtype.replace('AWS::', "")
+    clss = clss.replace('::', "_")
+    clss = globals()[clss] if clss in globals() else None
+    return clss
+
+def idpar(id, ParType = PAR.PAR):
     if id is None:
         flt = {}
-    elif isinstance(id, str):
+    elif isinstance(id, str): # obsolete
+        field = None
         flt = {field : (id, ParType)}
+    elif isinstance(id, tuple):
+        flt = {id[0] : (id[1], ParType)}
     else:
         flt = id
     
     params = {}
     for key, val in flt.items():
-        i_val, i_type = val
+        if isinstance(val, tuple):
+            i_val, i_type = val
+        else:
+            i_val = val
+            i_type = ParType
+
+        if val == None:
+            continue
 
         if   i_type == PAR.PAR:
             params[key] = i_val
@@ -103,7 +122,7 @@ class awsObject(ObjectModelItem):
         try:
             return cls.aws_get_objects(filter)
         except Exception as e:
-            ErrorCode = e.response['Error']['Code']
+            ErrorCode = e.response['Error']['Code'] if hasattr(e, "response") else ""
             if ErrorCode[-9:] == '.NotFound' or ErrorCode == "AccessDenied":
                 return []
             else:
@@ -163,7 +182,7 @@ class EC2_Reservation(awsObject):
     
     @staticmethod
     def aws_get_objects(id=None):
-        resp = bt('ec2').describe_instances(**idpar('reservation-id', id, PAR.FILTER))
+        resp = bt('ec2').describe_instances(**idpar(('reservation-id', id), PAR.FILTER))
         return resp['Reservations']
 
 
@@ -186,7 +205,7 @@ class EC2_SecurityGroup(awsObject):
     def aws_get_objects(id=None):
         return EC2_Instance.get_objects_by_index(id, "SecurityGroups", "GroupId")
 
-        resp = bt('ec2').describe_instances(**idpar('reservation-id', id, PAR.FILTER))
+        resp = bt('ec2').describe_instances(**idpar(('reservation-id', id), PAR.FILTER))
         return resp['Reservations']
 
 class EC2_Instance(awsObject): 
@@ -210,7 +229,7 @@ class EC2_Instance(awsObject):
     
     @staticmethod
     def aws_get_objects(id=None):
-        resp = bt('ec2').describe_instances(**idpar('InstanceIds', id))
+        resp = bt('ec2').describe_instances(**idpar(('InstanceIds', id), PAR.LIST))
         res = []
         for reservation in resp['Reservations']:
             for inst in reservation["Instances"]:
@@ -274,7 +293,7 @@ class EC2_InternetGateway(awsObject):
     
     @staticmethod
     def aws_get_objects(id=None):
-        resp = bt('ec2').describe_internet_gateways(**idpar('InternetGatewayIds', id))
+        resp = bt('ec2').describe_internet_gateways(**idpar(('InternetGatewayIds', id), PAR.LIST))
         return resp['InternetGateways']
 
 
@@ -344,7 +363,7 @@ class EC2_NatGateway(awsObject):
     
     @staticmethod
     def aws_get_objects(id=None):
-        resp = bt('ec2').describe_nat_gateways(**idpar('NatGatewayIds', id))
+        resp = bt('ec2').describe_nat_gateways(**idpar(('NatGatewayIds', id), PAR.LIST))
         return resp['NatGateways']
     
     def get_view(self):
@@ -426,7 +445,7 @@ class EC2_SecurityGroup(awsObject):
     
     @staticmethod
     def aws_get_objects(id=None):
-        return bt('ec2').describe_security_groups(**idpar('GroupIds', id))['SecurityGroups']
+        return bt('ec2').describe_security_groups(**idpar(('GroupIds', id), PAR.LIST))['SecurityGroups']
 
     def get_view(self):
         return f"{self.GroupName}"
@@ -512,12 +531,12 @@ class EC2_SecurityGroup_Rule(awsObject):
                 flt["group-id"] = ([par_id], PAR.FILTER)
 
             if cur_id and cur_id != "*":
-                flt["SecurityGroupRuleIds"] = ([cur_id], PAR.PAR)
+                flt["SecurityGroupRuleIds"] = (cur_id, PAR.LIST)
         
         else:
             flt = id
 
-        id_par_res = idpar("Name", flt, PAR.PAR)
+        id_par_res = idpar(flt)
         resp = bt('ec2').describe_security_group_rules(**id_par_res)
         return resp['SecurityGroupRules']
 
@@ -551,7 +570,7 @@ class EC2_Subnet(awsObject):
 
     @staticmethod
     def aws_get_objects(id=None):
-        response = bt('ec2').describe_subnets(**idpar('SubnetIds', id))['Subnets']
+        response = bt('ec2').describe_subnets(**idpar(('SubnetIds', id), PAR.LIST))['Subnets']
         return response
     
     def get_ext(self):
@@ -596,7 +615,7 @@ class EC2_NetworkAcl(awsObject):
     
     @staticmethod
     def aws_get_objects(id=None):
-        return bt('ec2').describe_network_acls(**idpar('NetworkAclIds', id))['NetworkAcls']
+        return bt('ec2').describe_network_acls(**idpar(('NetworkAclIds', id), PAR.LIST))['NetworkAcls']
 
 
 class EC2_NetworkAclEntry(awsObject): 
@@ -646,7 +665,7 @@ class EC2_RouteTable(awsObject):
     
     @staticmethod
     def aws_get_objects(id=None):
-        return bt('ec2').describe_route_tables(**idpar('RouteTableIds', id))['RouteTables']
+        return bt('ec2').describe_route_tables(**idpar(('RouteTableIds', id), PAR.LIST))['RouteTables']
 
     @staticmethod
     def create(name, VpcId):
@@ -811,7 +830,7 @@ class EC2_VPC(awsObject):
     
     @staticmethod
     def aws_get_objects(id=None):
-        resp = bt('ec2').describe_vpcs(**idpar('VpcIds', id))
+        resp = bt('ec2').describe_vpcs(**idpar(('VpcIds', id), PAR.LIST))
         return resp['Vpcs']
     
     def get_ext(self):
@@ -852,7 +871,7 @@ class EC2_NetworkInterface(awsObject):
     
     @staticmethod
     def aws_get_objects(id=None):
-        return bt('ec2').describe_network_interfaces(**idpar('NetworkInterfaceIds', id))['NetworkInterfaces']
+        return bt('ec2').describe_network_interfaces(**idpar(('NetworkInterfaceIds', id), PAR.LIST))['NetworkInterfaces']
 
     @staticmethod
     def cli_add(name, CidrBlock, fdrgtd):
@@ -908,7 +927,7 @@ class EC2_EIP(awsObject):
 
     @staticmethod
     def aws_get_objects(id=None):
-        resp = bt('ec2').describe_addresses(**idpar('AllocationIds', id))
+        resp = bt('ec2').describe_addresses(**idpar(('AllocationIds', id), PAR.LIST))
         return resp['Addresses']
 
 
@@ -937,7 +956,7 @@ class EC2_KeyPair(awsObject):
 
     @staticmethod
     def aws_get_objects(id=None):
-        response = bt('ec2').describe_key_pairs(**idpar('KeyPairIds', id))
+        response = bt('ec2').describe_key_pairs(**idpar(('KeyPairIds', id), PAR.LIST))
         return response['KeyPairs']
 
 
@@ -1118,7 +1137,7 @@ class RDS_DBInstance(awsObject):
 
     @staticmethod
     def aws_get_objects(id = None):
-        response = bt('rds').describe_db_instances(**idpar('DBInstanceIdentifier', id, PAR.PAR))
+        response = bt('rds').describe_db_instances(**idpar(('DBInstanceIdentifier', id)))
         return response['DBInstances']
 
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
@@ -1164,7 +1183,7 @@ class RDS_DBSubnetGroup(awsObject):
 
     @staticmethod
     def aws_get_objects(id = None):
-        response = bt('rds').describe_db_subnet_groups(**idpar('DBSubnetGroupName', id, PAR.PAR))
+        response = bt('rds').describe_db_subnet_groups(**idpar(('DBSubnetGroupName', id)))
         return response['DBSubnetGroups']
     
     @staticmethod
@@ -1268,7 +1287,7 @@ class AWS_AMI(awsObject):
         #     {'Name': 'owner-id', 'Values': ['your_account_id']},
         #     {'Name': 'state', 'Values': ['available']}
         # ]
-        response = bt('ec2').describe_images(**idpar('ImageIds', id, PAR.LIST))
+        response = bt('ec2').describe_images(**idpar(('ImageIds', id), PAR.LIST))
         return response["Images"]
 
 
@@ -1333,14 +1352,14 @@ class ELB_LoadBalancer(awsObject):
 
     @staticmethod
     def aws_get_objects(id = None):
-        response = bt('elbv2').describe_load_balancers(**idpar('Names', id, PAR.LIST))
+        response = bt('elbv2').describe_load_balancers(**idpar(('Names', id), PAR.LIST))
         return response['LoadBalancers']
 
 
 class ELB_LoadBalancer_AvailabilityZone(awsObject):
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)
-        self.Id  = f"{self.ParentId}{ID_DV}{self.SubnetId}"
+        self.Id = f"{self.ParentId}{ID_DV}{self.SubnetId}"
 
     @staticmethod
     def fields():
@@ -1369,7 +1388,7 @@ class ELB_TargetGroup(awsObject):
 
     @staticmethod
     def aws_get_objects(id = None):
-        response = bt('elbv2').describe_target_groups(**idpar('Names', id, PAR.LIST))
+        response = bt('elbv2').describe_target_groups(**idpar(('Names', id), PAR.LIST))
         return response['TargetGroups']
 
 
@@ -1418,7 +1437,7 @@ class AutoScaling_LaunchConfiguration(awsObject):
 
     @staticmethod
     def aws_get_objects(id = None):
-        response = bt('ec2').describe_launch_templates(**idpar('LaunchTemplateIds', id, PAR.LIST))
+        response = bt('ec2').describe_launch_templates(**idpar(('LaunchTemplateIds', id), PAR.LIST))
         return response['LaunchTemplates']
 
 
@@ -1434,7 +1453,7 @@ class AutoScaling_AutoScalingGroup(awsObject):
 
     @staticmethod
     def aws_get_objects(id = None):
-        response = bt('autoscaling').describe_auto_scaling_groups(**idpar('AutoScalingGroupNames', id, PAR.LIST))
+        response = bt('autoscaling').describe_auto_scaling_groups(**idpar(('AutoScalingGroupNames', id), PAR.LIST))
         return response['AutoScalingGroups']
 
 
@@ -1451,7 +1470,7 @@ class CloudFormation_Stack(awsObject):
 
     @staticmethod
     def aws_get_objects(id = None):
-        response = bt('cloudformation').describe_stacks(**idpar('StackName', id, PAR.PAR))
+        response = bt('cloudformation').describe_stacks(**idpar(('StackName', id)))
         return response['Stacks']
 
 
@@ -1474,11 +1493,7 @@ class CloudFormation_StackResource(awsObject):
         self.Id   = f"{self.StackName}{ID_DV}{PhysicalResourceId}"
         self.View = f"{self.ResourceType.replace('AWS::', '')}::{self.PhysicalResourceId}"
 
-        clss = self.ResourceType
-        clss = clss.replace('AWS::', "")
-        clss = clss.replace('::', "_")
-        clss = globals()[clss] if clss in globals() else None
-        self.ResourceType = clss
+        self.ResourceType = str_to_class(self.ResourceType)
 
     def get_actual_field_type(self, field):
         if field == 'PhysicalResourceId':
@@ -1495,7 +1510,7 @@ class CloudFormation_StackResource(awsObject):
 
         res = []
         for stack in CloudFormation_Stack.aws_get_objects(StackId):
-            for resource in bt('cloudformation').describe_stack_resources(**idpar('StackName', stack['StackName'], PAR.PAR))['StackResources']:
+            for resource in bt('cloudformation').describe_stack_resources(**idpar(('StackName', stack['StackName'])))['StackResources']:
                 if StackResourceId and resource['PhysicalResourceId'] != StackResourceId:
                     continue
                 res.append(resource)
@@ -1523,6 +1538,113 @@ class ApiGateway_RestApi(awsObject):
             response = bt('apigateway').get_rest_api(restApiId = id)
             del response['ResponseMetadata']
             return [response]
+        
+
+class ApiGateway_Resource(awsObject):
+#    ListName = "Resources"
+
+    @staticmethod
+    def fields():
+        return {
+#            "ListName" : (str, FIELD.LIST_NAME),
+#            'ParentId': (ApiGateway_RestApi, FIELD.LIST_ITEM),
+            'ParentId': (ApiGateway_RestApi, FIELD.OWNER),
+            'Id': (ApiGateway_Resource, FIELD.ID),
+            'path': (str, FIELD.VIEW),
+        }
+
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
+        self.Id = f"{self.ParentId}{ID_DV}{self.id}"
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        return ApiGateway_RestApi.get_objects_by_index(id, ApiGateway_Resource, "id")
+
+    @staticmethod
+    def get_objects_of_parent(parent, id):
+        if id == None:
+            return bt('apigateway').get_resources(restApiId=parent)["items"]
+        else:
+            response = bt('apigateway').get_resource(restApiId=parent, resourceId=id)
+            del response['ResponseMetadata']
+            return [response]
+
+
+class ApiGateway_Method(awsObject):
+    ListName = "Methods"
+
+    @staticmethod
+    def fields():
+        return {
+            "ListName" : (str, FIELD.LIST_NAME),
+            'ParentId': (ApiGateway_Resource, FIELD.LIST_ITEM),
+            'Id': (ApiGateway_Method, FIELD.ID),
+#            'httpMethod': (str, FIELD.VIEW),
+            'View': (str, FIELD.VIEW),
+            'Link': (None, FIELD.LINK),
+        }
+
+    def get_actual_field_type(self, field):
+        if field == 'Link':
+            return self.LinkType
+
+        return super().get_actual_field_type(field)
+
+    # def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+    #     super().__init__(aws, id_query, index, resp, do_auto_save)
+        # self.Id = f"{self.ParentId}{ID_DV}{self.id}{ID_DV}{self.Method}"
+        # self.Id = f"{self.ParentId}{ID_DV}{self.id}{ID_DV}{self.Method}"
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        client = bt('apigateway')
+
+        par_query = None
+        kind_query = None
+        if id is not None:
+            par_query, _, kind_query = id.rpartition(ID_DV)
+
+        resources = ApiGateway_Resource.get_objects(par_query)
+
+        result = []
+        for resource in resources:
+            if "resourceMethods" in resource:
+                for method, _ in resource["resourceMethods"].items():
+
+                    # item = resource.copy()
+                    # del item["resourceMethods"]
+                    # item["ParentId"] = f"{resource['ParentId']}{ID_DV}{resource['id']}"
+                    # item["id"] = f"{resource['ParentId']}{ID_DV}{resource['id']}{ID_DV}{method}"
+                    # item["method"] = method
+
+                    response = client.get_method(
+                        restApiId  = resource['ParentId'],
+                        resourceId = resource['id'],
+                        httpMethod = method
+                    )
+                    
+                    del response['ResponseMetadata']
+                    response["ParentId"] = f"{resource['ParentId']}{ID_DV}{resource['id']}"
+                    response["Id"] = f"{resource['ParentId']}{ID_DV}{resource['id']}{ID_DV}{method}"
+
+                    response["View"] = response['httpMethod']
+                    if 'uri' in response['methodIntegration']:
+                        arn = response['methodIntegration']['uri']
+                        arn_components = arnparse(arn)
+                        parts = arn_components.resource.split('/')
+
+                        arn = parts[3]
+                        arn_components = arnparse(arn)
+
+                        response["Link"] = arn_components.resource
+                        response["LinkType"] = str_to_class(f"{arn_components.partition.upper()}::{arn_components.service.capitalize()}::{arn_components.resource_type.capitalize()}")
+
+                        response["View"] += ": " + arn
+
+                    result.append(response)
+
+        return result
 
 
 class ApiGateway_DomainName(awsObject):
@@ -1562,15 +1684,15 @@ class ApiGateway_BasePathMapping(awsObject):
 
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)
-        self.Id  = f"{self.ParentId}{ID_DV}{self.restApiId}"
+        self.Id = f"{self.ParentId}{ID_DV}{self.restApiId}"
 
     @staticmethod
     def aws_get_objects(id = None):
         return ApiGateway_DomainName.get_objects_by_index(id, ApiGateway_BasePathMapping, "restApiId")
 
     @staticmethod
-    def get_objects_of_parent(parent):
-        return bt('apigateway').get_base_path_mappings(domainName=parent)["items"]
+    def get_objects_of_parent(parent, id):
+        return bt('apigateway').get_base_path_mappings(**idpar({"domainName": parent}))["items"] # , "restApiId": id 
     
 
 class Route53_HostedZone(awsObject):
@@ -1605,19 +1727,22 @@ class Route53_RecordSet(awsObject):
             'ParentId': (Route53_HostedZone, FIELD.LIST_ITEM),
             'Id': (Route53_RecordSet, FIELD.ID),
             'Name': (str, FIELD.VIEW),
+            'Link': (ApiGateway_DomainName, FIELD.LINK),
         }
 
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)
-        self.Id  = f"{self.ParentId}{ID_DV}{self.Name}"
+        self.Id = f"{self.ParentId}{ID_DV}{self.Name}"
+        self.Link = self.Name[:-1]
 
     @staticmethod
     def aws_get_objects(id = None):
         return Route53_HostedZone.get_objects_by_index(id, Route53_RecordSet, "Name")
 
     @staticmethod
-    def get_objects_of_parent(parent):
-        return bt('route53').list_resource_record_sets(HostedZoneId=parent)["ResourceRecordSets"]
+    def get_objects_of_parent(parent, id):
+        return bt('route53').list_resource_record_sets(**idpar({"HostedZoneId": parent}))["ResourceRecordSets"]
+
 
 class AWS(ObjectModel):
     def __init__(self, profile, path, do_auto_load = True, do_auto_save = True):
@@ -1668,14 +1793,13 @@ class AWS(ObjectModel):
                 'ELB'   : [ELB_LoadBalancer, ELB_LoadBalancer_AvailabilityZone, ELB_TargetGroup, ELB_Listener, AutoScaling_LaunchConfiguration, AutoScaling_AutoScalingGroup],
                 'RAZ'   : [AWS_Region, AWS_AvailabilityZone],
                 'CF'    : [CloudFormation_Stack, CloudFormation_StackResource],
-                'API'   : [ApiGateway_RestApi, ApiGateway_DomainName, ApiGateway_BasePathMapping],
+                'API'   : [ApiGateway_RestApi, ApiGateway_Resource, ApiGateway_Method, Route53_HostedZone, Route53_RecordSet, ApiGateway_DomainName, ApiGateway_BasePathMapping],
                 'OTHER' : [
                     EC2_Reservation, EC2_NetworkInterface,
                     S3_Bucket,
                     SNS_Topic,
                     Lambda_Function,
                     AWS_AMI,
-                    Route53_HostedZone, Route53_RecordSet,
                 ],
             }
         )

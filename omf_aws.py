@@ -38,7 +38,7 @@ class MyWidget(QWidget):
 
         self.leProfile.setText("TS")
         self.leFile   .setText("omf_aws")
-        self.leClasses.setText("All")
+        self.leClasses.setText("API, Lambda_Function")
         self.leExample.setText("Test")
 
         self.cbAWS .setChecked(True)
