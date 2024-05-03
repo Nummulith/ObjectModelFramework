@@ -1062,6 +1062,7 @@ class IAM_Role(awsObject):
 class Lambda_Function(awsObject):
     Icon = "AWS/Arch_AWS-Lambda_48"
     Color = COLOR.ORANGE
+    Draw = DRAW.DEF - DRAW.ID
 
     @staticmethod
     def fields():
@@ -1640,7 +1641,7 @@ class ApiGateway_Method(awsObject):
                         response["Link"] = arn_components.resource
                         response["LinkType"] = str_to_class(f"{arn_components.partition.upper()}::{arn_components.service.capitalize()}::{arn_components.resource_type.capitalize()}")
 
-                        response["View"] += ": " + arn
+                        response["View"] += ": " + arn_components.resource
 
                     result.append(response)
 
@@ -1650,6 +1651,7 @@ class ApiGateway_Method(awsObject):
 class ApiGateway_DomainName(awsObject):
     Icon = "AWS/domain_name"
     Color = COLOR.RED
+    Draw = DRAW.DEF - DRAW.ID
 
     @staticmethod
     def fields():
