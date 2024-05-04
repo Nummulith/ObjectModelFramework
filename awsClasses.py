@@ -1091,7 +1091,13 @@ class Lambda_Function(awsObject):
         return {
                     'FunctionName': (Lambda_Function, FIELD.ID),
                     'Tags': ({"Key" : "Value"}),
+                    'LogGroup': (Logs_LogGroup, FIELD.LINK),   
                 }
+
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
+        
+        self.LogGroup = self['LoggingConfig']['LogGroup']
 
     @staticmethod
     def aws_get_objects(id=None):
@@ -1100,7 +1106,7 @@ class Lambda_Function(awsObject):
             return response['Functions']
         else:
             response = bt('lambda').get_function(FunctionName=id)
-            return [response["Configuration"]]
+            return [response["Configuration"]] 
         
     @staticmethod
     def create(name, Code):
@@ -1758,6 +1764,22 @@ class Route53_RecordSet(awsObject):
         return bt('route53').list_resource_record_sets(**idpar({"HostedZoneId": parent}))["ResourceRecordSets"]
 
 
+class Logs_LogGroup(awsObject):
+    Icon = "AWS/Arch_Amazon-CloudWatch_48"
+    Color = COLOR.RED
+    Draw = DRAW.DEF - DRAW.ID
+
+    @staticmethod
+    def fields():
+        return {
+            'logGroupName': (Route53_RecordSet, FIELD.ID),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        return bt('logs').describe_log_groups(**idpar(('logGroupNamePrefix', id)))['logGroups']
+
+
 class AWS(ObjectModel):
     def __init__(self, profile, path, do_auto_load = True, do_auto_save = True):
 
@@ -1799,6 +1821,7 @@ class AWS(ObjectModel):
                 'S3'      : [S3_Bucket],
                 'Lambda'  : [Lambda_Function],
                 'SNS'     : [SNS_Topic],
+                'LOG'     : [Logs_LogGroup],
             }
         )
 
