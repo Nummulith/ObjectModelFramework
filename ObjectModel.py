@@ -513,13 +513,13 @@ def node_label(obj):
         '''
     res = res + f'''
         <TR>
-            <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="8.0">{obj.get_class_view()}</FONT></TD>
+            <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="9.0">{obj.get_class_view()}</FONT></TD>
         </TR>
     '''
     if draw & DRAW.ID:
         res = res + f'''
             <TR>
-                <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="8.0">{obj.get_id()}</FONT></TD>
+                <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="9.0">{obj.get_id()}</FONT></TD>
             </TR>
         '''
     if res == "":
@@ -561,20 +561,20 @@ def cluster_label(obj):
     if draw & DRAW.EXT:
         res1 = res1 + f'''
         <TR>
-            <TD><FONT POINT-SIZE="8.0">{obj.get_ext()}</FONT></TD>
+            <TD><FONT POINT-SIZE="9.0">{obj.get_ext()}</FONT></TD>
         </TR>
         '''
 
     res1 = res1 + f'''
         <TR>
-            <TD><FONT POINT-SIZE="8.0">{obj.get_class_view()}</FONT></TD>
+            <TD><FONT POINT-SIZE="9.0">{obj.get_class_view()}</FONT></TD>
         </TR>
         '''
 
     if draw & DRAW.ID:
         res1 = res1 + f'''
         <TR>
-            <TD><FONT POINT-SIZE="8.0">{obj.get_id()}</FONT></TD>
+            <TD><FONT POINT-SIZE="9.0">{obj.get_id()}</FONT></TD>
         </TR>
         '''
 
@@ -812,9 +812,9 @@ class ObjectModel:
                     for listname, listitems in haslisted[node_id].items():
                         # break
 
-                        label = f'<TR><TD BGCOLOR="#A9DFBF"><B>{listname}</B></TD></TR>\n'
+                        label = f'<TR><TD BGCOLOR="#A9DFBF"><B><FONT POINT-SIZE="9.0">{listname}</FONT></B></TD></TR>\n'
                         for listitem in listitems:
-                            label += f'<TR><TD BGCOLOR="white" PORT="{listitem.get_id()}"><FONT POINT-SIZE="8.0">{listitem.get_view()}</FONT></TD></TR>\n'
+                            label += f'<TR><TD BGCOLOR="white" PORT="{listitem.get_id()}"><FONT POINT-SIZE="9.0">{listitem.get_view()}</FONT></TD></TR>\n'
 
                         label = f'''<
                             <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
