@@ -30,7 +30,8 @@ class MyWidget(QWidget):
         super(MyWidget, self).__init__()
         loadUi('Y3A/Y3A.ui', self)
 
-        self.bExample    .clicked.connect(self.example)
+        self.bExample    .clicked.connect(lambda: self.example(clean=False))
+        self.bExClean    .clicked.connect(lambda: self.example(clean=True ))
         self.bFetch      .clicked.connect(self.fetch)
         self.bRelease    .clicked.connect(self.release)
         self.bDraw       .clicked.connect(self.draw)
@@ -39,7 +40,7 @@ class MyWidget(QWidget):
         self.leProfile.setText("TS")
         self.leFile   .setText("Y3A")
         self.leClasses.setText("All")
-        self.leExample.setText("Test")
+        self.leExample.setText("Lambda")
 
         self.cbAWS .setChecked(True)
         self.cbLoad.setChecked(True)
@@ -58,24 +59,28 @@ class MyWidget(QWidget):
 
         return self.AWS
 
-    def example(self):
+    def example(self, clean=False):
         """ 'Example' button click """
 
         auto = self.cbLoad.isChecked()
         aws = self.get_aws(auto, auto) if self.cbAWS.isChecked() else None
 #        aws.CallClasses = self.leClasses.text()
 
-        module_and_function_name = self.leExample.text()
+        folder_name = self.leExample.text()
+        function_name = folder_name if not clean else "clean"
 
         try:
-            module = importlib.import_module("Examples." + module_and_function_name)
+            module = importlib.import_module(f"Examples." + folder_name + "." + function_name)
             importlib.reload(module)
 
-            func = getattr(module, module_and_function_name)
+            func = getattr(module, function_name)
             func(aws)
 
         except Exception as e:
             print(f"Example: An exception occurred: {type(e).__name__} - {e}")
+
+        if aws != None and auto:
+            aws.save()
 
     def fetch(self):
         """ 'Fetch' button click """

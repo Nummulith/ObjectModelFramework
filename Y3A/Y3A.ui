@@ -271,6 +271,12 @@
           <layout class="QHBoxLayout" name="horizontalLayout_3">
            <item>
             <widget class="QCheckBox" name="cbAWS">
+             <property name="minimumSize">
+              <size>
+               <width>150</width>
+               <height>0</height>
+              </size>
+             </property>
              <property name="maximumSize">
               <size>
                <width>75</width>
@@ -286,15 +292,19 @@
             <widget class="QCheckBox" name="cbLoad">
              <property name="maximumSize">
               <size>
-               <width>75</width>
+               <width>150</width>
                <height>16777215</height>
               </size>
              </property>
              <property name="text">
-              <string>Load</string>
+              <string>Load / Save</string>
              </property>
             </widget>
            </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_10">
            <item>
             <widget class="QPushButton" name="bExample">
              <property name="maximumSize">
@@ -305,6 +315,19 @@
              </property>
              <property name="text">
               <string>Run</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="bExClean">
+             <property name="maximumSize">
+              <size>
+               <width>100</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Clean</string>
              </property>
             </widget>
            </item>
