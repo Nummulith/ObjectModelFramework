@@ -40,7 +40,7 @@ class MyWidget(QWidget):
         self.leProfile.setText("TS")
         self.leFile   .setText("Y3A")
         self.leClasses.setText("All")
-        self.leExample.setText("Lambda")
+        self.leExample.setText("CloudFormation")
 
         self.cbAWS .setChecked(True)
         self.cbLoad.setChecked(True)

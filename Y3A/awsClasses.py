@@ -1080,7 +1080,6 @@ class IAM_Role(awsObject):
         return f"{self.RoleName}"
 
 
-    
 class Lambda_Function(awsObject):
     Icon = "Arch_AWS-Lambda_48"
     Color = COLOR.ORANGE
@@ -1109,11 +1108,7 @@ class Lambda_Function(awsObject):
             return [response["Configuration"]] 
         
     @staticmethod
-    def create(name, Code):
-        handler = 'lambda_function.lambda_handler'
-        runtime = 'python3.12'
-        role_arn = 'arn:aws:iam::047989593255:role/lambda-s3-role'
-
+    def str_to_zipped_data(Code):
         data_bytes = Code.encode()
         with io.BytesIO() as zip_buffer:
             with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED, False) as zip_file:
@@ -1123,12 +1118,18 @@ class Lambda_Function(awsObject):
                 unix_st_mode = stat.S_IFLNK | stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH
                 file_info.external_attr = unix_st_mode << 16 
 
-            zipped_data = zip_buffer.getvalue()
+            return zip_buffer.getvalue()
+
+    @staticmethod
+    def create(name, code, role_arn):
+        handler = 'lambda_function.lambda_handler'
+        runtime = 'python3.12'
+        zipped_data = Lambda_Function.str_to_zipped_data(code)
 
         response = bt('lambda').create_function(
             FunctionName=name,
             Runtime=runtime,
-            IAM_Role=role_arn,
+            Role=role_arn,
             Handler=handler,
             Code={'ZipFile': zipped_data},
             Timeout=30,
@@ -1140,7 +1141,7 @@ class Lambda_Function(awsObject):
     def delete(id):
         bt('lambda').delete_function(FunctionName=id)
 
-    def Invoke(id, payload):
+    def invoke(id, payload):
         response = bt('lambda').invoke(
             FunctionName=id,
             InvocationType='RequestResponse',  # Или 'Event' для асинхронного вызова
@@ -1150,6 +1151,15 @@ class Lambda_Function(awsObject):
         result = response['Payload'].read().decode('utf-8')
         result = json.loads(result)
         return result
+    
+    def update_code(id, code):
+        zipped_data = Lambda_Function.str_to_zipped_data(code)
+
+        response = bt('lambda').update_function_code(
+            FunctionName=id,
+            ZipFile=zipped_data,
+            Publish=True  # Set to True to publish a new version of the Lambda function
+        )
 
 
 class RDS_DBInstance(awsObject):
@@ -1501,6 +1511,12 @@ class CloudFormation_Stack(awsObject):
     def aws_get_objects(id = None):
         response = bt('cloudformation').describe_stacks(**idpar(('StackName', id)))
         return response['Stacks']
+    
+    @staticmethod
+    def create(stack_name, template_body, parameters = None):
+        cf_pars = [{'ParameterKey': key, 'ParameterValue': value} for key, value in parameters.items()] if parameters != None else []
+        response = boto3.client('cloudformation').create_stack(StackName=stack_name, TemplateBody=template_body, Parameters=cf_pars)
+        return stack_name
 
 
 class CloudFormation_StackResource(awsObject):

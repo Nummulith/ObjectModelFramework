@@ -1,2 +1,3 @@
 def clean(aws):
-    aws.Lambda_Function.release()
+    Lambda = "demo0"
+    aws.Lambda_Function.delete(Lambda)
