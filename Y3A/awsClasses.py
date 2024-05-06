@@ -115,7 +115,7 @@ def Wait(waiter_name, resource_param, resource_id):
 
 
 class awsObject(ObjectModelItem):
-    Icon = "AWS/AWS"
+    Icon = "AWS"
     Prefix = ""
 
     @classmethod
@@ -168,7 +168,7 @@ class Tag(awsObject):
 
 
 class EC2_Reservation(awsObject): 
-    Icon = "AWS/Res_Amazon-Instance_48"
+    Icon = "Res_Amazon-Instance_48"
     Show = False
     Color = COLOR.ORANGE
 
@@ -209,7 +209,7 @@ class EC2_SecurityGroup(awsObject):
 class EC2_Instance(awsObject): 
     Prefix = "i"
     Draw = DRAW.ALL
-    Icon = "AWS/Arch_Amazon-EC2_48"
+    Icon = "Arch_Amazon-EC2_48"
     Color = COLOR.ORANGE
 
     @staticmethod
@@ -302,7 +302,7 @@ class EC2_Instance_NetworkInterface(awsObject):
 
 class EC2_InternetGateway(awsObject): 
     Prefix = "igw"
-    Icon = "AWS/Arch_Amazon-API-Gateway_48"
+    Icon = "Arch_Amazon-API-Gateway_48"
     Color = COLOR.RED
 
     @staticmethod
@@ -369,7 +369,7 @@ class EC2_VPCGatewayAttachment(awsObject):
 
 class EC2_NatGateway(awsObject): 
     Prefix = "nat"
-    Icon = "AWS/Res_Amazon-VPC_NAT-Gateway_48"
+    Icon = "Res_Amazon-VPC_NAT-Gateway_48"
     Color = COLOR.BLUE_DARK
 
     @staticmethod
@@ -453,7 +453,7 @@ class EC2_EIPAssociation(awsObject):
 
 class EC2_SecurityGroup(awsObject):
     Prefix = "sg"
-    Icon = "AWS/SecurityGroup"
+    Icon = "SecurityGroup"
     Color = COLOR.RED
 
     @staticmethod
@@ -577,7 +577,7 @@ class EC2_SecurityGroup_Rule(awsObject):
 class EC2_Subnet(awsObject): 
     Prefix = "subnet"
     Draw = DRAW.ALL
-    Icon = "AWS/Subnet"
+    Icon = "Subnet"
     Color = COLOR.BLUE_DARK
 
     @staticmethod
@@ -620,7 +620,7 @@ class EC2_Subnet(awsObject):
 
 class EC2_NetworkAcl(awsObject): 
     Prefix = "nacl"
-    Icon = "AWS/Res_Amazon-VPC_Network-Access-Control-List_48"
+    Icon = "Res_Amazon-VPC_Network-Access-Control-List_48"
     Color = COLOR.BLUE_DARK
 
     @staticmethod
@@ -642,7 +642,7 @@ class EC2_NetworkAcl(awsObject):
 
 class EC2_NetworkAclEntry(awsObject): 
     Prefix = "nacle"
-    Icon = "AWS/NetworkAccessControlList"
+    Icon = "NetworkAccessControlList"
     Color = COLOR.BLUE_DARK
     DoNotFetch = True
     ListName = "Entries"
@@ -670,7 +670,7 @@ class EC2_NetworkAclEntry(awsObject):
 
 class EC2_RouteTable(awsObject): 
     Prefix = "rtb"
-    Icon = "AWS/Res_Amazon-Route-53_Route-Table_48"
+    Icon = "Res_Amazon-Route-53_Route-Table_48"
     Color = COLOR.BLUE_DARK
 
     @staticmethod
@@ -758,7 +758,7 @@ class EC2_RouteTable_Association(awsObject):
 class EC2_Route(awsObject):
     Prefix = "route"
     Draw = DRAW.ALL-DRAW.ID
-    Icon = "AWS/Route"
+    Icon = "Route"
     Color = COLOR.BLUE_DARK
     UseIndex = True
     DoNotFetch = True
@@ -838,7 +838,7 @@ class EC2_Route(awsObject):
 class EC2_VPC(awsObject): 
     Prefix = "vpc"
     Draw = DRAW.ALL
-    Icon = "AWS/Arch_Amazon-Virtual-Private-Cloud_48"
+    Icon = "Arch_Amazon-Virtual-Private-Cloud_48"
     Color = COLOR.BLUE
 
     @staticmethod
@@ -876,7 +876,7 @@ class EC2_VPC(awsObject):
 
 class EC2_NetworkInterface(awsObject): 
     Prefix = "ni"
-    Icon = "AWS/Res_Amazon-VPC_Elastic-Network-Interface_48"
+    Icon = "Res_Amazon-VPC_Elastic-Network-Interface_48"
     Color = COLOR.BLUE_DARK
     ListName = "NetworkInterfaces"
 
@@ -902,7 +902,7 @@ class EC2_NetworkInterface(awsObject):
 
 class S3_Bucket(awsObject): 
     Prefix = "s3"
-    Icon = "AWS/Arch_Amazon-Simple-Storage-Service_48"
+    Icon = "Arch_Amazon-Simple-Storage-Service_48"
     DoNotFetch = True
 
     @staticmethod
@@ -925,7 +925,7 @@ class S3_Bucket(awsObject):
 
 class EC2_EIP(awsObject):
     Prefix = "eipassoc"
-    Icon = "AWS/ElasticIP"
+    Icon = "ElasticIP"
     Color = COLOR.ORANGE
 
     @staticmethod
@@ -956,7 +956,7 @@ class EC2_EIP(awsObject):
 class EC2_KeyPair(awsObject):
     Prefix = "key"
     # DoNotFetch = True
-    Icon = "AWS/KeyPair"
+    Icon = "KeyPair"
     
     @staticmethod
     def fields():
@@ -1020,7 +1020,7 @@ class EC2_KeyPair(awsObject):
 
 class SNS_Topic(awsObject):
     DoNotFetch = True
-    Icon = "AWS/Arch_Amazon-Simple-Notification-Service_48"
+    Icon = "Arch_Amazon-Simple-Notification-Service_48"
 
     @staticmethod
     def create(name):
@@ -1029,7 +1029,7 @@ class SNS_Topic(awsObject):
 
 
 class IAM_User(awsObject):
-    Icon = "AWS/Res_User_48_Light"
+    Icon = "Res_User_48_Light"
 
     @staticmethod
     def aws_get_objects(id=None):
@@ -1046,7 +1046,7 @@ class IAM_User(awsObject):
 
 
 class IAM_Group(awsObject):
-    Icon = "AWS/Res_Users_48_Light"
+    Icon = "Res_Users_48_Light"
 
     @staticmethod
     def aws_get_objects(id=None):
@@ -1064,7 +1064,7 @@ class IAM_Group(awsObject):
 
 class IAM_Role(awsObject):
     DoNotFetch = True
-    Icon = "AWS/Res_AWS-Identity-Access-Management_Role_48"
+    Icon = "Res_AWS-Identity-Access-Management_Role_48"
 
     @staticmethod
     def aws_get_objects(id = None):
@@ -1082,7 +1082,7 @@ class IAM_Role(awsObject):
 
     
 class Lambda_Function(awsObject):
-    Icon = "AWS/Arch_AWS-Lambda_48"
+    Icon = "Arch_AWS-Lambda_48"
     Color = COLOR.ORANGE
     Draw = DRAW.DEF - DRAW.ID
 
@@ -1153,7 +1153,7 @@ class Lambda_Function(awsObject):
 
 
 class RDS_DBInstance(awsObject):
-    Icon = "AWS/Arch_Amazon-RDS_48"
+    Icon = "Arch_Amazon-RDS_48"
     Color = COLOR.LILA
 
     @staticmethod
@@ -1199,7 +1199,7 @@ class RDS_DBInstance(awsObject):
         )        
     
 class RDS_DBSubnetGroup(awsObject):
-    Icon = "AWS/Arch_Amazon-RDS_48"
+    Icon = "Arch_Amazon-RDS_48"
     Color = COLOR.LILA
 
     @staticmethod
@@ -1254,7 +1254,7 @@ class RDS_DBSubnetGroup_Subnet(awsObject):
         return RDS_DBSubnetGroup.get_objects_by_index(id, "Subnets", 'SubnetIdentifier')
 
 class DynamoDB_Table(awsObject):
-    Icon = "AWS/Arch_Amazon-DynamoDB_48"
+    Icon = "Arch_Amazon-DynamoDB_48"
     Color = COLOR.LILA
 
     @staticmethod
@@ -1301,7 +1301,7 @@ class DynamoDB_Table(awsObject):
 
 
 class AWS_AMI(awsObject):
-    Icon = "AWS/Res_Amazon-EC2_Instance_48"
+    Icon = "Res_Amazon-EC2_Instance_48"
     Color = COLOR.ORANGE
 
     @staticmethod
@@ -1365,7 +1365,7 @@ class AWS_Region(awsObject):
 
 
 class ELB_LoadBalancer(awsObject):
-    Icon = "AWS/Arch_Elastic-Load-Balancing_48"
+    Icon = "Arch_Elastic-Load-Balancing_48"
     Color = COLOR.BLUE
 
     @staticmethod
@@ -1453,7 +1453,7 @@ class ELB_Listener(awsObject):
 
 
 class AutoScaling_LaunchConfiguration(awsObject):
-    Icon = "AWS/Arch_Elastic-Load-Balancing_48"
+    Icon = "Arch_Elastic-Load-Balancing_48"
     Color = COLOR.BLUE
 
     @staticmethod
@@ -1471,7 +1471,7 @@ class AutoScaling_LaunchConfiguration(awsObject):
 
 
 class AutoScaling_AutoScalingGroup(awsObject):
-    Icon = "AWS/Arch_Elastic-Load-Balancing_48"
+    Icon = "Arch_Elastic-Load-Balancing_48"
     Color = COLOR.BLUE
 
     @staticmethod
@@ -1487,7 +1487,7 @@ class AutoScaling_AutoScalingGroup(awsObject):
 
 
 class CloudFormation_Stack(awsObject):
-    Icon = "AWS/Arch_AWS-CloudFormation_48"
+    Icon = "Arch_AWS-CloudFormation_48"
     Color = COLOR.RED
 
     @staticmethod
@@ -1548,7 +1548,7 @@ class CloudFormation_StackResource(awsObject):
     
 
 class ApiGateway_RestApi(awsObject):
-    Icon = "AWS/Arch_Amazon-API-Gateway_48"
+    Icon = "Arch_Amazon-API-Gateway_48"
     Color = COLOR.RED
 
     @staticmethod
@@ -1570,7 +1570,7 @@ class ApiGateway_RestApi(awsObject):
         
 
 class ApiGateway_Resource(awsObject):
-    Icon = "AWS/Arch_Amazon-API-Gateway_48-Resource"
+    Icon = "Arch_Amazon-API-Gateway_48-Resource"
     Color = COLOR.RED_DARK
 
     @staticmethod
@@ -1665,7 +1665,7 @@ class ApiGateway_Method(awsObject):
 
 
 class ApiGateway_DomainName(awsObject):
-    Icon = "AWS/domain_name"
+    Icon = "domain_name"
     Color = COLOR.RED
     Draw = DRAW.DEF - DRAW.ID
 
@@ -1716,7 +1716,7 @@ class ApiGateway_BasePathMapping(awsObject):
     
 
 class Route53_HostedZone(awsObject):
-    Icon = "AWS/Arch_Amazon-Route-53_48"
+    Icon = "Arch_Amazon-Route-53_48"
     Color = COLOR.BLUE
 
     @staticmethod
@@ -1765,7 +1765,7 @@ class Route53_RecordSet(awsObject):
 
 
 class Logs_LogGroup(awsObject):
-    Icon = "AWS/Arch_Amazon-CloudWatch_48"
+    Icon = "Arch_Amazon-CloudWatch_48"
     Color = COLOR.RED
     Draw = DRAW.DEF - DRAW.ID
 

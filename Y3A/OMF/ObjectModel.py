@@ -36,7 +36,7 @@ import os
 
 from xml.dom import minidom
 
-from Drawing import Drawing
+from Drawing.Drawing import Drawing
 
 ID_DV = "|"
 
@@ -51,7 +51,7 @@ class FIELD:
     VIEW      =  6
     EXT       =  7
     ICON      =  8
-    LINK  =  9
+    LINK      =  9
     LINK_IN   = 10
 
 class DRAW:
@@ -508,7 +508,7 @@ def node_label(obj):
     if draw & DRAW.ICON:
         res = res + f'''
             <TR>
-                <TD BGCOLOR="white" PORT="p2"><IMG SRC="icons/{type(obj).Icon}.png"/></TD>
+                <TD BGCOLOR="white" PORT="p2"><IMG SRC="../icons/{type(obj).Icon}.png"/></TD>
             </TR>
         '''
     res = res + f'''
@@ -542,7 +542,7 @@ def cluster_label(obj):
     res0 = ""
     if draw & DRAW.ICON:
         res0 = res0 + f'''
-            <TD ROWSPAN="3"><IMG SRC="icons/{type(obj).Icon}.png"/></TD>
+            <TD ROWSPAN="3"><IMG SRC="../icons/{type(obj).Icon}.png"/></TD>
         '''
 
     if draw & DRAW.VIEW:
@@ -657,9 +657,9 @@ class ObjectModel:
 
     def load(self):
         ''' Loads model from file '''
-        if not os.path.exists(self.path + ".xml"): return
+        if not os.path.exists("Y3A/render/" + self.path + ".xml"): return
 
-        with open(self.path + ".xml", 'r') as file:
+        with open("Y3A/render/" + self.path + ".xml", 'r') as file:
             xml_string = file.read()
         root = ET.fromstring(xml_string)
 
@@ -691,7 +691,7 @@ class ObjectModel:
 
 
         tree = prettify(root)
-        with open(self.path + ".xml", "w") as file:
+        with open("Y3A/render/" + self.path + ".xml", "w") as file:
             file.write(tree)
 
     def auto_save(self):
@@ -842,4 +842,4 @@ class ObjectModel:
 
 
 #        drawing.print()
-        drawing.draw(self.path)
+        drawing.draw("Y3A/render/" + self.path)

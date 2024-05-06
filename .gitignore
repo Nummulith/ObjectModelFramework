@@ -1,7 +1,7 @@
-web_services
 __pycache__/
 *.pem
 *.svg
 *.xml
 *.prof
 */desktop.ini
+Y3A/render/*
