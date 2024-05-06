@@ -21,14 +21,14 @@ import importlib
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.uic import loadUi
 
-from Y3A.awsClasses import AWS
+from awsClasses import AWS
 
 class MyWidget(QWidget):
     """ GUI Window """
 
     def __init__(self):
         super(MyWidget, self).__init__()
-        loadUi('Y3A.ui', self)
+        loadUi('Y3A/Y3A.ui', self)
 
         self.bExample    .clicked.connect(self.example)
         self.bFetch      .clicked.connect(self.fetch)
