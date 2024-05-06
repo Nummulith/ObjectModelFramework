@@ -15,8 +15,8 @@ import re
 
 import subprocess
 
-from awsClasses import *
-from ObjectModel import AWS
+from Y3A.awsClasses import *
+from OMF.ObjectModel import AWS
 
 def prettify(elem):
     rough_string = ET.tostring(elem, "utf-8")

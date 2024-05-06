@@ -12,7 +12,7 @@ Usage:
 Author: Pavel ERESKO
 """
 
-from ObjectModel import *
+from OMF.ObjectModel import *
 
 class DemoItem(ObjectModelItem):
     Icon = "Demo\\Y3A-Icon"

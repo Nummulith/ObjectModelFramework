@@ -1,4 +1,4 @@
-from awsClasses import PAR, bt
+from Y3A.awsClasses import PAR, bt
 import requests
 
 def Test0(aws):

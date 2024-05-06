@@ -22,7 +22,7 @@ import zipfile
 import json
 import stat
 
-from ObjectModel import *
+from OMF.ObjectModel import *
 
 
 # id parameter passing

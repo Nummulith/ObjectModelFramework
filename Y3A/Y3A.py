@@ -21,14 +21,14 @@ import importlib
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.uic import loadUi
 
-from awsClasses import AWS
+from Y3A.awsClasses import AWS
 
 class MyWidget(QWidget):
     """ GUI Window """
 
     def __init__(self):
         super(MyWidget, self).__init__()
-        loadUi('omf_aws.ui', self)
+        loadUi('Y3A.ui', self)
 
         self.bExample    .clicked.connect(self.example)
         self.bFetch      .clicked.connect(self.fetch)
@@ -37,7 +37,7 @@ class MyWidget(QWidget):
         self.bDelete     .clicked.connect(self.delete)
 
         self.leProfile.setText("TS")
-        self.leFile   .setText("omf_aws")
+        self.leFile   .setText("Y3A")
         self.leClasses.setText("All")
         self.leExample.setText("Test")
 

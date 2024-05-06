@@ -36,7 +36,7 @@ import os
 
 from xml.dom import minidom
 
-from Drawing import Drawing
+from Drawing.Drawing import Drawing
 
 ID_DV = "|"
 

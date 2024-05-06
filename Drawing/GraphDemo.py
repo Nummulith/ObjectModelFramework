@@ -1,4 +1,4 @@
-from Drawing import Drawing
+from Drawing.Drawing import Drawing
 
 drawing = Drawing()
 

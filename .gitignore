@@ -4,5 +4,4 @@ __pycache__/
 *.svg
 *.xml
 *.prof
-*.png
-icons/AWS/desktop.ini
+*/desktop.ini

@@ -1,5 +1,5 @@
 import cProfile
-from omf_aws import Test
+from Y3A.Y3A import Test
 
 profile = cProfile.Profile()
 profile.enable()
