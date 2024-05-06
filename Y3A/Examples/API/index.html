@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display API Data</title>
+</head>
+<body>
+    <h1>Data from API Gateway</h1>
+    <div id="data"></div>
+
+    <script>
+        // Function to make API request and format response into HTML table
+        function fetchDataAndDisplay() {
+            fetch('https://pavel.cctstudents.com/array/')
+                .then(response => response.json())
+                .then(data => {
+                    // Construct HTML table
+                    let html = '<table>';
+                    data.forEach(row => {
+                        html += '<tr>';
+                        row.forEach(cell => {
+                            html += `<td>${cell}</td>`;
+                        });
+                        html += '</tr>';
+                    });
+                    html += '</table>';
+
+                    // Update HTML content with generated HTML table
+                    document.getElementById('data').innerHTML = html;
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+
+        // Call the function to fetch data and display on page load
+        window.onload = fetchDataAndDisplay;
+    </script>
+
+    <script>
+        const myList = document.querySelector("ul");
+        const myRequest = new Request("products.json");
+
+        fetch(myRequest)
+        .then((response) => response.json())
+        .then((data) => {
+            for (const product of data.products) {
+            const listItem = document.createElement("li");
+            listItem.appendChild(document.createElement("strong")).textContent =
+                product.Name;
+            listItem.append(` can be found in ${product.Location}. Cost: `);
+            listItem.appendChild(document.createElement("strong")).textContent = `£${product.Price}`;
+            myList.appendChild(listItem);
+            }
+        })
+        .catch(console.error);
+    </script>
+
+</body>
+</html>
