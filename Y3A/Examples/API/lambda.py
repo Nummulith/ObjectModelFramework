@@ -26,6 +26,11 @@ def response(body, status_code=200, as_html=False):
       res['headers'] = {
         'Content-Type': 'text/html'
       }
+    else:
+      res['headers'] = {
+        "Access-Control-Allow-Origin": "*",  # Allow requests from any origin
+        "Access-Control-Allow-Credentials": True  # Allow credentials (e.g., cookies) to be sent with the request
+      }
 
     return res
 
