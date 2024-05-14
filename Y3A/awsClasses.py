@@ -921,6 +921,21 @@ class S3_Bucket(awsObject):
             response = bt('s3').head_bucket(Bucket=id)
             return [response]
 
+    def upload_file(id, s3_key, file_path):
+        response = bt('s3').upload_file(file_path, id, s3_key, ExtraArgs={'ContentType': 'text/html'})
+
+    def put_object_acl(id, s3_key, acl):
+        response = bt('s3').put_object_acl(ACL=acl, Bucket=id, Key=s3_key)
+
+
+    def clear_bucket(id):
+        s3 = bt('s3')
+        response = s3.list_objects_v2(Bucket=id)
+
+        if 'Contents' in response:
+            for obj in response['Contents']:
+                s3.delete_object(Bucket=id, Key=obj['Key'])
+                # print(f"Deleted object: {obj['Key']}")
 
 
 class EC2_EIP(awsObject):

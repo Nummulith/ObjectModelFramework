@@ -226,3 +226,19 @@ Resources:
       AliasTarget:
         HostedZoneId: !GetAtt ApiGatewayCustomDomain.RegionalHostedZoneId
         DNSName: !GetAtt ApiGatewayCustomDomain.RegionalDomainName
+
+  StaticWebsiteHostingBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub "${AWS::StackName}.cctstudents.com"
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+  

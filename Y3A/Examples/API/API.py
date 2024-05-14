@@ -1,4 +1,7 @@
+import boto3
+
 name = "pavel-api"
+
 
 def API(aws):
     print("((( --- API")
@@ -10,18 +13,31 @@ def API(aws):
 
     update(aws)
 
+
+def uploadfile(aws):
+    bucket_name = name + ".cctstudents.com"
+    file_path = './Y3A/Examples/API/index.html'
+    s3_key = 'index.html'
+
+    aws.S3_Bucket.Class.upload_file(bucket_name, s3_key, file_path)
+    aws.S3_Bucket.Class.put_object_acl(bucket_name, s3_key, 'public-read')
+
+
 def update(aws):
     print("((( --- update")
 
     with open("./Y3A/Examples/API/lambda.py", 'r') as file: Code = file.read()
     aws.Lambda_Function.Class.update_code(name, Code)
 
+    uploadfile(aws)
+
     print("--- )))")
+
 
 def clean(aws):
     print("((( --- clean")
 
-    Lambda = "pavel-api"
-    aws.CloudFormation_Stack.delete(Lambda)
+    aws.S3_Bucket.Class.clear_bucket(f"{name}.cctstudents.com")
+    aws.CloudFormation_Stack.delete(name)
 
     print("--- )))")
