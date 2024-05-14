@@ -102,11 +102,11 @@ def idpar(id, ParType = PAR.PAR):
 
     return params
 
-def Wait(waiter_name, resource_param, resource_id):
-    waiter = bt('ec2').get_waiter(waiter_name)
+def Wait(service_name, waiter_name, resource_param, resource_id):
+    waiter = bt(service_name).get_waiter(waiter_name)
 
     waiter.wait(
-        **{f"{resource_param}": [resource_id]},
+        **{f"{resource_param}": resource_id},
         WaiterConfig={
             'Delay': 3,
             'MaxAttempts': 100
@@ -268,7 +268,7 @@ class EC2_Instance(awsObject):
             InstanceIds=[id]
         )
 
-        Wait('instance_terminated', "InstanceIds", id)
+        Wait('ec2', 'instance_terminated', "InstanceIds", [id])
 
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)
@@ -397,7 +397,7 @@ class EC2_NatGateway(awsObject):
 
         Tag.create(id, "Name", f"{EC2_NatGateway.Prefix}-{name}")
 
-        Wait('nat_gateway_available', "NatGatewayIds", id)
+        Wait('ec2', 'nat_gateway_available', "NatGatewayIds", [id])
 
         return id
     
@@ -405,7 +405,7 @@ class EC2_NatGateway(awsObject):
     def delete(id):
         bt('ec2').delete_nat_gateway(NatGatewayId = id)
 
-        Wait('nat_gateway_deleted', "NatGatewayIds", id)
+        Wait('ec2', 'nat_gateway_deleted', "NatGatewayIds", [id])
 
 
 class EC2_EIPAssociation(awsObject): 
@@ -1515,9 +1515,19 @@ class CloudFormation_Stack(awsObject):
     @staticmethod
     def create(stack_name, template_body, parameters = None):
         cf_pars = [{'ParameterKey': key, 'ParameterValue': value} for key, value in parameters.items()] if parameters != None else []
-        response = boto3.client('cloudformation').create_stack(StackName=stack_name, TemplateBody=template_body, Parameters=cf_pars)
+        response = boto3.client('cloudformation').create_stack(StackName=stack_name, TemplateBody=template_body, Parameters=cf_pars, Capabilities=['CAPABILITY_IAM'])
+
+        Wait('cloudformation', 'stack_create_complete', "StackName", stack_name)
+
         return stack_name
 
+    @staticmethod
+    def delete(StackName):
+        response = bt('cloudformation').delete_stack(StackName=StackName)
+
+        Wait('cloudformation', 'stack_delete_complete', "StackName", StackName)
+
+        return
 
 class CloudFormation_StackResource(awsObject):
     ListName = "Resources"

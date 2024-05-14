@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  StageName:
+    Type: String
+    Default: v1
+    Description: Name of API stage.
+Resources:
+  Api:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: ReqValidatorsSample
+  RequestBodyModelId:
+    Type: 'AWS::ApiGateway::Model'
+    Properties:
+      RestApiId: !Ref Api
+      ContentType: application/json
+      Description: Request body model for Pet ID.
+      Schema:
+        $schema: 'http://json-schema.org/draft-04/schema#'
+        title: RequestBodyModelId
+        properties:
+            id:
+              type: integer
+  RequestBodyModel: 
+    Type: 'AWS::ApiGateway::Model'
+    Properties:
+      RestApiId: !Ref Api
+      ContentType: application/json
+      Description: Request body model for Pet type, name, price, and ID.
+      Schema:
+        $schema: 'http://json-schema.org/draft-04/schema#'
+        title: RequestBodyModel
+        required:
+          - price
+          - name
+          - type
+        type: object
+        properties:
+            id:
+              "$ref": !Sub 
+                - 'https://apigateway.amazonaws.com/restapis/${Api}/models/${RequestBodyModelId}'
+                - Api: !Ref Api
+                  RequestBodyModelId: !Ref RequestBodyModelId
+            price: 
+              type: number
+              minimum: 25
+              maximum: 500
+            name:
+              type: string
+            type:
+              type: string
+              enum:
+                - "dog"
+                - "cat"
+                - "fish"
+  GETValidator:
+    Type: AWS::ApiGateway::RequestValidator
+    Properties:
+      Name: params-only
+      RestApiId: !Ref Api
+      ValidateRequestBody: False
+      ValidateRequestParameters: True 
+  POSTValidator:
+    Type: AWS::ApiGateway::RequestValidator
+    Properties:
+      Name: body-only
+      RestApiId: !Ref Api
+      ValidateRequestBody: True
+      ValidateRequestParameters: False
+  ValidationResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !GetAtt Api.RootResourceId
+      PathPart: 'validation'
+  ValidationMethodGet:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ValidationResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      RequestValidatorId: !Ref GETValidator
+      RequestParameters:
+        method.request.querystring.q1: true
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: GET
+        Uri: http://petstore-demo-endpoint.execute-api.com/petstore/pets/
+  ValidationMethodPost:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ValidationResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      RequestValidatorId: !Ref POSTValidator
+      RequestModels:
+        application/json : !Ref RequestBodyModel 
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: POST
+        Uri: http://petstore-demo-endpoint.execute-api.com/petstore/pets/
+  ApiDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    DependsOn:
+      - ValidationMethodGet
+      - RequestBodyModel 
+    Properties:
+      RestApiId: !Ref Api
+      StageName: !Sub '${StageName}'
+Outputs:
+  ApiRootUrl:
+    Description: Root Url of the API
+    Value: !Sub 'https://${Api}.execute-api.${AWS::Region}.amazonaws.com/${StageName}'
+    

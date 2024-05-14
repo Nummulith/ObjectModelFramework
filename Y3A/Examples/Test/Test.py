@@ -1,5 +1,5 @@
-from Y3A.awsClasses import PAR, bt
-import requests
+# from Y3A.awsClasses import PAR, bt
+# import requests
 
 def Test0(aws):
     instance_id = 'i-06c51f4f542763747'
@@ -61,7 +61,7 @@ def Test1(aws):
         InstanceId=instance_id
     )
 
-def Test3(aws):
+def Test2(aws):
     url = "http://18.192.62.22/"
     response = requests.get(url)
 
@@ -71,7 +71,7 @@ def Test3(aws):
     else:
         print(f"Failed to retrieve the page. Status code: {response.status_code}")
 
-def Test2(aws):
+def Test3(aws):
     print("(---")
 
     aws.save()
@@ -112,7 +112,7 @@ def Test2(aws):
 
     print("---)")
 
-def Test3(aws):
+def Test4(aws):
     print("(---")
 
     objs = aws.EC2_SecurityGroup.fetch(None, None, True)
@@ -129,7 +129,7 @@ def Test3(aws):
 
     print("---)")
 
-def Test4(aws):
+def Test5(aws):
     print("(---")
 
     objs = aws.AWS_AvailabilityZone.fetch()
@@ -146,9 +146,11 @@ def Test4(aws):
 def Test(aws):
     print("(---")
 
-    objs = aws.ELB_Listener.fetch()
-    for obj in objs:
-        print(f"{obj}")
+    # objs = aws.CloudFormation_Stack.fetch()
+    # for obj in objs:
+    #     print(f"{obj}")
+
+    aws.print()
 
     print("---)")
 

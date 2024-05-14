@@ -38,6 +38,8 @@ from xml.dom import minidom
 
 from Drawing.Drawing import Drawing
 
+import yaml
+
 ID_DV = "|"
 
 class FIELD:
@@ -480,12 +482,19 @@ class ObjectList:
 
     def print(self):
         ''' Printing all the objects in the list '''
+        res = ""
+
         if len(self.map) == 0:
-            return
+            return res
 
         print(f"  {self.view()}: {len(self.map)}")
-        for node_id, obj in self.map:
+        for node_id, obj in self.map.items():
             print(f"{node_id}: {obj}")
+
+            res += f"##### {self.view()}: {node_id}\n\n{yaml.dump(obj.__dict__)}\n\n\n"
+
+        return res
+
 
 def node_label(obj):
     ''' html code for node '''
@@ -649,10 +658,14 @@ class ObjectModel:
         ''' Prints model '''
         clsss = self.string_to_classes(clss_list)
 
+        res = ""
         for clss in clsss:
             name = clss.get_class_view()
             wrapper = getattr(self, name)
-            wrapper.print()
+            res += wrapper.print()
+
+        with open("./render/print.yaml", "w") as file: file.write(res)
+
 
 
     def load(self):

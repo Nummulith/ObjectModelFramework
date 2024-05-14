@@ -37,10 +37,10 @@ class MyWidget(QWidget):
         self.bDraw       .clicked.connect(self.draw)
         self.bDelete     .clicked.connect(self.delete)
 
-        self.leProfile.setText("TS")
+        self.leProfile.setText("TS" )
         self.leFile   .setText("Y3A")
         self.leClasses.setText("All")
-        self.leExample.setText("CloudFormation")
+        self.leExample.setText("API")
 
         self.cbAWS .setChecked(True)
         self.cbLoad.setChecked(True)
