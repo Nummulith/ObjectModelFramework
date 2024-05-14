@@ -30,12 +30,14 @@ class MyWidget(QWidget):
         super(MyWidget, self).__init__()
         loadUi('Y3A/Y3A.ui', self)
 
-        self.bExample    .clicked.connect(lambda: self.example(clean=False))
-        self.bExClean    .clicked.connect(lambda: self.example(clean=True ))
-        self.bFetch      .clicked.connect(self.fetch)
-        self.bRelease    .clicked.connect(self.release)
-        self.bDraw       .clicked.connect(self.draw)
-        self.bDelete     .clicked.connect(self.delete)
+        self.bExample .clicked.connect(lambda: self.example(func = None    ))
+        self.bExUpdate.clicked.connect(lambda: self.example(func = "update"))
+        self.bExClean .clicked.connect(lambda: self.example(func = "clean" ))
+
+        self.bFetch   .clicked.connect(self.fetch)
+        self.bRelease .clicked.connect(self.release)
+        self.bDraw    .clicked.connect(self.draw)
+        self.bDelete  .clicked.connect(self.delete)
 
         self.leProfile.setText("TS" )
         self.leFile   .setText("Y3A")
@@ -59,18 +61,18 @@ class MyWidget(QWidget):
 
         return self.AWS
 
-    def example(self, clean=False):
+    def example(self, func = None):
         """ 'Example' button click """
 
         auto = self.cbLoad.isChecked()
         aws = self.get_aws(auto, auto) if self.cbAWS.isChecked() else None
 #        aws.CallClasses = self.leClasses.text()
 
-        folder_name = self.leExample.text()
-        function_name = folder_name if not clean else "clean"
+        module_name = self.leExample.text()
+        function_name = module_name if func == None else func
 
         try:
-            module = importlib.import_module(f"Examples." + folder_name + "." + function_name)
+            module = importlib.import_module(f"Examples." + module_name + "." + module_name)
             importlib.reload(module)
 
             func = getattr(module, function_name)

@@ -6,3 +6,7 @@ def CloudFormation(aws):
 
 #    params = {'KeyName': 'your-key-name', 'InstanceType': 't2.micro'}
     cf = aws.CloudFormation_Stack.create(Stack, yaml)
+
+def clean(aws):
+    Lambda = "demo0"
+    aws.CloudFormation_Stack.delete(Lambda)
