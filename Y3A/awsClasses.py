@@ -1847,13 +1847,13 @@ class AWS(ObjectModel):
                 'DrawRDS' : 'EC2_VPC, EC2_Subnet, RDS'
             },
             {
+                'IAM'     : [IAM_User, IAM_Group, IAM_Role],
                 'VPC'     : [EC2_KeyPair, EC2_VPC, EC2_InternetGateway, EC2_VPCGatewayAttachment],
                 'SN'      : [EC2_Subnet, EC2_RouteTable, EC2_Route, EC2_RouteTable_Association, EC2_EIP, EC2_NatGateway, EC2_EIPAssociation],
                 'SG'      : [EC2_SecurityGroup, EC2_SecurityGroup_Rule],
                 'NACL'    : [EC2_NetworkAcl, EC2_NetworkAclEntry],
                 'EC2'     : [AWS_AMI, EC2_Instance, EC2_Reservation, EC2_NetworkInterface, EC2_Instance_NetworkInterface],
                 'RDS'     : [RDS_DBSubnetGroup, RDS_DBSubnetGroup_Subnet, RDS_DBInstance, DynamoDB_Table],
-                'IAM'     : [IAM_User, IAM_Group, IAM_Role],
                 'ELB'     : [ELB_LoadBalancer, ELB_LoadBalancer_AvailabilityZone, ELB_TargetGroup, ELB_Listener, AutoScaling_LaunchConfiguration, AutoScaling_AutoScalingGroup],
                 'RAZ'     : [AWS_Region, AWS_AvailabilityZone],
                 'CF'      : [CloudFormation_Stack, CloudFormation_StackResource],

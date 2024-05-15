@@ -203,7 +203,7 @@ class ObjectModelItem:
     def get_actual_field_type(self, field):
         return self.fields()[field][FIELD.TYPE]
 
-    def get_object(self, model, field):
+    def get_field_object(self, model, field):
         ''' Getting the object of the field '''
         if field is None:
             return None
@@ -223,16 +223,19 @@ class ObjectModelItem:
     def object_of_a_kind(self, model, kind):
         '''Getting the object of the field of a kind'''
         field = self.field_of_a_kind(kind)
-        return self.get_object(model, field)
+        return self.get_field_object(model, field)
 
-    def get_link(self, model):
+    def get_draw_link(self, model):
         '''Getting the link, modyfying id if node is in the list'''
         lister = self.object_of_a_kind(model, FIELD.LIST_ITEM)
         if lister is not None:
-            listname = self.value_of_a_kind(FIELD.LIST_NAME)
-            return f"{lister.get_id()}-{listname}:{self.get_id()}"
+            list_name = self.value_of_a_kind(FIELD.LIST_NAME)
+            return f"{lister.get_draw_id(model)}-{list_name}:{self.get_draw_id(model)}"
 
-        return self.get_id()
+        return self.get_draw_id(model)
+
+    def get_draw_id(self, model):
+        return self.__class__.get_class_view() + "_" + self.get_id()
 
     def get_id(self):
         '''Getting Id of object'''
@@ -787,47 +790,48 @@ class ObjectModel:
 
                 listitemfield = obj.field_of_a_kind(FIELD.LIST_ITEM)
                 if listitemfield is not None and hasattr(obj, listitemfield):
-                    listitem = getattr(obj, listitemfield)
+                    list_item_obj = obj.get_field_object(self, listitemfield)
+                    list_item = list_item_obj.get_draw_id(self)
 
-                    islisted[obj] = listitem
+                    islisted[obj] = list_item
 
-                    listname = getattr(obj, obj.field_of_a_kind(FIELD.LIST_NAME), "List")
+                    list_name = getattr(obj, obj.field_of_a_kind(FIELD.LIST_NAME), "List")
 
-                    if not listitem in haslisted:
-                        haslisted[listitem] = {}
-                    if not listname in haslisted[listitem]:
-                        haslisted[listitem][listname] = []
+                    if not list_item in haslisted:
+                        haslisted[list_item] = {}
+                    if not list_name in haslisted[list_item]:
+                        haslisted[list_item][list_name] = []
 
-                    haslisted[listitem][listname].append(obj)
+                    haslisted[list_item][list_name].append(obj)
 
 
         for clss in clsss:
             wrap = self[clss]
-            if not clss in clsss:
-                continue
 
             for node_id, obj in wrap.map.items():
-                if obj in hasowned or node_id in haslisted:
-                    drawing.add_item(node_id,
+                obj_view = obj.get_draw_id(self)
+                
+                if obj in hasowned or obj_view in haslisted:
+                    drawing.add_item(obj_view,
                         cluster = drawing.item_view(cluster_label(obj), style = 'filled', fillcolor = type(obj).Color),
                         point   = drawing.item_view("", shape='point', width='0.1')
                     )
                 elif obj in islisted:
                     pass
                 else:
-                    drawing.add_item(node_id, drawing.item_view(node_label(obj), shape='plaintext'))
+                    drawing.add_item(obj_view, drawing.item_view(node_label(obj), shape='plaintext'))
 
                 par = isowned[obj] if obj in isowned else None
                 if par is not None:
-                    drawing.add_parent(node_id, par.get_id())
+                    drawing.add_parent(obj_view, par.get_draw_id(self))
 
-                if node_id in haslisted:
-                    for listname, listitems in haslisted[node_id].items():
+                if obj_view in haslisted:
+                    for list_name, listitems in haslisted[obj_view].items():
                         # break
 
-                        label = f'<TR><TD BGCOLOR="#A9DFBF"><B><FONT POINT-SIZE="9.0">{listname}</FONT></B></TD></TR>\n'
-                        for listitem in listitems:
-                            label += f'<TR><TD BGCOLOR="white" PORT="{listitem.get_id()}"><FONT POINT-SIZE="9.0">{listitem.get_view()}</FONT></TD></TR>\n'
+                        label = f'<TR><TD BGCOLOR="#A9DFBF"><B><FONT POINT-SIZE="9.0">{list_name}</FONT></B></TD></TR>\n'
+                        for list_item in listitems:
+                            label += f'<TR><TD BGCOLOR="white" PORT="{list_item.get_draw_id(self)}"><FONT POINT-SIZE="9.0">{list_item.get_view()}</FONT></TD></TR>\n'
 
                         label = f'''<
                             <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
@@ -835,24 +839,24 @@ class ObjectModel:
                             </TABLE>
                         >'''
 
-                        drawing.add_item  (node_id + "-" + listname, drawing.item_view(label, shape='plaintext'))
-                        drawing.add_parent(node_id + "-" + listname, node_id)
+                        drawing.add_item  (obj_view + "-" + list_name, drawing.item_view(label, shape='plaintext'))
+                        drawing.add_parent(obj_view + "-" + list_name, obj_view)
 
 
-                idlink = obj.get_link(self)
+                idlink = obj.get_draw_link(self)
 
                 for field in obj.fields_of_a_kind(FIELD.LINK):
-                    corr = obj.get_object(self, field)
+                    corr = obj.get_field_object(self, field)
                     if corr is None:
                         continue
-                    drawing.add_link(idlink, corr.get_link(self), field)
+                    drawing.add_link(idlink, corr.get_draw_link(self), field)
 
                 for field in obj.fields_of_a_kind(FIELD.LINK_IN):
-                    corr = obj.get_object(self, field)
+                    corr = obj.get_field_object(self, field)
                     if corr is None:
                         continue
-                    drawing.add_link(corr.get_link(self), idlink, field + "<")
+                    drawing.add_link(corr.get_draw_link(self), idlink, field + "<")
 
+        drawing.print()
 
-#        drawing.print()
         drawing.draw("Y3A/render/" + self.path)
