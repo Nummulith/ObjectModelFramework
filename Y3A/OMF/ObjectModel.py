@@ -857,6 +857,6 @@ class ObjectModel:
                         continue
                     drawing.add_link(corr.get_draw_link(self), idlink, field + "<")
 
-        drawing.print()
+        # drawing.print()
 
         drawing.draw("Y3A/render/" + self.path)
