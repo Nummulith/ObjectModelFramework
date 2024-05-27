@@ -23,6 +23,8 @@ from PyQt5.uic import loadUi
 
 from awsClasses import AWS
 
+from jinja2 import Template
+
 class MyWidget(QWidget):
     """ GUI Window """
 
@@ -38,8 +40,9 @@ class MyWidget(QWidget):
         self.bRelease .clicked.connect(self.release)
         self.bDraw    .clicked.connect(self.draw)
         self.bDelete  .clicked.connect(self.delete)
+        self.bShow    .clicked.connect(self.show_object)
 
-        self.leProfile.setText("TS" )
+        self.leProfile.setText("PE" )
         self.leFile   .setText("Y3A")
         self.leClasses.setText("All")
         self.leExample.setText("API")
@@ -102,7 +105,15 @@ class MyWidget(QWidget):
         aws.load()
         aws.save()
 
-        aws.draw(self.leClasses.text())
+        drawstr = aws.draw(self.leClasses.text())
+
+        with open('Y3A\\render\\Y3A.svg', 'w') as file:
+            file.write(drawstr)
+
+        with open('Y3A\\Y3A.j2', 'r') as file: template_str = file.read()
+        template = Template(template_str)
+        output = template.render(content=drawstr)
+        with open('Y3A\\render\\Y3A.html', 'w') as f: f.write(output)
 
     def delete(self):
         """ 'delete' button click """
@@ -110,6 +121,39 @@ class MyWidget(QWidget):
         aws.save() #
         aws.delete_all()
 
+    def show_object(self):
+        """ 'show' button click """
+        aws = self.get_aws()
+
+        res_type = self.leType.text()
+        res_id   = self.leId.text()
+
+        # res_type = "CloudFormation_Stack"
+        # res_id = "ECS-Console-V2-Service-wind-service-wind-0a454f7f"
+
+        print("=========")
+        print(f"{res_type}::{res_id}")
+
+        try:
+            wrap = getattr(aws, res_type)
+            obj = wrap.fetch(res_id)[0]
+
+        except Exception as e:
+            print(f"show: An exception occurred: {type(e).__name__} - {e}")
+            return
+
+        for field in [attr for attr in dir(obj)]:
+            if field.startswith('__') and field.endswith('__'):
+                continue
+            
+            value = getattr(obj, field)
+
+            if callable(value):
+                continue
+
+            print(f"{field}: {value}")
+
+        print("")
 
 if __name__ == '__main__':
     app = QApplication([])

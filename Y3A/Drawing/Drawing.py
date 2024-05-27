@@ -149,10 +149,25 @@ class Drawing:
 
         self.linked = None
 
-        dot.render(name, format='png', cleanup=True)
-        #dot.render(name, format='svg', cleanup=True)
 
-        #pixmap = QPixmap("Drawing.png")
-        #pixmap_item = QGraphicsPixmapItem(pixmap)
-        #Graph.scene().addItem(pixmap_item)
-        #Graph.fitInView(Graph.scene().sceneRect()) # Autoscaling
+        with open('Y3A\\render\\Y3A.txt', 'w') as file:
+            file.write(dot.source)
+
+
+        try:
+            # dot.render(name, format='png', cleanup=True)
+            # dot.render(name, format='svg', cleanup=True)
+
+            #pixmap = QPixmap("Drawing.png")
+            #pixmap_item = QGraphicsPixmapItem(pixmap)
+            #Graph.scene().addItem(pixmap_item)
+            #Graph.fitInView(Graph.scene().sceneRect()) # Autoscaling
+
+            svg_str = dot.pipe(format='svg').decode('utf-8')
+        except Exception as e:
+            print(f"Draw error: {str(e)}")
+            return ""
+
+        svg_str = '\n'.join(svg_str.split('\n')[3:])
+
+        return svg_str

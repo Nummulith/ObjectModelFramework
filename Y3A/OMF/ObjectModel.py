@@ -498,6 +498,8 @@ class ObjectList:
 
         return res
 
+def get_icon_path():
+    return os.path.abspath('Y3A/icons/').replace("\\", "/")
 
 def node_label(obj):
     ''' html code for node '''
@@ -520,7 +522,7 @@ def node_label(obj):
     if draw & DRAW.ICON:
         res = res + f'''
             <TR>
-                <TD BGCOLOR="white" PORT="p2"><IMG SRC="../icons/{type(obj).Icon}.png"/></TD>
+                <TD BGCOLOR="white" PORT="p2"><IMG SRC="{get_icon_path()}/{type(obj).Icon}.png"/></TD>
             </TR>
         '''
     res = res + f'''
@@ -554,7 +556,7 @@ def cluster_label(obj):
     res0 = ""
     if draw & DRAW.ICON:
         res0 = res0 + f'''
-            <TD ROWSPAN="3"><IMG SRC="../icons/{type(obj).Icon}.png"/></TD>
+            <TD ROWSPAN="3"><IMG SRC="{get_icon_path()}/{type(obj).Icon}.png"/></TD>
         '''
 
     if draw & DRAW.VIEW:
@@ -859,4 +861,4 @@ class ObjectModel:
 
         # drawing.print()
 
-        drawing.draw("Y3A/render/" + self.path)
+        return drawing.draw("Y3A/render/" + self.path)

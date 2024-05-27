@@ -68,6 +68,7 @@ def idpar(id, ParType = PAR.PAR):
         flt = {field : (id, ParType)}
     elif isinstance(id, tuple):
         flt = {id[0] : (id[1], ParType)}
+    # elif isinstance(id, list): ?
     else:
         flt = id
     
@@ -369,7 +370,7 @@ class EC2_VPCGatewayAttachment(awsObject):
 
 class EC2_NatGateway(awsObject): 
     Prefix = "nat"
-    Icon = "Res_Amazon-VPC_NAT-Gateway_48"
+    Icon = "NATGateWay"
     Color = COLOR.BLUE_DARK
 
     @staticmethod
@@ -620,7 +621,7 @@ class EC2_Subnet(awsObject):
 
 class EC2_NetworkAcl(awsObject): 
     Prefix = "nacl"
-    Icon = "Res_Amazon-VPC_Network-Access-Control-List_48"
+    Icon = "NACL"
     Color = COLOR.BLUE_DARK
 
     @staticmethod
@@ -670,7 +671,7 @@ class EC2_NetworkAclEntry(awsObject):
 
 class EC2_RouteTable(awsObject): 
     Prefix = "rtb"
-    Icon = "Res_Amazon-Route-53_Route-Table_48"
+    Icon = "RouteTable"
     Color = COLOR.BLUE_DARK
 
     @staticmethod
@@ -876,7 +877,7 @@ class EC2_VPC(awsObject):
 
 class EC2_NetworkInterface(awsObject): 
     Prefix = "ni"
-    Icon = "Res_Amazon-VPC_Elastic-Network-Interface_48"
+    Icon = "VPCElasticNetworkInterface"
     Color = COLOR.BLUE_DARK
     ListName = "NetworkInterfaces"
 
@@ -1054,7 +1055,7 @@ class IAM_User(awsObject):
         
         else:
             response = bt('iam').get_user(UserName=id)
-            return [response['IAM_User']]
+            return [response['User']]
 
     def get_id(self):
         return f"{self.UserName}"
@@ -1071,7 +1072,7 @@ class IAM_Group(awsObject):
         
         else:
             response = bt('iam').get_group(GroupName=id)
-            return [response['IAM_Group']]
+            return [response['Group']]
 
     def get_id(self):
         return f"{self.GroupName}"
@@ -1079,7 +1080,7 @@ class IAM_Group(awsObject):
 
 class IAM_Role(awsObject):
     DoNotFetch = True
-    Icon = "Res_AWS-Identity-Access-Management_Role_48"
+    Icon = "IAMRole"
 
     @staticmethod
     def aws_get_objects(id = None):
@@ -1559,11 +1560,19 @@ class CloudFormation_StackResource(awsObject):
 
     def __init__(self, aws, id_query, index, resp, do_auto_save=True):
         super().__init__(aws, id_query, index, resp, do_auto_save)
-        PhysicalResourceId = self.PhysicalResourceId.replace(ID_DV, "_")
+
+        PhysicalResourceId = self.PhysicalResourceId
+        PhysicalResourceId = PhysicalResourceId.replace(ID_DV, "_")
+        PhysicalResourceId = PhysicalResourceId.replace(":", "_")
+
         self.Id   = f"{self.StackName}{ID_DV}{PhysicalResourceId}"
         self.View = f"{self.ResourceType.replace('AWS::', '')}::{self.PhysicalResourceId}"
 
         self.ResourceType = str_to_class(self.ResourceType)
+
+        if self.ResourceType == ECS_Service:
+            self.PhysicalResourceId = f"{PhysicalResourceId.split(':')[-1].split('/')[-2]}|{PhysicalResourceId.split(':')[-1].split('/')[-1]}"
+
 
     def get_actual_field_type(self, field):
         if field == 'PhysicalResourceId':
@@ -1813,12 +1822,140 @@ class Logs_LogGroup(awsObject):
     @staticmethod
     def fields():
         return {
-            'logGroupName': (Route53_RecordSet, FIELD.ID),
+            'logGroupName': (Logs_LogGroup, FIELD.ID),
         }
 
     @staticmethod
     def aws_get_objects(id = None):
         return bt('logs').describe_log_groups(**idpar(('logGroupNamePrefix', id)))['logGroups']
+
+
+class ECR_Repository(awsObject):
+    Icon = "Arch_Amazon-Elastic-Container-Registry_48"
+    Color = COLOR.ORANGE
+    Draw = DRAW.DEF
+
+    @staticmethod
+    def fields():
+        return {
+            'repositoryName': (ECR_Repository, FIELD.ID),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        return bt('ecr').describe_repositories(**idpar({"repositoryNames": id}, PAR.LIST))['repositories']
+
+
+class ECR_Repository_Image(awsObject):
+    Icon = "Arch_Amazon-Elastic-Container-Registry_48"
+    Color = COLOR.ORANGE
+
+    @staticmethod
+    def fields():
+        return {
+            'ParentId': (ECR_Repository, FIELD.OWNER),
+            'imageTag': (str, FIELD.VIEW),
+            'Id': (ECR_Repository_Image, FIELD.ID),
+        }
+
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
+        self.Id = f"{self.ParentId}{ID_DV}{self.imageTag}"
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        return ECR_Repository.get_objects_by_index(id, ECR_Repository_Image, "imageTag")
+
+    @staticmethod
+    def get_objects_of_parent(parent, id):
+        resp = bt('ecr').list_images(**idpar({"repositoryName": parent}))
+        return resp["imageIds"]
+
+
+class ECS_Cluster(awsObject):
+    Icon = "Arch_Amazon-Elastic-Container-Service_48"
+    Color = COLOR.ORANGE
+
+    @staticmethod
+    def fields():
+        return {
+            'clusterName': (ECS_Cluster, FIELD.ID),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        if id == None:
+            resp = bt('ecs').list_clusters()
+            ids = [cluster_arn.split('/')[-1] for cluster_arn in resp["clusterArns"]]
+            return ECS_Cluster.aws_get_objects(ids)
+            
+        else:
+            return bt('ecs').describe_clusters(**idpar({ "clusters": id if isinstance(id, list) else [id] }))['clusters']
+
+
+class ECS_Service(awsObject):
+    Icon = "Arch_Amazon-Elastic-Container-Service_48"
+    Color = COLOR.ORANGE
+
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
+        self.Id = f"{self.ParentId}{ID_DV}{self.serviceName}"
+
+    @staticmethod
+    def fields():
+        return {
+            'ParentId': (ECS_Cluster, FIELD.OWNER),
+            'Id': (ECS_Service, FIELD.ID),
+            'serviceName': (str, FIELD.VIEW),
+        }
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        return ECS_Cluster.get_objects_by_index(id, ECS_Service, "serviceName")
+
+    @staticmethod
+    def get_objects_of_parent(parent, id):
+        srv = bt('ecs')
+
+        if id == None:
+            resp = srv.list_services(**idpar({"cluster": parent}))
+            ids = [service_arn.split('/')[-1] for service_arn in resp["serviceArns"]]
+        else:
+            ids = [id]
+
+        resp = srv.describe_services(cluster=parent, services=ids)
+
+        return resp["services"]
+    
+
+class ECS_TaskDefinition(awsObject):
+    Icon = "Arch_Amazon-Elastic-Container-Service_48"
+    Color = COLOR.ORANGE
+
+    @staticmethod
+    def fields():
+        return {
+            'Id': (ECS_TaskDefinition, FIELD.ID),
+        }
+
+    def __init__(self, aws, id_query, index, resp, do_auto_save=True):
+        super().__init__(aws, id_query, index, resp, do_auto_save)
+        self.Id = f"{self.family}:{self.revision}"
+
+    @staticmethod
+    def aws_get_objects(id = None):
+        btecs = bt('ecs')
+        if id == None:
+            resp = btecs.list_task_definitions()
+            ids = [service_arn.split('/')[-1] for service_arn in resp["taskDefinitionArns"]]
+        else:
+            ids = [id]
+
+        res = []
+        for curid in ids:
+            resp = btecs.describe_task_definition(taskDefinition=curid)
+            res.append(resp['taskDefinition'])
+        return res
 
 
 class AWS(ObjectModel):
@@ -1863,6 +2000,7 @@ class AWS(ObjectModel):
                 'Lambda'  : [Lambda_Function],
                 'SNS'     : [SNS_Topic],
                 'LOG'     : [Logs_LogGroup],
+                'EC'      : [ECR_Repository, ECR_Repository_Image, ECS_Cluster, ECS_Service, ECS_TaskDefinition],
             }
         )
 
