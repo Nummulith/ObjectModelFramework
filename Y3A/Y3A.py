@@ -23,8 +23,6 @@ from PyQt5.uic import loadUi
 
 from awsClasses import AWS
 
-from jinja2 import Template
-
 class MyWidget(QWidget):
     """ GUI Window """
 
@@ -38,7 +36,9 @@ class MyWidget(QWidget):
 
         self.bFetch   .clicked.connect(self.fetch)
         self.bRelease .clicked.connect(self.release)
+        self.bReleaseAll.clicked.connect(self.release_all)
         self.bDraw    .clicked.connect(self.draw)
+        self.bReDraw  .clicked.connect(self.redraw)
         self.bDelete  .clicked.connect(self.delete)
         self.bShow    .clicked.connect(self.show_object)
 
@@ -99,21 +99,28 @@ class MyWidget(QWidget):
         aws.release(self.leClasses.text())
         aws.save()
 
+    def release_all(self):
+        """ 'Release all' button click """
+        aws = self.get_aws(False, False)
+        aws.release("ALL")
+        aws.save()
+
+    def redraw(self):
+        """ 'reDraw' button click """
+        aws = self.get_aws(False, False)
+        aws.fetch(self.leClasses.text())
+        aws.save()
+
+        aws.draw(self.leClasses.text())
+
+
     def draw(self):
         """ 'Draw' button click """
         aws = self.get_aws(False, False)
         aws.load()
         aws.save()
 
-        drawstr = aws.draw(self.leClasses.text())
-
-        with open('Y3A\\render\\Y3A.svg', 'w') as file:
-            file.write(drawstr)
-
-        with open('Y3A\\Y3A.j2', 'r') as file: template_str = file.read()
-        template = Template(template_str)
-        output = template.render(content=drawstr)
-        with open('Y3A\\render\\Y3A.html', 'w') as f: f.write(output)
+        aws.draw(self.leClasses.text())
 
     def delete(self):
         """ 'delete' button click """

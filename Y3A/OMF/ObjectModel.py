@@ -40,6 +40,8 @@ from Drawing.Drawing import Drawing
 
 import yaml
 
+from jinja2 import Template
+
 ID_DV = "|"
 
 class FIELD:
@@ -895,4 +897,15 @@ class ObjectModel:
 
         # drawing.print()
 
-        return drawing.draw("Y3A/render/" + self.path)
+        drawstr = drawing.draw("Y3A/render/" + self.path)
+    
+        with open('Y3A\\render\\Y3A.svg', 'w') as file:
+            file.write(drawstr)
+
+        with open('Y3A\\Y3A.j2', 'r') as file:
+            template_str = file.read()
+
+        template = Template(template_str)
+        output = template.render(content=drawstr)
+        with open('Y3A\\render\\Y3A.html', 'w') as f:
+            f.write(output)
