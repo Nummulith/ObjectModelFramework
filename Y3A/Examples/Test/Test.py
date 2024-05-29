@@ -117,7 +117,7 @@ def Test4(aws):
 
     objs = aws.EC2_SecurityGroup.fetch(None, None, True)
     for obj in objs:
-        ec2 = obj["ParentId"]
+        ec2 = obj["_parent"]
         sg  = obj["GroupId"]
         sgrs = aws.EC2_SecurityGroup_Rule.fetch(f"{obj.GroupId}|*", None, True)
 

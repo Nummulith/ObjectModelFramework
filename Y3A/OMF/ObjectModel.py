@@ -126,17 +126,19 @@ class ObjectModelItem:
         if id_query is not None:
             par_id, _, _ = id_query.rpartition(ID_DV)
             if par_id != "":
-                setattr(self, "ParentId", par_id)
+                setattr(self, "_parent", par_id)
+                resp["_parent"] = par_id
 
         if getattr(self, "UseIndex", False):
-            setattr(self, "Index", index)
+            # setattr(self, "_index", index)
+            resp["_index"] = index
+
+        # key = self.field_of_a_kind(FIELD.ID) # process Id first
+        # if key is not None and key in resp:
+        #     setattr(self, key, resp[key])
+        self.call_form_id(resp, self)
 
         fields = type(self).fields()
-
-        key = self.field_of_a_kind(FIELD.ID) # process Id first
-        if key is not None and key in resp:
-            setattr(self, key, resp[key])
-
         for key, value in resp.items():
             cfg = fields.get(key, type(value))
             fieldtype = cfg[FIELD.TYPE] if isinstance(cfg, tuple) else cfg
@@ -240,10 +242,12 @@ class ObjectModelItem:
     def get_id(self):
         '''Getting Id of object'''
         field = self.field_of_a_kind(FIELD.ID)
+        if field == None:
+            field = "_id"
         if field is not None and hasattr(self, field):
             return getattr(self, field)
 
-        return f"{getattr(self, 'ParentId', '?')}{ID_DV}{getattr(self, 'Index', '?')}"
+        return f"{getattr(self, '_parent', '?')}{ID_DV}{getattr(self, '_index', '?')}"
 
     def get_view(self):
         '''Getting view of object'''
@@ -269,6 +273,25 @@ class ObjectModelItem:
 
         return ""
 
+    @staticmethod
+    def form_id(resp, id_field):
+        '''Function to form id from response'''
+        return resp[id_field]
+
+    @classmethod
+    def call_form_id(cls, resp, obj = None):
+        '''Function to call form id from response'''
+        id_field = cls.field_of_a_kind(FIELD.ID)
+        if id_field == None:
+            id_field = "_id"
+
+        id = cls.form_id(resp, id_field)
+
+        if obj != None:
+            setattr(obj, id_field, id)
+
+        return id
+
     @classmethod
     def get_objects_by_index(cls, query, list_field, filter_field):
         '''Getting children object by id'''
@@ -277,11 +300,10 @@ class ObjectModelItem:
         if query is not None:
             par_query, _, kind_query = query.rpartition(ID_DV)
 
-        par_id_field = cls.field_of_a_kind(FIELD.ID)
         pars = cls.get_objects(par_query)
         result = []
         for par in pars:
-            par_id = par[par_id_field]
+            par_id = cls.call_form_id(par)
 
             if type(list_field) is str:
                 kinder = par[list_field]
@@ -300,7 +322,11 @@ class ObjectModelItem:
             for kind in kinder:
                 index += 1
 
-                kind["ParentId"] = par_id
+                kind["_parent"] = par_id
+                if type(list_field) is str:
+                    pass # kind["_id"] = f"{par_id}{ID_DV}{???}"
+                else:
+                    kind["_id"] = list_field.call_form_id(kind)
 
                 if kind_query is not None and kind_query != "" and kind_query != "*":
                     if kind_query != (str(index) if filter_field == int else str(kind[filter_field])):
@@ -421,10 +447,10 @@ class ObjectList:
             new_id = self.Class.create(**create_par)
             resp = self.Class.get_objects(new_id)
 
-        sg_id = ""
+        par_id = ""
         ip_n = "*"
         if isinstance(filter, str):
-            sg_id, _, ip_n = filter.rpartition(ID_DV)
+            par_id, _, ip_n = filter.rpartition(ID_DV)
 
         index = -1
         for el in resp:
@@ -433,7 +459,8 @@ class ObjectList:
             if ip_nn == "*":
                 ip_nn = int(index)
 
-            obj = self.Class(self.model, f"{sg_id}{ID_DV}{ip_nn}", index, el, do_auto_save)
+            obj = self.Class(self.model, f"{par_id}{ID_DV}{ip_nn}", index, el, do_auto_save)
+
             obj_id = obj.get_id()
             self.map[obj_id] = obj
 
@@ -702,6 +729,9 @@ class ObjectModel:
             name = clss.get_class_view()
             wrapper = getattr(self, name)
 
+            if len(wrapper.map) == 0:
+                continue
+
             category_element = ET.SubElement(root, name)
             for node_id, obj in wrapper.map.items():
                 id_element = ET.SubElement(category_element, f"id")
@@ -793,6 +823,10 @@ class ObjectModel:
                 listitemfield = obj.field_of_a_kind(FIELD.LIST_ITEM)
                 if listitemfield is not None and hasattr(obj, listitemfield):
                     list_item_obj = obj.get_field_object(self, listitemfield)
+
+                    if list_item_obj == None:
+                        continue
+
                     list_item = list_item_obj.get_draw_id(self)
 
                     islisted[obj] = list_item
