@@ -582,7 +582,7 @@ def cluster_label(obj):
     res0 = ""
     if draw & DRAW.ICON:
         res0 = res0 + f'''
-            <TD ROWSPAN="3"><IMG SRC="{type(obj).Icon}.png"/></TD>
+            <TD ROWSPAN="3"><IMG SRC="{type(obj).Icon}"/></TD>
         '''
 
     if draw & DRAW.VIEW:

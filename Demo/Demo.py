@@ -15,10 +15,10 @@ Author: Pavel ERESKO
 from ObjectModelFramework import *
 
 def get_icon_path(name):
-    return os.path.abspath('./icons/').replace("\\", "/") + name + ".png"
+    return os.path.abspath('./Demo/icons').replace("\\", "/") + "/" + name + ".png"
 
 class DemoItem(ObjectModelItem):
-    Icon = get_icon_path("Y3A-Icon")
+    Icon = get_icon_path("Y3A")
     Color = "#e998ed"
 
     @classmethod
@@ -32,7 +32,7 @@ class DemoItem(ObjectModelItem):
             return []
 
 class GraphViz(DemoItem):
-    Icon = get_icon_path("GraphvizIcon")
+    Icon = get_icon_path("Graphviz")
     Color = "#adcdd9"
 
     @staticmethod
@@ -44,7 +44,7 @@ class GraphViz(DemoItem):
                 }
 
 class ParentClass(DemoItem):
-    Icon = get_icon_path("ObjectModel-Icon")
+    Icon = get_icon_path("ObjectModel")
     Name = "Object Model"
     Color = '#84def4'
 
@@ -57,7 +57,7 @@ class ParentClass(DemoItem):
                 }
 
 class Drawing(DemoItem):
-    Icon = get_icon_path("Drawing-Icon")
+    Icon = get_icon_path("Drawing")
     Name = "Drawing"
     Color = '#c8b7ea'
 
@@ -81,7 +81,7 @@ class Picture(DemoItem):
                 }
 
 class InheritedClass(DemoItem):
-    Icon = get_icon_path("Obj-Icon")
+    Icon = get_icon_path("Obj")
     Color = "#A9DFBF"
 
     @staticmethod
