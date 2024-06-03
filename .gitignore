@@ -4,4 +4,4 @@ __pycache__/
 *.xml
 *.prof
 */desktop.ini
-Y3A/render/*
+render/*

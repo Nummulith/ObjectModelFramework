@@ -528,7 +528,7 @@ class ObjectList:
         return res
 
 def get_icon_path():
-    return os.path.abspath('Y3A/icons/').replace("\\", "/")
+    return os.path.abspath('./icons/').replace("\\", "/")
 
 def node_label(obj):
     ''' html code for node '''
@@ -704,9 +704,9 @@ class ObjectModel:
 
     def load(self):
         ''' Loads model from file '''
-        if not os.path.exists("Y3A/render/" + self.path + ".xml"): return
+        if not os.path.exists("./render/" + self.path + ".xml"): return
 
-        with open("Y3A/render/" + self.path + ".xml", 'r') as file:
+        with open("./render/" + self.path + ".xml", 'r') as file:
             xml_string = file.read()
         root = ET.fromstring(xml_string)
 
@@ -741,7 +741,7 @@ class ObjectModel:
 
 
         tree = prettify(root)
-        with open("Y3A/render/" + self.path + ".xml", "w") as file:
+        with open("./render/" + self.path + ".xml", "w") as file:
             file.write(tree)
 
     def auto_save(self):
@@ -897,15 +897,15 @@ class ObjectModel:
 
         # drawing.print()
 
-        drawstr = drawing.draw("Y3A/render/" + self.path)
+        drawstr = drawing.draw("./render/" + self.path)
     
-        with open('Y3A\\render\\Y3A.svg', 'w') as file:
+        with open('./render/Y3A.svg', 'w') as file:
             file.write(drawstr)
 
-        with open('Y3A\\Y3A.j2', 'r') as file:
+        with open('./Y3A.j2', 'r') as file:
             template_str = file.read()
 
         template = Template(template_str)
         output = template.render(content=drawstr)
-        with open('Y3A\\render\\Y3A.html', 'w') as f:
+        with open('./render/Y3A.html', 'w') as f:
             f.write(output)
