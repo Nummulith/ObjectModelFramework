@@ -12,7 +12,7 @@ Usage:
 Author: Pavel ERESKO
 """
 
-from OMF.ObjectModel import *
+from ObjectModelFramework import *
 
 class DemoItem(ObjectModelItem):
     Icon = "Demo\\Y3A-Icon"
@@ -196,4 +196,6 @@ class DemoObjectModel(ObjectModel):
 
 OM = DemoObjectModel()
 OM.fetch()
-OM.draw()
+
+draw = OM.draw()
+print(draw)

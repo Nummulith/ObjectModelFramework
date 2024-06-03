@@ -36,7 +36,7 @@ import os
 
 from xml.dom import minidom
 
-from Drawing.Drawing import Drawing
+from graphclass import Drawing
 
 import yaml
 
