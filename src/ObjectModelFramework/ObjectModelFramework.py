@@ -527,9 +527,6 @@ class ObjectList:
 
         return res
 
-def get_icon_path():
-    return os.path.abspath('./icons/').replace("\\", "/")
-
 def node_label(obj):
     ''' html code for node '''
     draw  = type(obj).Draw
@@ -551,7 +548,7 @@ def node_label(obj):
     if draw & DRAW.ICON:
         res = res + f'''
             <TR>
-                <TD BGCOLOR="white" PORT="p2"><IMG SRC="{get_icon_path()}/{type(obj).Icon}.png"/></TD>
+                <TD BGCOLOR="white" PORT="p2"><IMG SRC="{type(obj).Icon}"/></TD>
             </TR>
         '''
     res = res + f'''
@@ -585,7 +582,7 @@ def cluster_label(obj):
     res0 = ""
     if draw & DRAW.ICON:
         res0 = res0 + f'''
-            <TD ROWSPAN="3"><IMG SRC="{get_icon_path()}/{type(obj).Icon}.png"/></TD>
+            <TD ROWSPAN="3"><IMG SRC="{type(obj).Icon}.png"/></TD>
         '''
 
     if draw & DRAW.VIEW:
@@ -899,8 +896,8 @@ class ObjectModel:
 
         drawstr = drawing.draw("Schema")
     
-        with open('./Demo.svg', 'w') as file:
-            file.write(drawstr)
+        # with open('./Demo.svg', 'w') as file:
+        #     file.write(drawstr)
 
         with open('./Demo.j2', 'r') as file:
             template_str = file.read()

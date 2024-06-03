@@ -14,8 +14,11 @@ Author: Pavel ERESKO
 
 from ObjectModelFramework import *
 
+def get_icon_path(name):
+    return os.path.abspath('./icons/').replace("\\", "/") + name + ".png"
+
 class DemoItem(ObjectModelItem):
-    Icon = "Demo\\Y3A-Icon"
+    Icon = get_icon_path("Y3A-Icon")
     Color = "#e998ed"
 
     @classmethod
@@ -29,7 +32,7 @@ class DemoItem(ObjectModelItem):
             return []
 
 class GraphViz(DemoItem):
-    Icon = "Demo\\GraphvizIcon"
+    Icon = get_icon_path("GraphvizIcon")
     Color = "#adcdd9"
 
     @staticmethod
@@ -41,7 +44,7 @@ class GraphViz(DemoItem):
                 }
 
 class ParentClass(DemoItem):
-    Icon = "Demo\\ObjectModel-Icon"
+    Icon = get_icon_path("ObjectModel-Icon")
     Name = "Object Model"
     Color = '#84def4'
 
@@ -54,7 +57,7 @@ class ParentClass(DemoItem):
                 }
 
 class Drawing(DemoItem):
-    Icon = "Demo\\Drawing-Icon"
+    Icon = get_icon_path("Drawing-Icon")
     Name = "Drawing"
     Color = '#c8b7ea'
 
@@ -67,7 +70,7 @@ class Drawing(DemoItem):
                 }
 
 class Picture(DemoItem):
-    Icon = "Demo\\Demo"
+    Icon = get_icon_path("Demo")
     Draw = DRAW.ICON
 
     @staticmethod
@@ -78,7 +81,7 @@ class Picture(DemoItem):
                 }
 
 class InheritedClass(DemoItem):
-    Icon = "Demo\\Obj-Icon"
+    Icon = get_icon_path("Obj-Icon")
     Color = "#A9DFBF"
 
     @staticmethod
