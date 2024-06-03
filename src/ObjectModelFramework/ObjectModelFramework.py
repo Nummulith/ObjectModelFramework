@@ -897,15 +897,15 @@ class ObjectModel:
 
         # drawing.print()
 
-        drawstr = drawing.draw("./render/" + self.path)
+        drawstr = drawing.draw("Schema")
     
-        with open('./render/Y3A.svg', 'w') as file:
+        with open('./Demo.svg', 'w') as file:
             file.write(drawstr)
 
-        with open('./Y3A.j2', 'r') as file:
+        with open('./Demo.j2', 'r') as file:
             template_str = file.read()
 
         template = Template(template_str)
         output = template.render(content=drawstr)
-        with open('./render/Y3A.html', 'w') as f:
+        with open('./Demo.html', 'w') as f:
             f.write(output)
