@@ -440,7 +440,7 @@ class ObjectList:
                 resp = self.Class.get_objects(filter)
             except Exception as e:
                 # ErrorCode = e.response['Error']['Code'] if hasattr(e, "response") else ""
-                print(f"{self.Class.get_class_view()}.get_objects: {e.args[0]}")
+                print(f"{self.Class.get_class_view()}.get_objects: {e}")
                 # if ErrorCode[-9:] == '.NotFound' or ErrorCode == "AccessDenied":
                 #     return
                 # else:
