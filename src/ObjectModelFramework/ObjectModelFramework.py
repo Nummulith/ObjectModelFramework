@@ -267,7 +267,11 @@ class ObjectModelItem:
 
     def get_icon(self):
         '''Getting icon of object'''
+
         field = self.field_of_a_kind(FIELD.ICON)
+        if field is None:
+            field = "Icon"
+
         if field is not None and hasattr(self, field):
             return getattr(self, field)
 
@@ -546,7 +550,7 @@ def node_label(obj):
     if draw & DRAW.ICON:
         res = res + f'''
             <TR>
-                <TD BGCOLOR="white" PORT="p2"><IMG SRC="{type(obj).Icon}"/></TD>
+                <TD BGCOLOR="white" PORT="p2"><IMG SRC="{obj.get_icon()}"/></TD>
             </TR>
         '''
     res = res + f'''
@@ -580,7 +584,7 @@ def cluster_label(obj):
     res0 = ""
     if draw & DRAW.ICON:
         res0 = res0 + f'''
-            <TD ROWSPAN="3"><IMG SRC="{type(obj).Icon}"/></TD>
+            <TD ROWSPAN="3"><IMG SRC="{obj.get_icon()}"/></TD>
         '''
 
     if draw & DRAW.VIEW:

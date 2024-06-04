@@ -14,11 +14,8 @@ Author: Pavel ERESKO
 
 from ObjectModelFramework import *
 
-def get_icon_path(name):
-    return os.path.abspath('./src/Demo/icons').replace("\\", "/") + "/" + name + ".png"
-
 class DemoItem(ObjectModelItem):
-    Icon = get_icon_path("Y3A")
+    Icon = "Y3A"
     Color = "#e998ed"
 
     @classmethod
@@ -31,8 +28,12 @@ class DemoItem(ObjectModelItem):
                     return [obj]
             return []
 
+    def get_icon(self):
+        icon = super().get_icon()
+        return os.path.abspath('./src/Demo/icons').replace("\\", "/") + "/" + icon + ".png"
+
 class GraphViz(DemoItem):
-    Icon = get_icon_path("Graphviz")
+    Icon = "Graphviz"
     Color = "#adcdd9"
 
     @staticmethod
@@ -44,7 +45,7 @@ class GraphViz(DemoItem):
                 }
 
 class ParentClass(DemoItem):
-    Icon = get_icon_path("ObjectModel")
+    Icon = "ObjectModel"
     Name = "Object Model"
     Color = '#84def4'
 
@@ -57,7 +58,7 @@ class ParentClass(DemoItem):
                 }
 
 class Drawing(DemoItem):
-    Icon = get_icon_path("Drawing")
+    Icon = "Drawing"
     Name = "Drawing"
     Color = '#c8b7ea'
 
@@ -70,7 +71,7 @@ class Drawing(DemoItem):
                 }
 
 class Picture(DemoItem):
-    Icon = get_icon_path("Demo")
+    Icon = "Demo"
     Draw = DRAW.ICON
 
     @staticmethod
@@ -81,7 +82,7 @@ class Picture(DemoItem):
                 }
 
 class InheritedClass(DemoItem):
-    Icon = get_icon_path("Obj")
+    Icon = "Obj"
     Color = "#A9DFBF"
 
     @staticmethod
@@ -162,7 +163,7 @@ class DemoObjectModel(ObjectModel):
                     {
                         "Id": "ic-Y3A",
                         "Name" : "Y3A",
-                        "Icon" : "yet-another-aws-analyse-icon",
+                        # "Icon" : "Y3A",
                     },
                     {
                         "Id": "ic-Demo",
