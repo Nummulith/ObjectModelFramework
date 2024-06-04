@@ -734,7 +734,7 @@ class ObjectModel:
 
 
         tree = prettify(root)
-        with open("./src/Demo/" + self.path + ".xml", "w") as file:
+        with open(self.path, "w") as file:
             file.write(tree)
 
     def auto_save(self):
