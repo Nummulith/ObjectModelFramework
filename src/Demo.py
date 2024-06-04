@@ -7,7 +7,7 @@ Classes:
     ParentClass, InheritedClass, Listed, Drawing, GraphViz, Picture
 
 Usage:
-    Run the module. See the graph output in Demo.png file.
+    Run the module. See the graph output in Demo.html file.
 
 Author: Pavel ERESKO
 """
@@ -15,7 +15,7 @@ Author: Pavel ERESKO
 from ObjectModelFramework import *
 
 def get_icon_path(name):
-    return os.path.abspath('./Demo/icons').replace("\\", "/") + "/" + name + ".png"
+    return os.path.abspath('./src/Demo/icons').replace("\\", "/") + "/" + name + ".png"
 
 class DemoItem(ObjectModelItem):
     Icon = get_icon_path("Y3A")
@@ -200,5 +200,7 @@ class DemoObjectModel(ObjectModel):
 OM = DemoObjectModel()
 OM.fetch()
 
-draw = OM.draw()
-print(draw)
+draw = OM.html()
+
+with open('./src/Demo/Demo.html', 'w') as file:
+    file.write(draw)

@@ -693,9 +693,7 @@ class ObjectModel:
             wrapper = getattr(self, name)
             res += wrapper.print()
 
-        with open("./render/print.yaml", "w") as file: file.write(res)
-
-
+        return res
 
     def load(self):
         ''' Loads model from file '''
@@ -736,7 +734,7 @@ class ObjectModel:
 
 
         tree = prettify(root)
-        with open("./render/" + self.path + ".xml", "w") as file:
+        with open("./src/Demo/" + self.path + ".xml", "w") as file:
             file.write(tree)
 
     def auto_save(self):
@@ -890,9 +888,14 @@ class ObjectModel:
                         continue
                     drawing.add_link(corr.get_draw_link(self), idlink, field + "<")
 
-        # drawing.print()
+        return drawing
 
-        drawstr = drawing.html("Schema")
+
+    def html(self, clss_list = None):
+        return self.draw(clss_list).html("OMF")
+
+    def svg(self, clss_list = None):
+        return self.draw(clss_list).svg("OMF")
     
-        with open('./render/Demo.html', 'w') as file:
-            file.write(drawstr)
+    def source(self, clss_list = None):
+        return self.draw(clss_list).source("OMF")
