@@ -5,3 +5,4 @@ __pycache__/
 *.prof
 */desktop.ini
 src/Demo/Demo.html
+src/ObjectModelFramework/_version.py
