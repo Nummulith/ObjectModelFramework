@@ -343,8 +343,8 @@ class ObjectModelItem:
 
         xml_tree = structure_to_xml(data_structure)
 
-        with open("query.xml", "w", encoding="utf-8") as file:
-            file.write(prettify(xml_tree.getroot()))
+        # with open("query.xml", "w", encoding="utf-8") as file:
+        #     file.write(prettify(xml_tree.getroot()))
 
         reslist = plain_query(xml_tree, query)
 
@@ -697,9 +697,9 @@ class ObjectModel:
 
     def load(self):
         ''' Loads model from file '''
-        if not os.path.exists("./render/" + self.path + ".xml"): return
+        if not os.path.exists(self.path): return
 
-        with open("./render/" + self.path + ".xml", 'r') as file:
+        with open(self.path, 'r') as file:
             xml_string = file.read()
         root = ET.fromstring(xml_string)
 
