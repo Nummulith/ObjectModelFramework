@@ -40,8 +40,6 @@ from graphclass import Drawing
 
 import yaml
 
-from jinja2 import Template
-
 ID_DV = "|"
 
 class FIELD:
@@ -894,15 +892,7 @@ class ObjectModel:
 
         # drawing.print()
 
-        drawstr = drawing.draw("Schema")
+        drawstr = drawing.html("Schema")
     
-        # with open('./Demo.svg', 'w') as file:
-        #     file.write(drawstr)
-
-        with open('./Demo.j2', 'r') as file:
-            template_str = file.read()
-
-        template = Template(template_str)
-        output = template.render(content=drawstr)
-        with open('./Demo.html', 'w') as f:
-            f.write(output)
+        with open('./render/Demo.html', 'w') as file:
+            file.write(drawstr)
