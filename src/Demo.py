@@ -114,9 +114,9 @@ class Listed(DemoItem):
 class DemoObjectModel(ObjectModel):
     def __init__(self):
         super().__init__(
-            "Demo",
-            True,
-            True,
+            "./src/Demo/Demo.xml",
+            False,
+            False,
             {
                 'GraphViz' : [
                     {
