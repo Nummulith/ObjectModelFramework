@@ -475,7 +475,6 @@ class ObjectList:
 
         return res
 
-
     def create(self, *args):
         ''' Creates object in the list '''
         try:
@@ -765,20 +764,26 @@ class ObjectModel:
                 res += self.string_to_classes(i)
             return res
 
-        elif isinstance(clsss, str) and hasattr(self, clsss):
-            return [getattr(self, clsss).Class]
-
-        elif isinstance(clsss, str) and clsss in self.Classes:
-            return self.Classes[clsss]
+        elif isinstance(clsss, str):
         
-        elif isinstance(clsss, str) and clsss in self.Const:
-            return self.string_to_classes(self.Const[clsss])
+            if hasattr(self, clsss):
+                return [getattr(self, clsss).Class]
+
+            elif clsss in self.Classes:
+                return self.Classes[clsss]
+            
+            elif clsss in self.Const:
+                return self.string_to_classes(self.Const[clsss])
+
+            else:
+                print("ObjectModel.string_to_classes: wrong Class string key: " + clsss)
+                return []
 
         elif issubclass(clsss, ObjectModelItem):
             return [clsss]
 
         else:
-            print("ObjectModel.string_to_classes: wrong Class key: " + clsss)
+            print("ObjectModel.string_to_classes: wrong Class: " + clsss)
             return []
 
 
