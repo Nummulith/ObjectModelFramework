@@ -285,11 +285,16 @@ class ObjectModelItem:
     @classmethod
     def call_form_id(cls, resp, obj = None):
         '''Function to call form id from response'''
+        
         id_field = cls.field_of_a_kind(FIELD.ID)
         if id_field == None:
             id_field = "_id"
 
-        id = cls.form_id(resp, id_field)
+        try:
+            id = cls.form_id(resp, id_field)
+        except Exception as e:
+            print(f"{cls.get_class_view()}.call_form_id: {e}")
+            id = "-"
 
         if obj != None:
             setattr(obj, id_field, id)
