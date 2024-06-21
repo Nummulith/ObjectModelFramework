@@ -256,6 +256,9 @@ class ObjectModelItem:
             return getattr(self, field)
 
         return self.get_id()
+    
+    def get_href(self):
+        ""
 
     def get_ext(self):
         '''Getting extended view of object'''
@@ -542,7 +545,7 @@ def node_label(obj):
     if draw & DRAW.VIEW:
         res = res + f'''
             <TR>
-                <TD BGCOLOR="{color}" PORT="p0"><B>{obj.get_view()}</B></TD>
+                <TD {obj.get_href()} BGCOLOR="{color}" PORT="p0"><B>{obj.get_view()}</B></TD>
             </TR>
         '''
     if draw & DRAW.EXT:
@@ -593,7 +596,7 @@ def cluster_label(obj):
 
     if draw & DRAW.VIEW:
         res0 = res0 + f'''
-            <TD><B>{obj.get_view()}</B></TD>
+            <TD {obj.get_href()}><B>{obj.get_view()}</B></TD>
         '''
 
     if res0 != "":
@@ -876,7 +879,7 @@ class ObjectModel:
 
                         label = f'<TR><TD BGCOLOR="#A9DFBF"><B><FONT POINT-SIZE="9.0">{list_name}</FONT></B></TD></TR>\n'
                         for list_item in listitems:
-                            label += f'<TR><TD BGCOLOR="white" PORT="{list_item.get_draw_id(self)}"><FONT POINT-SIZE="9.0">{list_item.get_view()}</FONT></TD></TR>\n'
+                            label += f'<TR><TD {list_item.get_href()} BGCOLOR="white" PORT="{list_item.get_draw_id(self)}"><FONT POINT-SIZE="9.0">{list_item.get_view()}</FONT></TD></TR>\n'
 
                         label = f'''<
                             <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
