@@ -201,7 +201,10 @@ class DemoObjectModel(ObjectModel):
 OM = DemoObjectModel()
 OM.fetch()
 
-draw = OM.html()
+# source = OM.source()
+# with open('./src/Demo/Demo.svg', 'w') as file:
+#     file.write(source)
 
+draw = OM.html()
 with open('./src/Demo/Demo.html', 'w') as file:
     file.write(draw)

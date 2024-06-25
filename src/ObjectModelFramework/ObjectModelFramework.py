@@ -258,7 +258,7 @@ class ObjectModelItem:
         return self.get_id()
     
     def get_href(self):
-        ""
+        return ""
 
     def get_ext(self):
         '''Getting extended view of object'''
