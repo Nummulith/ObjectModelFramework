@@ -58,11 +58,13 @@ class FIELD:
 
 class DRAW:
     ''' Elements to draw '''
-    VIEW = 1 #0
-    EXT  = 2 #1
-    ICON = 4 #2
-    ID   = 8 #3
-    ALL  = VIEW + EXT + ICON + ID # Full
+    VIEW  =  1 #1
+    EXT   =  2 #2
+    ICON  =  4 #3
+    ID    =  8 #4
+    CLASS = 16 #5
+
+    ALL  = VIEW + EXT + ICON + ID + CLASS # Full
     DEF  = ALL - EXT # Default
 
 def prettify(elem):
@@ -144,16 +146,10 @@ class ObjectModelItem:
             fieldtype = cfg[FIELD.TYPE] if isinstance(cfg, tuple) else cfg
 
             if isinstance(fieldtype, list) and len(fieldtype) != 0 and issubclass(fieldtype[0], ObjectModelItem):
-                # if len(fieldtype) == 0:
-                #     continue
-
-                # if fieldtype[0] == str:
-                #     continue
-
                 model[fieldtype[0]].fetch(f"{self.get_id()}{ID_DV}*", value, do_auto_save)
 
-            # elif fieldtype == list:
-            #     continue
+            elif isinstance(fieldtype, tuple) and len(fieldtype) != 0 and issubclass(fieldtype[0], ObjectModelItem):
+                setattr(self, key, (value,) if type(value) == str else tuple(value))
 
             elif isinstance(fieldtype, dict):
                 tkkey, tkval = next(iter(fieldtype.items()))
@@ -188,14 +184,24 @@ class ObjectModelItem:
     @classmethod
     def fields_of_a_kind(self, kind):
         ''' Getting all the fields of a kind '''
-        return (key for key, value in self.fields().items()
-                 if isinstance(value, tuple) and value[1] == kind
-               )
+        return [(key, value[1]) for key, value in self.fields().items()
+                 if isinstance(value, tuple)
+                    and (
+                        value[1] in kind if type(kind) is tuple
+                            else value[1] == kind
+                    )
+               ]
 
     @classmethod
     def field_of_a_kind(self, kind):
         ''' Getting the first field of a kind '''
-        return next(self.fields_of_a_kind(kind), None)
+
+        fields = self.fields_of_a_kind(kind)
+
+        if len(fields) == 0:
+            return None
+        
+        return fields[0][0]
 
     def value_of_a_kind(self, kind):
         ''' Getting the value of the first field of a kind '''
@@ -216,11 +222,23 @@ class ObjectModelItem:
 
         clss = self.get_actual_field_type(field)
 
+        if type(clss) is tuple:
+            clss = clss[0]
+
+            if type(node_id) is tuple:
+                return tuple([self.get_class_object(model, clss, cur_node_id) for cur_node_id in node_id])
+            else:
+                return (self.get_class_object(model, clss, node_id),)
+
+        else:
+            return self.get_class_object(model, clss, node_id)
+    
+    def get_class_object(self, model, clss, node_id):
         if clss == None or not node_id in model[clss].map:
             return None
-        
         obj = model[clss].map[node_id]
         return obj
+        
 
     def object_of_a_kind(self, model, kind):
         '''Getting the object of the field of a kind'''
@@ -560,11 +578,12 @@ def node_label(obj):
                 <TD BGCOLOR="white" PORT="p2"><IMG SRC="{obj.get_icon()}"/></TD>
             </TR>
         '''
-    res = res + f'''
-        <TR>
-            <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="9.0">{obj.get_class_view()}</FONT></TD>
-        </TR>
-    '''
+    if draw & DRAW.CLASS:
+        res = res + f'''
+            <TR>
+                <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="9.0">{obj.get_class_view()}</FONT></TD>
+            </TR>
+        '''
     if draw & DRAW.ID:
         res = res + f'''
             <TR>
@@ -614,11 +633,12 @@ def cluster_label(obj):
         </TR>
         '''
 
-    res1 = res1 + f'''
-        <TR>
-            <TD><FONT POINT-SIZE="9.0">{obj.get_class_view()}</FONT></TD>
-        </TR>
-        '''
+    if draw & DRAW.CLASS:
+        res1 = res1 + f'''
+            <TR>
+                <TD><FONT POINT-SIZE="9.0">{obj.get_class_view()}</FONT></TD>
+            </TR>
+            '''
 
     if draw & DRAW.ID:
         res1 = res1 + f'''
@@ -858,16 +878,27 @@ class ObjectModel:
 
             for node_id, obj in wrap.map.items():
                 obj_view = obj.get_draw_id(self)
+                links = obj.fields_of_a_kind((FIELD.LINK, FIELD.LINK_IN))
                 
-                if obj in hasowned or obj_view in haslisted:
-                    drawing.add_item(obj_view,
-                        cluster = drawing.item_view(cluster_label(obj), style = 'filled', fillcolor = type(obj).Color),
-                        point   = drawing.item_view("", shape='point', width='0.1')
-                    )
-                elif obj in islisted:
+                # if obj in hasowned or obj_view in haslisted or len(links) > 0:
+                #     drawing.add_item(obj_view,
+                #         cluster = drawing.item_view(cluster_label(obj), style = 'filled', fillcolor = type(obj).Color),
+                #         point   = drawing.item_view("", shape='point', width='0.1')
+                #     )
+                # elif obj in islisted:
+                #     pass
+                # else:
+                #     drawing.add_item(obj_view, drawing.item_view(node_label(obj), shape='plaintext'))
+
+                if obj in islisted:
                     pass
                 else:
-                    drawing.add_item(obj_view, drawing.item_view(node_label(obj), shape='plaintext'))
+                    drawing.add_item(obj_view,
+                        node    = drawing.add_item(obj_view, drawing.item_view(node_label(obj), shape='plaintext')),
+                        cluster = drawing.item_view(cluster_label(obj), style = 'filled', fillcolor = type(obj).Color),
+                        point   = drawing.item_view("", shape='point', width='0.1'),
+                    )
+
 
                 par = isowned[obj] if obj in isowned else None
                 if par is not None:
@@ -875,38 +906,58 @@ class ObjectModel:
 
                 if obj_view in haslisted:
                     for list_name, listitems in haslisted[obj_view].items():
-                        # break
-
-                        label = f'<TR><TD BGCOLOR="#A9DFBF"><B><FONT POINT-SIZE="9.0">{list_name}</FONT></B></TD></TR>\n'
-                        for list_item in listitems:
-                            label += f'<TR><TD {list_item.get_href()} BGCOLOR="white" PORT="{list_item.get_draw_id(self)}"><FONT POINT-SIZE="9.0">{list_item.get_view()}</FONT></TD></TR>\n'
-
-                        label = f'''<
-                            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
-                            {label}
-                            </TABLE>
-                        >'''
-
-                        drawing.add_item  (obj_view + "-" + list_name, drawing.item_view(label, shape='plaintext'))
-                        drawing.add_parent(obj_view + "-" + list_name, obj_view)
-
+                        self.draw_table(drawing, obj_view, list_name, listitems)
 
                 idlink = obj.get_draw_link(self)
 
-                for field in obj.fields_of_a_kind(FIELD.LINK):
-                    corr = obj.get_field_object(self, field)
-                    if corr is None:
-                        continue
-                    drawing.add_link(idlink, corr.get_draw_link(self), field)
+                # for field in obj.fields_of_a_kind(FIELD.LINK):
+                #     corr = obj.get_field_object(self, field)
+                #     if corr is None:
+                #         continue
+                #     drawing.add_link(idlink, corr.get_draw_link(self), field)
 
-                for field in obj.fields_of_a_kind(FIELD.LINK_IN):
+                # for field in obj.fields_of_a_kind(FIELD.LINK_IN):
+                #     corr = obj.get_field_object(self, field)
+                #     if corr is None:
+                #         continue
+                #     drawing.add_link(corr.get_draw_link(self), idlink, field + "<")
+
+                for field, link in links:
                     corr = obj.get_field_object(self, field)
+
                     if corr is None:
                         continue
-                    drawing.add_link(corr.get_draw_link(self), idlink, field + "<")
+
+                    elif type(corr) is tuple:
+                        self.draw_table(drawing, obj_view, field, corr)
+
+                        for list_item in corr:
+                            if link == FIELD.LINK:
+                                drawing.add_link(idlink + "-" + field + ":" + list_item.get_draw_id(self), list_item.get_draw_link(self), "" )
+                            else:
+                                drawing.add_link(list_item.get_draw_link(self), idlink + "-" + field + ":" + list_item.get_draw_id(self), "<")
+
+                    else:
+                        if link == FIELD.LINK:
+                            drawing.add_link(idlink, corr.get_draw_link(self), field      )
+                        else:
+                            drawing.add_link(corr.get_draw_link(self), idlink, field + "<")
 
         return drawing
+    
+    def draw_table(self, drawing, obj_view, list_name, listitems):
+        label = f'<TR><TD BGCOLOR="#A9DFBF"><B><FONT POINT-SIZE="9.0">{list_name}</FONT></B></TD></TR>\n'
+        for list_item in listitems:
+            label += f'<TR><TD {list_item.get_href()} BGCOLOR="white" PORT="{list_item.get_draw_id(self)}"><FONT POINT-SIZE="9.0">{list_item.get_view()}</FONT></TD></TR>\n'
 
+        label = f'''<
+            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+            {label}
+            </TABLE>
+        >'''
+
+        drawing.add_item  (obj_view + "-" + list_name, drawing.item_view(label, shape='plaintext'))
+        drawing.add_parent(obj_view + "-" + list_name, obj_view)
 
     def html(self, clss_list = None):
         return self.draw(clss_list).html("OMF")
@@ -916,3 +967,6 @@ class ObjectModel:
     
     def source(self, clss_list = None):
         return self.draw(clss_list).source("OMF")
+
+    def print(self, clss_list = None):
+        return self.draw(clss_list).print()
