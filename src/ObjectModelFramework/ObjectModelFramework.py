@@ -314,8 +314,9 @@ class ObjectModelItem:
         try:
             id = cls.form_id(resp, id_field)
         except Exception as e:
-            print(f"{cls.get_class_view()}.call_form_id: {e}")
-            id = "-"
+            import uuid
+            # print(f"{cls.get_class_view()}.call_form_id: {e}")
+            id = "id-" + str(uuid.uuid4())
 
         if obj != None:
             setattr(obj, id_field, id)
@@ -554,6 +555,34 @@ class ObjectList:
 
         return res
 
+def insert_line_breaks(text, interval = 40):
+    lines = text.split('\n')
+    result = []
+
+    for line in lines:
+        words = line.split()
+        current_line = ""
+        current_length = 0
+
+        for word in words:
+            if current_length + len(word) + 1 > interval:
+                result.append(current_line)
+                current_line = word
+                current_length = len(word)
+            else:
+                if current_line:
+                    current_line += " "
+                current_line += word
+                current_length += len(word) + 1
+
+        result.append(current_line)
+        result.append("")
+
+    if result and result[-1] == "":
+        result.pop()
+
+    return "<br/>".join(result)
+
 def node_label(obj):
     ''' html code for node '''
     draw  = type(obj).Draw
@@ -563,13 +592,13 @@ def node_label(obj):
     if draw & DRAW.VIEW:
         res = res + f'''
             <TR>
-                <TD {obj.get_href()} BGCOLOR="{color}" PORT="p0"><B>{obj.get_view()}</B></TD>
+                <TD {obj.get_href()} BGCOLOR="{color}" PORT="p0"><B>{insert_line_breaks(obj.get_view())}</B></TD>
             </TR>
         '''
     if draw & DRAW.EXT:
         res = res + f'''
             <TR>
-                <TD BGCOLOR="white" PORT="p1"><B>{obj.get_ext()}</B></TD>
+                <TD BGCOLOR="white" PORT="p1"><FONT POINT-SIZE="12.0">{insert_line_breaks(obj.get_ext())}</FONT></TD>
             </TR>
         '''
     if draw & DRAW.ICON:
@@ -581,15 +610,16 @@ def node_label(obj):
     if draw & DRAW.CLASS:
         res = res + f'''
             <TR>
-                <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="9.0">{obj.get_class_view()}</FONT></TD>
+                <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="8.0">{obj.get_class_view()}</FONT></TD>
             </TR>
         '''
     if draw & DRAW.ID:
         res = res + f'''
             <TR>
-                <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="9.0">{obj.get_id()}</FONT></TD>
+                <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="8.0">{obj.get_id()}</FONT></TD>
             </TR>
         '''
+        
     if res == "":
         res = res + f'''
             <TR>
@@ -615,7 +645,7 @@ def cluster_label(obj):
 
     if draw & DRAW.VIEW:
         res0 = res0 + f'''
-            <TD {obj.get_href()}><B>{obj.get_view()}</B></TD>
+            <TD {obj.get_href()}><B>{insert_line_breaks(obj.get_view())}</B></TD>
         '''
 
     if res0 != "":
@@ -629,21 +659,21 @@ def cluster_label(obj):
     if draw & DRAW.EXT:
         res1 = res1 + f'''
         <TR>
-            <TD><FONT POINT-SIZE="9.0">{obj.get_ext()}</FONT></TD>
+            <TD BGCOLOR="white"><FONT POINT-SIZE="12.0">{insert_line_breaks(obj.get_ext())}</FONT></TD>
         </TR>
         '''
 
     if draw & DRAW.CLASS:
         res1 = res1 + f'''
             <TR>
-                <TD><FONT POINT-SIZE="9.0">{obj.get_class_view()}</FONT></TD>
+                <TD><FONT POINT-SIZE="8.0">{obj.get_class_view()}</FONT></TD>
             </TR>
             '''
 
     if draw & DRAW.ID:
         res1 = res1 + f'''
         <TR>
-            <TD><FONT POINT-SIZE="9.0">{obj.get_id()}</FONT></TD>
+            <TD><FONT POINT-SIZE="8.0">{obj.get_id()}</FONT></TD>
         </TR>
         '''
 
@@ -948,7 +978,7 @@ class ObjectModel:
     def draw_table(self, drawing, obj_view, list_name, listitems):
         label = f'<TR><TD BGCOLOR="#A9DFBF"><B><FONT POINT-SIZE="9.0">{list_name}</FONT></B></TD></TR>\n'
         for list_item in listitems:
-            label += f'<TR><TD {list_item.get_href()} BGCOLOR="white" PORT="{list_item.get_draw_id(self)}"><FONT POINT-SIZE="9.0">{list_item.get_view()}</FONT></TD></TR>\n'
+            label += f'<TR><TD {list_item.get_href()} BGCOLOR="white" PORT="{list_item.get_draw_id(self)}"><FONT POINT-SIZE="9.0">{insert_line_breaks(list_item.get_view())}</FONT></TD></TR>\n'
 
         label = f'''<
             <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
