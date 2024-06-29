@@ -590,40 +590,51 @@ def node_label(obj):
 
     res = ""
     if draw & DRAW.VIEW:
-        res = res + f'''
-            <TR>
-                <TD {obj.get_href()} BGCOLOR="{color}" PORT="p0"><B>{insert_line_breaks(obj.get_view())}</B></TD>
-            </TR>
-        '''
+        val = obj.get_view()
+        if val:
+            res = res + f'''
+                <TR>
+                    <TD {obj.get_href()} BGCOLOR="{color}" PORT="p0"><B>{insert_line_breaks(val)}</B></TD>
+                </TR>
+            '''
     if draw & DRAW.EXT:
-        res = res + f'''
-            <TR>
-                <TD BGCOLOR="white" PORT="p1"><FONT POINT-SIZE="12.0">{insert_line_breaks(obj.get_ext())}</FONT></TD>
-            </TR>
-        '''
+        val = obj.get_ext()
+        if val:
+            res = res + f'''
+                <TR>
+                    <TD BGCOLOR="white" PORT="p1"><FONT POINT-SIZE="12.0">{insert_line_breaks(val)}</FONT></TD>
+                </TR>
+            '''
     if draw & DRAW.ICON:
-        res = res + f'''
-            <TR>
-                <TD BGCOLOR="white" PORT="p2"><IMG SRC="{obj.get_icon()}"/></TD>
-            </TR>
-        '''
+        val = obj.get_icon()
+        if val:
+            res = res + f'''
+                <TR>
+                    <TD BGCOLOR="white" PORT="p2"><IMG SRC="{val}"/></TD>
+                </TR>
+            '''
     if draw & DRAW.CLASS:
-        res = res + f'''
-            <TR>
-                <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="8.0">{obj.get_class_view()}</FONT></TD>
-            </TR>
-        '''
+        val = obj.get_class_view()
+        if val:
+            res = res + f'''
+                <TR>
+                    <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="8.0">{val}</FONT></TD>
+                </TR>
+            '''
     if draw & DRAW.ID:
-        res = res + f'''
-            <TR>
-                <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="8.0">{obj.get_id()}</FONT></TD>
-            </TR>
-        '''
+        val = obj.get_id()
+        if val:
+            res = res + f'''
+                <TR>
+                    <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="8.0">{val}</FONT></TD>
+                </TR>
+            '''
         
     if res == "":
+        val = obj.get_id()
         res = res + f'''
             <TR>
-                <TD BGCOLOR="{color}" PORT="p0"><B>{obj.get_id()}</B></TD>
+                <TD BGCOLOR="{color}" PORT="p0"><B>{val}</B></TD>
             </TR>
         '''
 
@@ -638,15 +649,20 @@ def cluster_label(obj):
     draw = obj.Draw
 
     res0 = ""
-    if draw & DRAW.ICON:
-        res0 = res0 + f'''
-            <TD ROWSPAN="3"><IMG SRC="{obj.get_icon()}"/></TD>
-        '''
 
-    if draw & DRAW.VIEW:
-        res0 = res0 + f'''
-            <TD {obj.get_href()}><B>{insert_line_breaks(obj.get_view())}</B></TD>
-        '''
+    val = obj.get_icon()
+    if val:
+        if draw & DRAW.ICON:
+            res0 = res0 + f'''
+                <TD ROWSPAN="3"><IMG SRC="{val}"/></TD>
+            '''
+
+    val = obj.get_view()
+    if val:
+        if draw & DRAW.VIEW:
+            res0 = res0 + f'''
+                <TD {obj.get_href()}><B>{insert_line_breaks(val)}</B></TD>
+            '''
 
     if res0 != "":
         res0 = f'''
@@ -656,31 +672,39 @@ def cluster_label(obj):
         '''
 
     res1 = ""
-    if draw & DRAW.EXT:
-        res1 = res1 + f'''
-        <TR>
-            <TD BGCOLOR="white"><FONT POINT-SIZE="12.0">{insert_line_breaks(obj.get_ext())}</FONT></TD>
-        </TR>
-        '''
 
-    if draw & DRAW.CLASS:
-        res1 = res1 + f'''
+    if draw & DRAW.EXT:
+        val = obj.get_ext()
+        if val:
+            res1 = res1 + f'''
             <TR>
-                <TD><FONT POINT-SIZE="8.0">{obj.get_class_view()}</FONT></TD>
+                <TD BGCOLOR="white"><FONT POINT-SIZE="12.0">{insert_line_breaks(val)}</FONT></TD>
             </TR>
             '''
 
-    if draw & DRAW.ID:
-        res1 = res1 + f'''
-        <TR>
-            <TD><FONT POINT-SIZE="8.0">{obj.get_id()}</FONT></TD>
-        </TR>
-        '''
+    val = obj.get_class_view()
+    if val:
+        if draw & DRAW.CLASS:
+            res1 = res1 + f'''
+                <TR>
+                    <TD><FONT POINT-SIZE="8.0">{val}</FONT></TD>
+                </TR>
+                '''
+
+    val = obj.get_id()
+    if val:
+        if draw & DRAW.ID:
+            res1 = res1 + f'''
+            <TR>
+                <TD><FONT POINT-SIZE="8.0">{val}</FONT></TD>
+            </TR>
+            '''
 
     if res0 == "" and res1 == "":
+        val = obj.get_id()
         res0 = res0 + f'''
         <TR>
-            <TD PORT="p0"><B>{obj.get_id()}</B></TD>
+            <TD PORT="p0"><B>{val}</B></TD>
         </TR>
     '''
 
