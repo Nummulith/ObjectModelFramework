@@ -565,7 +565,7 @@ def insert_line_breaks(text, interval = 40):
         current_length = 0
 
         for word in words:
-            if current_length + len(word) + 1 > interval:
+            if current_length + len(word) + 1 > interval and len(result) > 0:
                 result.append(current_line)
                 current_line = word
                 current_length = len(word)
@@ -986,6 +986,8 @@ class ObjectModel:
                         self.draw_table(drawing, obj_view, field, corr)
 
                         for list_item in corr:
+                            if list_item is None:
+                                continue
                             if link == FIELD.LINK:
                                 drawing.add_link(idlink + "-" + field + ":" + list_item.get_draw_id(self), list_item.get_draw_link(self), "" )
                             else:
@@ -1001,8 +1003,15 @@ class ObjectModel:
     
     def draw_table(self, drawing, obj_view, list_name, listitems):
         label = f'<TR><TD BGCOLOR="#A9DFBF"><B><FONT POINT-SIZE="9.0">{list_name}</FONT></B></TD></TR>\n'
+        draw_it = False
         for list_item in listitems:
+            if list_item is None:
+                continue
+            draw_it = True
             label += f'<TR><TD {list_item.get_href()} BGCOLOR="white" PORT="{list_item.get_draw_id(self)}"><FONT POINT-SIZE="9.0">{insert_line_breaks(list_item.get_view())}</FONT></TD></TR>\n'
+
+        if not draw_it:
+            return
 
         label = f'''<
             <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
