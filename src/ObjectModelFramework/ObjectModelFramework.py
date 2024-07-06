@@ -36,7 +36,7 @@ import os
 
 from xml.dom import minidom
 
-from graphclass import Drawing
+from graphclass import Drawing, cluster_label, node_label, list_label
 
 import yaml
 
@@ -225,7 +225,7 @@ class ObjectModelItem:
         if type(clss) is tuple:
             clss = clss[0]
 
-            if type(node_id) is tuple:
+            if type(node_id) is tuple or type(node_id) is list:
                 return tuple([self.get_class_object(model, clss, cur_node_id) for cur_node_id in node_id])
             else:
                 return (self.get_class_object(model, clss, node_id),)
@@ -555,166 +555,6 @@ class ObjectList:
 
         return res
 
-def insert_line_breaks(text, interval = 40):
-    lines = text.split('\n')
-    result = []
-
-    for line in lines:
-        words = line.split()
-        current_line = ""
-        current_length = 0
-
-        for word in words:
-            if current_length + len(word) + 1 > interval and len(result) > 0:
-                result.append(current_line)
-                current_line = word
-                current_length = len(word)
-            else:
-                if current_line:
-                    current_line += " "
-                current_line += word
-                current_length += len(word) + 1
-
-        result.append(current_line)
-        result.append("")
-
-    if result and result[-1] == "":
-        result.pop()
-
-    return "<br/>".join(result)
-
-def node_label(obj):
-    ''' html code for node '''
-    draw  = type(obj).Draw
-    color = type(obj).Color
-
-    res = ""
-    if draw & DRAW.VIEW:
-        val = obj.get_view()
-        if val:
-            res = res + f'''
-                <TR>
-                    <TD {obj.get_href()} BGCOLOR="{color}" PORT="p0"><B>{insert_line_breaks(val)}</B></TD>
-                </TR>
-            '''
-    if draw & DRAW.EXT:
-        val = obj.get_ext()
-        if val:
-            res = res + f'''
-                <TR>
-                    <TD BGCOLOR="white" PORT="p1"><FONT POINT-SIZE="12.0">{insert_line_breaks(val)}</FONT></TD>
-                </TR>
-            '''
-    if draw & DRAW.ICON:
-        val = obj.get_icon()
-        if val:
-            res = res + f'''
-                <TR>
-                    <TD BGCOLOR="white" PORT="p2"><IMG SRC="{val}"/></TD>
-                </TR>
-            '''
-    if draw & DRAW.CLASS:
-        val = obj.get_class_view()
-        if val:
-            res = res + f'''
-                <TR>
-                    <TD BGCOLOR="white" PORT="p4"><FONT POINT-SIZE="8.0">{val}</FONT></TD>
-                </TR>
-            '''
-    if draw & DRAW.ID:
-        val = obj.get_id()
-        if val:
-            res = res + f'''
-                <TR>
-                    <TD BGCOLOR="{color}" PORT="p3"><FONT POINT-SIZE="8.0">{val}</FONT></TD>
-                </TR>
-            '''
-        
-    if res == "":
-        val = obj.get_id()
-        res = res + f'''
-            <TR>
-                <TD BGCOLOR="{color}" PORT="p0"><B>{val}</B></TD>
-            </TR>
-        '''
-
-    return f'''<
-        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
-        {res}
-        </TABLE>
-    >'''
-
-def cluster_label(obj):
-    ''' html code for cluster header '''
-    draw = obj.Draw
-
-    res0 = ""
-
-    val = obj.get_icon()
-    if val:
-        if draw & DRAW.ICON:
-            res0 = res0 + f'''
-                <TD ROWSPAN="3"><IMG SRC="{val}"/></TD>
-            '''
-
-    val = obj.get_view()
-    if val:
-        if draw & DRAW.VIEW:
-            res0 = res0 + f'''
-                <TD {obj.get_href()}><B>{insert_line_breaks(val)}</B></TD>
-            '''
-
-    if res0 != "":
-        res0 = f'''
-        <TR>
-            {res0}
-        </TR>
-        '''
-
-    res1 = ""
-
-    if draw & DRAW.EXT:
-        val = obj.get_ext()
-        if val:
-            res1 = res1 + f'''
-            <TR>
-                <TD BGCOLOR="white"><FONT POINT-SIZE="12.0">{insert_line_breaks(val)}</FONT></TD>
-            </TR>
-            '''
-
-    val = obj.get_class_view()
-    if val:
-        if draw & DRAW.CLASS:
-            res1 = res1 + f'''
-                <TR>
-                    <TD><FONT POINT-SIZE="8.0">{val}</FONT></TD>
-                </TR>
-                '''
-
-    val = obj.get_id()
-    if val:
-        if draw & DRAW.ID:
-            res1 = res1 + f'''
-            <TR>
-                <TD><FONT POINT-SIZE="8.0">{val}</FONT></TD>
-            </TR>
-            '''
-
-    if res0 == "" and res1 == "":
-        val = obj.get_id()
-        res0 = res0 + f'''
-        <TR>
-            <TD PORT="p0"><B>{val}</B></TD>
-        </TR>
-    '''
-
-    return f'''<
-        <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4">
-            {res0}
-            {res1}
-        </TABLE>
-    >'''
-
 class ObjectModel:
     ''' Object model class'''
 
@@ -802,9 +642,8 @@ class ObjectModel:
             self.load()
 
     def save(self):
-        ''' Saves model to file '''
+        ''' Saves model to xml file '''
         root = ET.Element("root")
-
         for clss in ObjectModel.Classes["ALL"]:
             name = clss.get_class_view()
             wrapper = getattr(self, name)
@@ -817,10 +656,33 @@ class ObjectModel:
                 id_element = ET.SubElement(category_element, f"id")
                 id_element.text = str(node_id)
 
-
         tree = prettify(root)
         with open(self.path, "w") as file:
             file.write(tree)
+
+        ''' Saves model to yaml file '''
+        root = {}
+        for clss in ObjectModel.Classes["ALL"]:
+            name = clss.get_class_view()
+            wrapper = getattr(self, name)
+
+            if len(wrapper.map) == 0:
+                continue
+
+            objs = {}
+            root[name] = objs
+
+            for node_id, obj in wrapper.map.items():
+                class_attrs = dir(obj.__class__)
+                object_attrs = dir(obj)
+                props = {attr: getattr(obj, attr) for attr in object_attrs \
+                            if attr not in class_attrs and not callable(getattr(obj, attr)) and not attr.startswith('__') \
+                                and attr != "model"
+                        }
+                objs[node_id] = props
+
+        with open(self.path +'.yaml', 'w') as file:
+            yaml.dump(root, file, default_flow_style=False)
 
     def auto_save(self):
         ''' Autosaves model to file '''
@@ -936,20 +798,20 @@ class ObjectModel:
                 
                 # if obj in hasowned or obj_view in haslisted or len(links) > 0:
                 #     drawing.add_item(obj_view,
-                #         cluster = drawing.item_view(cluster_label(obj), style = 'filled', fillcolor = type(obj).Color),
+                #         cluster = drawing.item_view(cluster_label(obj, DRAW), style = 'filled', fillcolor = type(obj).Color),
                 #         point   = drawing.item_view("", shape='point', width='0.1')
                 #     )
                 # elif obj in islisted:
                 #     pass
                 # else:
-                #     drawing.add_item(obj_view, drawing.item_view(node_label(obj), shape='plaintext'))
+                #     drawing.add_item(obj_view, drawing.item_view(node_label(obj, DRAW), shape='plaintext'))
 
                 if obj in islisted:
                     pass
                 else:
                     drawing.add_item(obj_view,
-                        node    = drawing.add_item(obj_view, drawing.item_view(node_label(obj), shape='plaintext')),
-                        cluster = drawing.item_view(cluster_label(obj), style = 'filled', fillcolor = type(obj).Color),
+                        node    = drawing.add_item(obj_view, drawing.item_view(node_label(obj, DRAW))),
+                        cluster = drawing.item_view(cluster_label(obj, DRAW), style = 'filled', fillcolor = type(obj).Color),
                         point   = drawing.item_view("", shape='point', width='0.1'),
                     )
 
@@ -1001,25 +863,24 @@ class ObjectModel:
 
         return drawing
     
-    def draw_table(self, drawing, obj_view, list_name, listitems):
-        label = f'<TR><TD BGCOLOR="#A9DFBF"><B><FONT POINT-SIZE="9.0">{list_name}</FONT></B></TD></TR>\n'
-        draw_it = False
-        for list_item in listitems:
-            if list_item is None:
+
+
+    def draw_table(self, drawing, obj_view, list_name, list_objs):
+
+        listitems = []
+        for list_obj in list_objs:
+            if list_obj is None:
                 continue
-            draw_it = True
-            label += f'<TR><TD {list_item.get_href()} BGCOLOR="white" PORT="{list_item.get_draw_id(self)}"><FONT POINT-SIZE="9.0">{insert_line_breaks(list_item.get_view())}</FONT></TD></TR>\n'
 
-        if not draw_it:
-            return
+            listitems.append({
+                "id"  : list_obj.get_draw_id(self),
+                "view": list_obj.get_view(),
+                "href": list_obj.get_href(),
+            })
 
-        label = f'''<
-            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
-            {label}
-            </TABLE>
-        >'''
+        label = list_label(list_name, listitems)
+        drawing.add_item  (obj_view + "-" + list_name, drawing.item_view(label))
 
-        drawing.add_item  (obj_view + "-" + list_name, drawing.item_view(label, shape='plaintext'))
         drawing.add_parent(obj_view + "-" + list_name, obj_view)
 
     def html(self, clss_list = None):

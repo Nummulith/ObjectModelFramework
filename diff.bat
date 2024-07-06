@@ -1,1 +1,1 @@
-"C:\Program Files\SourceGear\Common\DiffMerge\sgdm.exe" C:\Users\nummulith\AppData\Roaming\Python\Python312\site-packages\ObjectModelFramework\ObjectModelFramework.py C:\Code\OMF\ObjectModelFramework\src\ObjectModelFramework\ObjectModelFramework.py
+"C:\Program Files\SourceGear\Common\DiffMerge\sgdm.exe" C:\Code\OMF\ObjectModelFramework\src\ObjectModelFramework\ObjectModelFramework.py C:\Users\nummulith\AppData\Roaming\Python\Python312\site-packages\ObjectModelFramework\ObjectModelFramework.py 
