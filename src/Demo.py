@@ -201,6 +201,8 @@ class DemoObjectModel(ObjectModel):
 OM = DemoObjectModel()
 OM.fetch()
 
+OM.save()
+
 source = OM.source()
 with open('./src/Demo/Demo.svg', 'w') as file:
     file.write(source)

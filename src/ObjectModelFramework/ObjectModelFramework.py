@@ -67,6 +67,23 @@ class DRAW:
     ALL  = VIEW + EXT + ICON + ID + CLASS # Full
     DEF  = ALL - EXT # Default
 
+class USAGE:
+    VALUE = "VALUE"
+    LIST  = "LIST"
+
+class COLOR:
+    ORANGE    = "#FFC18A"
+    RED_DARK  = "#E76E6F"
+    RED       = "#F29F9B"
+    RED_LIGHT = "#FDD0C7"
+    LILA      = "#f2c4f4"
+    BLUE_LIGHT= "#f0f9ff"
+    BLUE      = "#d7c1ff"
+    BLUE_DARK = "#c19fff"
+    CRIMSON   = "#F2B3BC"
+    GREEN     = "#a9dfbf"
+
+
 def prettify(elem):
     ''' Prettyfying the xml document '''
     rough_string = ET.tostring(elem, "utf-8")
@@ -661,26 +678,7 @@ class ObjectModel:
             file.write(tree)
 
         ''' Saves model to yaml file '''
-        root = {}
-        for clss in ObjectModel.Classes["ALL"]:
-            name = clss.get_class_view()
-            wrapper = getattr(self, name)
-
-            if len(wrapper.map) == 0:
-                continue
-
-            objs = {}
-            root[name] = objs
-
-            for node_id, obj in wrapper.map.items():
-                class_attrs = dir(obj.__class__)
-                object_attrs = dir(obj)
-                props = {attr: getattr(obj, attr) for attr in object_attrs \
-                            if attr not in class_attrs and not callable(getattr(obj, attr)) and not attr.startswith('__') \
-                                and attr != "model"
-                        }
-                objs[node_id] = props
-
+        root = self.data()
         with open(self.path +'.yaml', 'w') as file:
             yaml.dump(root, file, default_flow_style=False)
 
@@ -750,8 +748,61 @@ class ObjectModel:
         for clss in clsss:
             self[clss].release()
 
+    def data(self):
+        root = {}
+        for clss in ObjectModel.Classes["ALL"]:
+            class_attrs = dir(clss)
+            name = clss.get_class_view()
+            wrapper = getattr(self, name)
+
+            if len(wrapper.map) == 0:
+                continue
+
+            clss_props = {attr: getattr(clss, attr) for attr in class_attrs \
+                if not callable(getattr(clss, attr)) and not attr.startswith('__') \
+                    and attr != "model"
+            }
+
+            fields = {}
+            for field_id, field in clss.fields().items():
+                field_type, field_role = field
+                field_type = field_type.get_class_view() if field_type != str else "str"
+                fields[field_id] = {
+                    # "Id"  : field_id,
+                    "Type": field_type,
+                    "Role": field_role,
+                }
+            clss_props["Fields"] = fields
+
+            objs = {}
+            for node_id, obj in wrapper.map.items():
+                object_attrs = dir(obj)
+                props = {attr: getattr(obj, attr) for attr in object_attrs \
+                            if attr not in class_attrs and not callable(getattr(obj, attr)) and not attr.startswith('__') \
+                                and attr != "model"
+                        }
+                objs[node_id] = props
+            clss_props["Nodes"] = objs
+
+            root[name] = clss_props
+
+        return root
+
+    def _field_of_a_kind(self, datas, class_attrs, node_attrs, role):
+        field_id, field = next(((field_id, field) for field_id, field in class_attrs["Fields"].items() if field['Role'] == role), (None, None))
+        if field_id == None:
+            return (None, None)
+        
+        if not field_id in node_attrs:
+            return (field.Type, None)
+
+        return (field["Type"], node_attrs[field_id])
+
     def draw(self, clss_list = None):
         ''' Drawing the model '''
+
+        datas = self.data()
+
         clsss = self.string_to_classes(clss_list)
         drawing = Drawing()
 
@@ -759,16 +810,37 @@ class ObjectModel:
         isowned   = {}
         haslisted = {}
         islisted  = {}
+
+        _isowned = {}
+        _hasowned = {}
+
         for clss in clsss:
             wrap = self[clss]
+            class_attrs = datas[clss.get_class_view()]
+            nodes = class_attrs["Nodes"]
+            node_clss = clss.__name__
 
-            for _, obj in wrap.map.items():
+            # for _, obj in wrap.map.items():
+            for node_id, node_attrs in nodes.items():
+                obj = wrap.map[node_id]
+
+                node_draw = f"{node_clss}_{node_id}"
+
+                owner_class, owner_id = self._field_of_a_kind(datas, class_attrs, node_attrs, FIELD.OWNER)
+                owner_draw = f"{owner_class}_{owner_id}"
                 owner = obj.object_of_a_kind(self, FIELD.OWNER)
-                if owner is not None:
-                    isowned[obj] = owner
+                # if owner is not None:
+                if owner_id is not None:
+                    isowned [obj] = owner
                     hasowned[owner] = True
 
+                    _isowned [node_draw ] = owner_draw
+                    _hasowned[owner_draw] = True
+
                 listitemfield = obj.field_of_a_kind(FIELD.LIST_ITEM)
+                list_class, list_id = self._field_of_a_kind(datas, class_attrs, node_attrs, FIELD.LIST_ITEM)
+                list_draw = f"{list_class}_{list_id}"
+
                 if listitemfield is not None and hasattr(obj, listitemfield):
                     list_item_obj = obj.get_field_object(self, listitemfield)
 
@@ -785,14 +857,15 @@ class ObjectModel:
                         haslisted[list_item] = {}
                     if not list_name in haslisted[list_item]:
                         haslisted[list_item][list_name] = []
-
                     haslisted[list_item][list_name].append(obj)
-
 
         for clss in clsss:
             wrap = self[clss]
 
             for node_id, obj in wrap.map.items():
+            # for node_id, node_attrs in nodes.items():
+            #     obj = wrap.map[node_id]
+
                 obj_view = obj.get_draw_id(self)
                 links = obj.fields_of_a_kind((FIELD.LINK, FIELD.LINK_IN))
                 
@@ -883,14 +956,123 @@ class ObjectModel:
 
         drawing.add_parent(obj_view + "-" + list_name, obj_view)
 
-    def html(self, clss_list = None):
-        return self.draw(clss_list).html("OMF")
 
-    def svg(self, clss_list = None):
-        return self.draw(clss_list).svg("OMF")
-    
-    def source(self, clss_list = None):
-        return self.draw(clss_list).source("OMF")
+    def source(self, clss_list = None, name = "OMF"):
+        return self.draw(clss_list).source(name)
 
     def print(self, clss_list = None):
         return self.draw(clss_list).print()
+
+    def html(self, clss_list = None, name = "OMF", engine = "dot", reload_time = 0, html_wrap=True):
+        return self.draw(clss_list).html(name, engine=engine, reload_time=reload_time, html_wrap=html_wrap)
+
+    def svg(self, clss_list=None, name="OMF", engine="dot"):
+        return self.draw(clss_list).svg(name, engine)
+
+
+# SchemaViz
+
+class SchemaVizItem(ObjectModelItem):
+    # Icon = "Icon"
+    Color = COLOR.GREEN
+
+    @classmethod
+    def get_objects(cls, node = None):
+        if node is None:
+            return SchemaVizObjectModel.DATA[cls.__name__]
+        else:
+            for obj in SchemaVizItem.get_objects():
+                if obj["Id"] == node:
+                    return [obj]
+            return []
+
+    # def get_icon(self):
+    #     icon = super().get_icon()
+    #     return os.path.abspath(ROOTPATH + 'icons').replace("\\", "/") + "/" + icon + ".png"
+
+class SchemaVizObjectModel(ObjectModel):
+    def addSections(self, merged_data, data, clss=None, ids=None):
+        for section in data:
+            for key, values in section.items():
+                if clss != None and key != clss:
+                    continue
+                for val in values:
+                    if ids != None and val["Id"] not in ids:
+                        continue
+                    if key in merged_data:
+                        merged_data[key].append(val)
+                    else:
+                        merged_data[key] = [val]
+    
+    def make_static_fields(self, fields):
+        @staticmethod
+        def static_fields():
+            return fields
+        return static_fields
+
+    def __init__(self, metadata, data):
+        classes = {}
+        for name, clscfg in metadata.items():
+            attrs = {}
+            methods = {}
+
+            for parname, par in clscfg.items():
+                if parname == "Color":
+                    attrs[parname] = getattr(COLOR, par.upper())
+                elif parname == "Draw":
+                    attrs[parname] = sum(getattr(DRAW, field.upper()) for field in par)
+                elif isinstance(par, dict):
+                    if "Value" in par:
+                        attrs[parname] = par["Value"]
+                else:
+                    attrs[parname] = par
+
+            clss = type(name, (SchemaVizItem,), {**attrs, **methods})
+            classes[name] = clss
+
+        for name, clscfg in metadata.items(): # fields
+            fields = {}
+            for parname, par in clscfg.items():
+                if isinstance(par, dict):
+                    fieldtype = str
+                    fieldrole = FIELD.VIEW
+                    fieldusg  = USAGE.VALUE
+                    for fname, fval in par.items():
+                        if   fname == "Type":
+                            fieldtype = fval
+                            if fieldtype in classes:
+                                fieldtype = classes[fieldtype]
+                            else:
+                                type_map = {
+                                    "str": str,
+                                    "int": int,
+                                    "bool": bool,
+                                    "float": float,
+                                }
+                                fieldtype = type_map.get(fieldtype.lower())
+                        elif fname == "Role":
+                            fieldrole = getattr(FIELD, fval.upper())
+                        elif fname == "Usage":
+                            fieldusg = getattr(USAGE, fval.upper())
+                        if fieldusg == USAGE.LIST:
+                            fieldtype = (fieldtype,)
+                            
+                    fields[parname] = (fieldtype, fieldrole)
+
+            classes[name].fields = self.make_static_fields(fields)
+        
+        super().__init__(
+            None,
+            False,
+            False,
+            None,
+            {
+                'SCHEMAVIZ' : 
+                    [clss for name, clss in classes.items()]
+                ,
+            }
+        )
+
+        merged_data = {}
+        self.addSections(merged_data, data)
+        SchemaVizObjectModel.DATA = merged_data
