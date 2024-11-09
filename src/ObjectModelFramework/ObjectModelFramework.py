@@ -766,6 +766,8 @@ class ObjectModel:
             fields = {}
             for field_id, field in clss.fields().items():
                 field_type, field_role = field
+                if type(field_type) == tuple:
+                    field_type = field_type[0]
                 field_type = field_type.get_class_view() if field_type != str else "str"
                 fields[field_id] = {
                     # "Id"  : field_id,
@@ -794,7 +796,7 @@ class ObjectModel:
             return (None, None)
         
         if not field_id in node_attrs:
-            return (field.Type, None)
+            return (field["Type"], None)
 
         return (field["Type"], node_attrs[field_id])
 
